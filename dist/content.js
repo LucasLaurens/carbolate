@@ -1,0 +1,1 @@
+console.log("content.js");const n=document.location.href,t=performance.now();window.addEventListener("load",()=>{console.log("load")});const o=new XMLHttpRequest;o.open("GET",n);o.onload=()=>{const e=(performance.now()-t).toFixed(2);console.log(`the loaded page timing in ms : ${e}`)};o.onerror=()=>console.error("XHR error");o.send();
