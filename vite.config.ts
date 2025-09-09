@@ -12,7 +12,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         // ton popup React (UI)
-        popup: resolve(__dirname, "src/index.html"),
+        popup: resolve(__dirname, "src/popup.html"),
         // ton background script
         background: resolve(__dirname, "src/background.ts"),
         // ton content script
