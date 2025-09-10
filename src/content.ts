@@ -1,19 +1,8 @@
-console.log('content.js')
+// import PerformanceEvent from "./events/performance_event";
 
-const url = document.location.href;
-const start = performance.now();
+console.log('content')
 
-window.addEventListener('load', () => {
-  console.log("load");
-});
-
-const xhr = new XMLHttpRequest();
-
-xhr.open("GET", url);
-xhr.onload = () => {
-  const end = performance.now();
-  const loadedPageTiming = (end - start).toFixed(2)
-  console.log(`the loaded page timing in ms : ${loadedPageTiming}`);
-};
-xhr.onerror = () => console.error("XHR error");
-xhr.send();
+// document.addEventListener(PerformanceEvent.NAME, function (event: Event) {
+//   const e = event as PerformanceEvent;
+//   e.ping();
+// });
