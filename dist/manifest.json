@@ -3,17 +3,8 @@
   "description": "Calculate your carbon footprint on the web.",
   "version": "1.0",
   "manifest_version": 3,
-  "action": {
-    "default_popup": "./src/popup.html",
-    "default_icon": {
-      "16": "assets/index.png",
-      "48": "assets/index.png",
-      "128": "assets/index.png"
-    }
-  },
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
@@ -21,16 +12,29 @@
       "matches": ["<all_urls>"]
     }
   ],
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "assets/logo.png",
+      "48": "assets/logo.png",
+      "128": "assets/logo.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
   "icons": {
-    "16": "assets/index.png",
-    "48": "assets/index.png",
-    "128": "assets/index.png"
+    "16": "assets/logo.png",
+    "48": "assets/logo.png",
+    "128": "assets/logo.png"
   },
   "permissions": [
     "storage",
     "tabs",
     "scripting",
-    "webRequest"
+    "webRequest",
+    "sidePanel",
+    "contextMenus"
   ],
   "host_permissions": ["<all_urls>"]
 }

@@ -11,21 +11,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        // ton popup React (UI)
-        popup: resolve(__dirname, "src/popup.html"),
-        // ton background script
-        background: resolve(__dirname, "src/background.ts"),
-        // ton content script
-        content: resolve(__dirname, "src/content.ts")
+        side_panel: "index.html",
+        background: "src/background/index.ts",
+        content: "src/content/index.ts",
       },
       output: {
-        // génère des fichiers JS simples, pas de hash
-        entryFileNames: `[name].js`,
-        chunkFileNames: `[name].js`,
-        assetFileNames: `[name].[ext]`
+        entryFileNames: "[name].js",
       }
     },
-    outDir: "dist",       // le dossier de build
-    emptyOutDir: true     // vide le dossier avant le build
+    outDir: "dist",
   }
 });
