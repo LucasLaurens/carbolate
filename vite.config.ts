@@ -17,8 +17,11 @@ export default defineConfig({
       },
       output: {
         entryFileNames: "[name].js",
+        // format: "iife",
       }
     },
     outDir: "dist",
+    emptyOutDir: true,
+    target: "es2017",
   }
 });
