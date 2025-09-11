@@ -1,10 +1,9 @@
 import { Component } from "react";
-// import PerformanceEvent from "../events/performance_event";
+import PerformanceEvent from "../../events/performance_event";
 
 export default class Popup extends Component {
   handle = () => {
     console.log("handle");
-    // document.dispatchEvent(new PerformanceEvent());
   };
 
   render() {
