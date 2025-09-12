@@ -1,8 +1,8 @@
 export default class EntriesValidator {
     public readonly MIN = 1;
-    private entries: Record<string, any>[];
+    private entries: Record<string, any>;
 
-    constructor(entries: Record<string, any>[]) {
+    constructor(entries: Record<string, any>) {
         this.entries = entries
     }
 
