@@ -1,1 +1,1 @@
-chrome.runtime.onMessage.addListener((e,n,r)=>{if(e.type==="getEntries"){const t=performance.getEntriesByType("resource");r({entries:t})}return!0});
+chrome.runtime.onMessage.addListener((n,s,r)=>{if(n.type==="getEntries"){const e=performance.getEntries();console.log("entries",e),r({entries:e})}});
