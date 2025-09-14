@@ -1,5 +1,6 @@
 import { Component } from "react";
 import EntriesValidator from "../../validators/EntriesValidator";
+import { EntriesEnum } from "../../enums/EntriesEnum";
 
 interface PopupState {
   requestCount: number;
@@ -16,18 +17,22 @@ export default class Popup extends Component<{}, PopupState> {
       if (tabs[0].id) {
         chrome.tabs.sendMessage(
           tabs[0].id,
-          { type: "getEntries" },
+          { type: "entries" },
           (response?: Record<string, any>) => {
+            console.log('entries type response', response)
             const validator = new EntriesValidator(
-              response?.entries ?? []
+              response ?? {} // todo: response could contains an empty object
             )
             if (!validator.validate()) {
               alert(validator.message())
               return
             }
 
-            this.setState({ requestCount: (response as Record<string, any>).entries.length });
-            console.log("Entries reçues depuis la page :", (response as Record<string, any>).entries);
+            // todo: create an enum for initiatorType (e.g. fetch)
+            // todo: manage every entry type by strategy pattern class
+            const resourceCount = (response as Record<EntriesEnum, any[]>).resource.length
+
+            this.setState({ requestCount: resourceCount });
           }
         );
       }
