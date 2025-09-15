@@ -4,12 +4,18 @@ import { EntriesEnum } from "../../enums/EntriesEnum";
 
 interface PopupState {
   requestCount: number;
+  totalResourceSize: number;
 }
 
 export default class Popup extends Component<{}, PopupState> {
   state: PopupState = {
     requestCount: 0,
+    totalResourceSize: 0,
   };
+
+    componentDidMount() {
+      this.handle()
+    }
 
   handle = () => {
     // Envoie un message au content script de l'onglet actif
@@ -24,15 +30,22 @@ export default class Popup extends Component<{}, PopupState> {
               response ?? {} // todo: response could contains an empty object
             )
             if (!validator.validate()) {
-              alert(validator.message())
+              // alert(validator.message())
+              console.log(validator.message())
               return
             }
 
             // todo: create an enum for initiatorType (e.g. fetch)
             // todo: manage every entry type by strategy pattern class
-            const resourceCount = (response as Record<EntriesEnum, any[]>).resource.length
+            const resource = (response as Record<EntriesEnum, any[]>).resource;
+            const resourceCount = resource.length
+            // Somme des tailles transférées (réseau réel)
+            const totalTransferSize = resource.reduce((sum, r) => sum + r.transferSize, 0);
 
-            this.setState({ requestCount: resourceCount });
+            this.setState({
+              requestCount: resourceCount,
+              totalResourceSize: (totalTransferSize / (1024 * 1024))
+            });
           }
         );
       }
@@ -40,12 +53,12 @@ export default class Popup extends Component<{}, PopupState> {
   };
 
   render() {
-    const { requestCount } = this.state;
+    const { requestCount, totalResourceSize } = this.state;
 
     return (
       <div className="p-5 w-100 flex flex-col gap-4 items-center justify-center">
         <ul>
-          <li>📦 Total resource size: 2.4 MB</li>
+          <li>📦 Total resource size: {totalResourceSize.toFixed(2)}MB</li>
           <li>🔗 Number of requests: {requestCount}</li>
           <li>⏱ Estimated CPU time: 1.8 s</li>
           <li>⚡ Energy consumed: 0.0018 Wh</li>
