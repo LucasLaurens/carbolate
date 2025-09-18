@@ -1,5 +1,7 @@
 import { EntriesEnum } from "../enums/EntriesEnum";
 
+console.log('place to be')
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('message', message)
 
