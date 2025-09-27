@@ -3,19 +3,12 @@ import EntriesValidator from "../../validators/EntriesValidator";
 import { EntriesEnum } from "../../enums/EntriesEnum";
 import { StrategyContext } from "../../strategy/StrategyContext";
 import ResourceStrategy from "../../strategy/ResourceStrategy";
+import { useMetricStore } from "../../store";
 
-interface PopupState {
-  requestCount: number;
-  totalResourceSize: number;
-  cpuTimeToLoad: number;
-}
-
-export default class Popup extends Component<{}, PopupState> {
-  state: PopupState = {
-    requestCount: 0,
-    totalResourceSize: 0,
-    cpuTimeToLoad: 0,
-  };
+export default class Popup extends Component<{}> {
+    state = {
+      metrics: useMetricStore.getState().metrics
+    };
 
     // 🔄
     componentDidMount() {
@@ -49,12 +42,21 @@ export default class Popup extends Component<{}, PopupState> {
             const strategyContext = (new StrategyContext(new ResourceStrategy()))
             const {resourceCount, totalTransferSize} = strategyContext.execute(resource)
 
-            this.setState({
+            const newMetrics = {
               requestCount: resourceCount,
               totalResourceSize: (totalTransferSize / (1024 * 1024)),
               // todo: calculate with every entries durantion
               cpuTimeToLoad: navigation[0].duration / 1000
-            });
+            }
+
+            // todo: apply type
+            this.setState((prevState: any) => ({
+              metrics: {
+                ...prevState.metrics,
+                ...newMetrics,
+              },
+            }));
+            useMetricStore.getState().updateMetrics(newMetrics)
           }
         );
       }
@@ -62,20 +64,14 @@ export default class Popup extends Component<{}, PopupState> {
   };
 
   render() {
-    const {
-      requestCount,
-      totalResourceSize,
-      cpuTimeToLoad
-    } = this.state;
+    const { metrics } = this.state
 
     return (
       <div className="p-5 w-100 flex flex-col gap-4 items-center justify-center">
         <ul>
-          <li>📦 Total resource size: {totalResourceSize.toFixed(2)}MB</li>
-          <li>🔗 Number of requests: {requestCount}</li>
-          <li>⏱ Estimated CPU time: {cpuTimeToLoad.toFixed(2)}s</li>
-          <li>⚡ Energy consumed: 0.0018 Wh</li>
-          <li>🌍 CO₂ emissions: 0.0007 gCO₂</li>
+          <li>📦 Total resource size: {metrics.totalResourceSize.toFixed(2)}MB</li>
+          <li>🔗 Number of requests: {metrics.requestCount}</li>
+          <li>⏱ Estimated CPU time: {metrics.cpuTimeToLoad.toFixed(2)}s</li>
         </ul>
         <button
           className="w-fit p-2 text-center rounded-md cursor-pointer text-white bg-blue-500 hover:bg-blue-700"
