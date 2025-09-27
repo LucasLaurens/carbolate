@@ -12,6 +12,10 @@ export default class Popup extends Component<{}> {
 
     // 🔄
     componentDidMount() {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        console.log('tabs:', tabs, tabs[0]?.id)
+      });
+
       this.handle()
     }
 
@@ -48,6 +52,9 @@ export default class Popup extends Component<{}> {
               // todo: calculate with every entries durantion
               cpuTimeToLoad: navigation[0].duration / 1000
             }
+
+            // @todo: get tab id to update sum of resource store
+            // @see https://developer.chrome.com/docs/extensions/reference/api/tabs?hl=fr
 
             // todo: apply type
             this.setState((prevState: any) => ({
