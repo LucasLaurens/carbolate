@@ -36,10 +36,7 @@
     "storage",
     "tabs",
     "scripting",
-    "webRequest",
-    "webRequestBlocking",
     "declarativeNetRequest",
-    "declarativeNetRequestWithHostAccess",
     "declarativeNetRequestFeedback",
     "sidePanel",
     "contextMenus"
