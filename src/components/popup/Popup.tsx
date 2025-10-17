@@ -3,18 +3,12 @@ import EntriesValidator from "../../validators/EntriesValidator";
 import { EntriesEnum } from "../../enums/EntriesEnum";
 import { StrategyContext } from "../../strategy/StrategyContext";
 import ResourceStrategy from "../../strategy/ResourceStrategy";
-import { Metrics, useMetricsStore } from "../../store";
+import { Metrics, metricsStore } from "../../store";
 
-type State = {
-  tabId: number;
-  metrics: Metrics
-}
+type State = { metrics: Metrics }
 
 export default class Popup extends Component<{}, State> {
-  unsubscribe?: () => void;
-
   state: State = {
-    tabId: 0,
     metrics: {
       requestCount: 0,
       totalResourceSize: 0,
@@ -22,30 +16,14 @@ export default class Popup extends Component<{}, State> {
     },
   };
 
-  componentDidMount() {
-    this.unsubscribe = useMetricsStore.subscribe((state) => {
-      const currentTab = state.tabs.find(tab => tab.id === this.state.tabId);
-      if (currentTab) {
-        this.setState({ metrics: currentTab.metrics });
-      }
-    });
-
-    this.handle();
-  }
-
-  componentWillUnmount() {
-    if (this.unsubscribe) this.unsubscribe();
-  }
-
   handle = () => {
+    console.log('handle')
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
       tabs.forEach((currentTab: chrome.tabs.Tab) => {
         if (!currentTab.id) {
           console.info("This tab does not contain any id");
           return;
         }
-
-        this.setState({ tabId: currentTab.id });
 
         chrome.tabs.sendMessage(
           currentTab.id,
@@ -71,23 +49,29 @@ export default class Popup extends Component<{}, State> {
                 : 0,
             };
 
-            const store = useMetricsStore.getState();
-            const existingTab = store.tabs.find(tab => tab.id === currentTab.id);
 
-            if (!existingTab) {
-              console.debug('before adding tab', store.totalMetrics)
-              store.addTab({
-                id: currentTab.id!,
-                metrics: newMetrics,
-                meta: { status: 200, date: Date.now() },
-              });
-              console.debug('after adding tab', store.totalMetrics)
-              return
-            }
+            console.log('hasExistingTabById', metricsStore.hasExistingTabById(currentTab.id!))
+            metricsStore.addTab({
+              id: currentTab.id!,
+              metrics: newMetrics,
+              meta: { status: 200, date: Date.now() }
+            });
+            console.log(metricsStore.getTabs(), metricsStore.getTotalMetrics())
+            // metricsStore.updateTabMetrics(tabId, { requestCount: 10 });
 
-            console.debug('before updating metrics', store.totalMetrics)
-            store.updateTabMetrics(currentTab.id!, newMetrics);
-            console.debug('after updating metrics', store.totalMetrics)
+
+            // if (!metricsStore.hasExistingTabById(currentTab.id!)) {
+            // this.setState({ metrics: totalMetrics });
+            // store.addTabMetrics({
+            //   id: currentTab.id!,
+            //   metrics: newMetrics,
+            //   meta: { status: 200, date: Date.now() },
+            // });
+            // } else {
+            // store.updateTabMetrics(currentTab.id!, newMetrics);
+            // }
+
+            // this.setState({ metrics: store.totalMetrics });
           }
         );
       });
@@ -96,9 +80,9 @@ export default class Popup extends Component<{}, State> {
 
   render() {
     const { metrics } = this.state;
-    const { totalMetrics } = useMetricsStore.getState()
+    // const { totalMetrics } = useMetricsStore.getState()
 
-    console.debug('store and state metrics', metrics, totalMetrics)
+    // console.debug('store and state metrics', metrics, totalMetrics)
 
     return (
       <div className="p-5 w-100 flex flex-col gap-4 items-center justify-center">
