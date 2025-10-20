@@ -16,8 +16,7 @@ export default class Popup extends Component<{}, State> {
     },
   };
 
-  handle = () => {
-    console.log('handle')
+  handleTabMetrics = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
       tabs.forEach((currentTab: chrome.tabs.Tab) => {
         if (!currentTab.id) {
@@ -49,40 +48,32 @@ export default class Popup extends Component<{}, State> {
                 : 0,
             };
 
+            if (!metricsStore.hasExistingTabById(currentTab.id!)) {
+              metricsStore.addTab({
+                id: currentTab.id!,
+                metrics: newMetrics,
+                meta: { status: 200, date: Date.now() }
+              });
+            } else {
+              // todo: update status and date too
+              metricsStore.updateTabMetrics(currentTab.id!, newMetrics);
+            }
 
-            console.log('hasExistingTabById', metricsStore.hasExistingTabById(currentTab.id!))
-            metricsStore.addTab({
-              id: currentTab.id!,
-              metrics: newMetrics,
-              meta: { status: 200, date: Date.now() }
-            });
-            console.log(metricsStore.getTabs(), metricsStore.getTotalMetrics())
-            // metricsStore.updateTabMetrics(tabId, { requestCount: 10 });
-
-
-            // if (!metricsStore.hasExistingTabById(currentTab.id!)) {
-            // this.setState({ metrics: totalMetrics });
-            // store.addTabMetrics({
-            //   id: currentTab.id!,
-            //   metrics: newMetrics,
-            //   meta: { status: 200, date: Date.now() },
-            // });
-            // } else {
-            // store.updateTabMetrics(currentTab.id!, newMetrics);
-            // }
-
-            // this.setState({ metrics: store.totalMetrics });
+            metricsStore.getTotalMetrics()
+              .then((metrics: Metrics) => this.setState({ metrics: metrics }))
+              .catch((error) => console.warn("Unable to update the current metrics state", error))
           }
         );
       });
     });
   };
 
+  componentDidMount(): void {
+    this.handleTabMetrics()
+  }
+
   render() {
     const { metrics } = this.state;
-    // const { totalMetrics } = useMetricsStore.getState()
-
-    // console.debug('store and state metrics', metrics, totalMetrics)
 
     return (
       <div className="p-5 w-100 flex flex-col gap-4 items-center justify-center">
@@ -94,7 +85,7 @@ export default class Popup extends Component<{}, State> {
 
         <button
           className="w-fit p-2 text-center rounded-md cursor-pointer text-white bg-blue-500 hover:bg-blue-700"
-          onClick={this.handle}
+          onClick={this.handleTabMetrics}
         >
           🔄 Refresh Data
         </button>
