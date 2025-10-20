@@ -42,6 +42,10 @@ export const metricsStore: MetricsStore = {
     tabs = [...tabs, newTab];
     const totalMetrics = sumMetrics(tabs.map(tab => tab.metrics));
 
+    console.debug(
+      '[addTab]',
+      { 'tabs': tabs, 'totalMetrics': totalMetrics }
+    )
     // todo: manage the local storage from a specific class dedicated
     chrome.storage.local.set({ tabs, totalMetrics });
 
@@ -56,6 +60,10 @@ export const metricsStore: MetricsStore = {
     );
     const totalMetrics = sumMetrics(tabs.map(tab => tab.metrics));
 
+    console.debug(
+      '[updateTabMetrics]',
+      { 'tabs': tabs, 'totalMetrics': totalMetrics }
+    )
     chrome.storage.local.set({ tabs, totalMetrics });
 
     this.tabs = tabs;
