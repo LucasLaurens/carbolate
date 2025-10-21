@@ -27,7 +27,7 @@ export default class Popup extends Component<{}, State> {
         chrome.tabs.sendMessage(
           currentTab.id,
           { type: "entries" },
-          (response?: Record<string, any>) => {
+          async (response?: Record<string, any>) => {
             const validator = new EntriesValidator(response ?? {});
             if (!validator.validate()) {
               console.log(validator.message());
@@ -48,7 +48,8 @@ export default class Popup extends Component<{}, State> {
                 : 0,
             };
 
-            if (!metricsStore.hasExistingTabById(currentTab.id!)) {
+            const hasExistingTabById = await metricsStore.hasExistingTabById(currentTab.id!)
+            if (!hasExistingTabById) {
               metricsStore.addTab({
                 id: currentTab.id!,
                 metrics: newMetrics,
