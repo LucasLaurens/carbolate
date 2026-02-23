@@ -1,4 +1,4 @@
-import { EntriesEnum } from "../enums/EntriesEnum";
+import { EntriesEnum } from "../performance/enums/EntriesEnum";
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "entries") {
