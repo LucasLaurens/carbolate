@@ -1,3 +1,3 @@
 export default interface Resource {
-    transferSize: number;
+  transferSize: number;
 }
