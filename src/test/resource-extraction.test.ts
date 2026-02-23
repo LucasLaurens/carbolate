@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import ResourceStrategy from "./ResourceStrategy";
+import ResourceStrategy from "../performance/ResourceStrategy";
 
 describe("ResourceStrategy", () => {
   const strategy = new ResourceStrategy();
@@ -11,10 +11,7 @@ describe("ResourceStrategy", () => {
   });
 
   it("counts resources and sums their transfer sizes", () => {
-    const result = strategy.handle([
-      { transferSize: 1_024 },
-      { transferSize: 2_048 },
-    ]);
+    const result = strategy.handle([{ transferSize: 1_024 }, { transferSize: 2_048 }]);
     expect(result.resourceCount).toBe(2);
     expect(result.totalTransferSize).toBe(3_072);
   });

@@ -1,14 +1,14 @@
 import { Component } from "react";
 import EntriesValidator from "../../performance/EntriesValidator";
-import { EntriesEnum } from "../../performance/enums/EntriesEnum";
+import type { EntriesEnum } from "../../performance/enums/EntriesEnum";
 import { StrategyContext } from "../../performance/StrategyContext";
 import ResourceStrategy from "../../performance/ResourceStrategy";
-import { Metrics } from "../../session/types";
+import type { Metrics } from "../../session/types";
 import { metricsStore } from "../../session/store";
 
-type State = { metrics: Metrics }
+type State = { metrics: Metrics };
 
-export default class Popup extends Component<{}, State> {
+export default class Popup extends Component<Record<string, never>, State> {
   state: State = {
     metrics: {
       requestCount: 0,
@@ -28,15 +28,16 @@ export default class Popup extends Component<{}, State> {
         chrome.tabs.sendMessage(
           currentTab.id,
           { type: "entries" },
-          async (response?: Record<string, any>) => {
+          async (response?: Record<string, PerformanceEntry[]>) => {
             const validator = new EntriesValidator(response ?? {});
             if (!validator.validate()) {
               console.log(validator.message());
               return;
             }
 
-            const resource = (response as Record<EntriesEnum, any[]>).resource;
-            const navigation = (response as Record<EntriesEnum, any[]>).navigation;
+            const resource = (response as Record<EntriesEnum, PerformanceResourceTiming[]>)
+              .resource;
+            const navigation = (response as Record<EntriesEnum, PerformanceEntry[]>).navigation;
 
             const strategyContext = new StrategyContext(new ResourceStrategy());
             const { resourceCount, totalTransferSize } = strategyContext.execute(resource);
@@ -44,38 +45,37 @@ export default class Popup extends Component<{}, State> {
             const newMetrics = {
               requestCount: resourceCount,
               totalResourceSize: totalTransferSize / (1024 * 1024),
-              cpuTimeToLoad: navigation?.[0]?.duration
-                ? navigation[0].duration / 1000
-                : 0,
+              cpuTimeToLoad: navigation?.[0]?.duration ? navigation[0].duration / 1000 : 0,
             };
 
-            const hasExistingTabById = await metricsStore.hasExistingTabById(currentTab.id!)
+            const hasExistingTabById = await metricsStore.hasExistingTabById(currentTab.id!);
             if (!hasExistingTabById) {
-              const url    = currentTab.url ?? "";
+              const url = currentTab.url ?? "";
               const domain = url ? new URL(url).hostname : "";
               metricsStore.addTab({
                 id: currentTab.id!,
                 url,
                 domain,
                 metrics: newMetrics,
-                meta: { status: 200, date: Date.now() }
+                meta: { status: 200, date: Date.now() },
               });
             } else {
               // todo: update status and date too
               metricsStore.updateTabMetrics(currentTab.id!, newMetrics);
             }
 
-            metricsStore.getTotalMetrics()
+            metricsStore
+              .getTotalMetrics()
               .then((metrics: Metrics) => this.setState({ metrics: metrics }))
-              .catch((error) => console.warn("Unable to update the current metrics state", error))
-          }
+              .catch((error) => console.warn("Unable to update the current metrics state", error));
+          },
         );
       });
     });
   };
 
   componentDidMount(): void {
-    this.handleTabMetrics()
+    this.handleTabMetrics();
   }
 
   render() {
