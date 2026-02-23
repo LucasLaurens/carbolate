@@ -1,5 +1,5 @@
-import Resource from "./contract/Resource";
-import Strategy from "./contract/Strategy";
+import Resource from "./contracts/Resource";
+import Strategy from "./contracts/Strategy";
 
 type ResourceStrategyOutput = {
     resourceCount: number;

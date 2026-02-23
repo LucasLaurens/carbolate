@@ -1,4 +1,4 @@
-import { EntriesEnum } from "../enums/EntriesEnum";
+import { EntriesEnum } from "./enums/EntriesEnum";
 
 export default class EntriesValidator {
     public readonly MIN = 1;

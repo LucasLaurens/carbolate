@@ -1,9 +1,10 @@
 import { Component } from "react";
-import EntriesValidator from "../../validators/EntriesValidator";
-import { EntriesEnum } from "../../enums/EntriesEnum";
-import { StrategyContext } from "../../strategy/StrategyContext";
-import ResourceStrategy from "../../strategy/ResourceStrategy";
-import { Metrics, metricsStore } from "../../store";
+import EntriesValidator from "../../performance/EntriesValidator";
+import { EntriesEnum } from "../../performance/enums/EntriesEnum";
+import { StrategyContext } from "../../performance/StrategyContext";
+import ResourceStrategy from "../../performance/ResourceStrategy";
+import { Metrics } from "../../session/types";
+import { metricsStore } from "../../session/store";
 
 type State = { metrics: Metrics }
 
@@ -50,8 +51,12 @@ export default class Popup extends Component<{}, State> {
 
             const hasExistingTabById = await metricsStore.hasExistingTabById(currentTab.id!)
             if (!hasExistingTabById) {
+              const url    = currentTab.url ?? "";
+              const domain = url ? new URL(url).hostname : "";
               metricsStore.addTab({
                 id: currentTab.id!,
+                url,
+                domain,
                 metrics: newMetrics,
                 meta: { status: 200, date: Date.now() }
               });
