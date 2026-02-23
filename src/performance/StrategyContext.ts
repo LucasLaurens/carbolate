@@ -1,4 +1,4 @@
-import Strategy from "./contract/Strategy";
+import Strategy from "./contracts/Strategy";
 
 export class StrategyContext<Input, Output> {
     private strategy: Strategy<Input, Output>;
