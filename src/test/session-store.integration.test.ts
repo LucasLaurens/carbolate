@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { metricsStore } from "./store";
+import { metricsStore } from "../session/store";
 
 // Fix the date so all calls share the same daily record
 vi.mock("../utils/date", () => ({ getTodayKey: () => "2026-02-23" }));
@@ -91,7 +91,7 @@ describe("updateTabMetrics", () => {
 
     await metricsStore.updateTabMetrics(TAB_A.id, {
       requestCount: 20,
-      totalResourceSize: 1_000,   // much larger → more CO2
+      totalResourceSize: 1_000, // much larger → more CO2
       cpuTimeToLoad: 3.0,
     });
 
@@ -130,13 +130,17 @@ describe("getTotalMetrics", () => {
     const total = await metricsStore.getTotalMetrics();
     expect(total.requestCount).toBe(TAB_A.metrics.requestCount + TAB_B.metrics.requestCount);
     expect(total.totalResourceSize).toBe(
-      TAB_A.metrics.totalResourceSize + TAB_B.metrics.totalResourceSize
+      TAB_A.metrics.totalResourceSize + TAB_B.metrics.totalResourceSize,
     );
   });
 
   it("reflects an update to a tab's metrics", async () => {
     await metricsStore.addTab(TAB_A);
-    await metricsStore.updateTabMetrics(TAB_A.id, { requestCount: 99, totalResourceSize: 0, cpuTimeToLoad: 0 });
+    await metricsStore.updateTabMetrics(TAB_A.id, {
+      requestCount: 99,
+      totalResourceSize: 0,
+      cpuTimeToLoad: 0,
+    });
 
     const total = await metricsStore.getTotalMetrics();
     expect(total.requestCount).toBe(99);
