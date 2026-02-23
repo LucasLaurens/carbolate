@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import CarbonCalculator from "./CarbonCalculator";
+import CarbonCalculator from "../carbon/CarbonCalculator";
 
 describe("CarbonCalculator", () => {
   const calc = new CarbonCalculator();
@@ -34,9 +34,7 @@ describe("CarbonCalculator", () => {
   });
 
   it("combines network and CPU CO2 in totalCo2", () => {
-    const result = calc.calculate([
-      { transferSize: 1_000_000_000, cpuTime: 1_000_000 },
-    ]);
+    const result = calc.calculate([{ transferSize: 1_000_000_000, cpuTime: 1_000_000 }]);
     expect(result.totalCo2).toBe(result.networkCo2 + result.cpuCo2);
   });
 });

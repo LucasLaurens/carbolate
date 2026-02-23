@@ -29,14 +29,14 @@ function resource(transferSize: number) {
  */
 function toMetrics(
   resourceEntries: { transferSize: number }[],
-  navigationDurationMs: number
+  navigationDurationMs: number,
 ): Metrics {
   const ctx = new StrategyContext(new ResourceStrategy());
   const { resourceCount, totalTransferSize } = ctx.execute(resourceEntries);
   return {
-    requestCount:      resourceCount,
+    requestCount: resourceCount,
     totalResourceSize: totalTransferSize / (1024 * 1024), // bytes → MB
-    cpuTimeToLoad:     navigationDurationMs / 1000,       // ms   → s
+    cpuTimeToLoad: navigationDurationMs / 1000, // ms   → s
   };
 }
 
@@ -52,21 +52,21 @@ const BLOG_PAGE = {
   domain: "blog.example.com",
   meta: { status: 200, date: 0 },
   entries: [
-    resource(30_000),           // main CSS
-    resource(120_000),          // main JS bundle
-    resource(40_000),           // hero image
-    resource(38_000),           // inline image 1
-    resource(42_000),           // inline image 2
-    resource(35_000),           // inline image 3
-    resource(41_000),           // inline image 4
-    resource(39_000),           // inline image 5
-    resource(44_000),           // inline image 6
-    resource(37_000),           // inline image 7
-    resource(50_000),           // font 1
-    resource(50_000),           // font 2
-    resource(20_000),           // analytics script
-    resource(8_000),            // favicon
-    resource(4_000),            // robots / misc
+    resource(30_000), // main CSS
+    resource(120_000), // main JS bundle
+    resource(40_000), // hero image
+    resource(38_000), // inline image 1
+    resource(42_000), // inline image 2
+    resource(35_000), // inline image 3
+    resource(41_000), // inline image 4
+    resource(39_000), // inline image 5
+    resource(44_000), // inline image 6
+    resource(37_000), // inline image 7
+    resource(50_000), // font 1
+    resource(50_000), // font 2
+    resource(20_000), // analytics script
+    resource(8_000), // favicon
+    resource(4_000), // robots / misc
   ],
   navigationDurationMs: 800,
 };
@@ -113,11 +113,11 @@ const SPA_NAVIGATION = {
   domain: "app.example.com",
   meta: { status: 200, date: 0 },
   entries: [
-    resource(0),      // main bundle — cached
-    resource(0),      // vendor bundle — cached
-    resource(0),      // CSS — cached
-    resource(3_200),  // /api/dashboard JSON
-    resource(1_800),  // /api/user JSON
+    resource(0), // main bundle — cached
+    resource(0), // vendor bundle — cached
+    resource(0), // CSS — cached
+    resource(3_200), // /api/dashboard JSON
+    resource(1_800), // /api/user JSON
   ],
   navigationDurationMs: 180,
 };
@@ -125,12 +125,11 @@ const SPA_NAVIGATION = {
 // ─── tests ───────────────────────────────────────────────────────────────────
 
 describe("Full pipeline: Performance API → carbon estimate", () => {
-
   describe("Blog article (light page)", () => {
     it("extracts the correct request count and resource size", () => {
       const metrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
       expect(metrics.requestCount).toBe(15);
-      expect(metrics.totalResourceSize).toBeCloseTo(0.570, 2); // 598 000 bytes / 1 048 576 ≈ 0.570 MB
+      expect(metrics.totalResourceSize).toBeCloseTo(0.57, 2); // 598 000 bytes / 1 048 576 ≈ 0.570 MB
     });
 
     it("stores the tab and attaches a carbon estimate", async () => {
@@ -146,12 +145,12 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
       const lightMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
       const heavyMetrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
 
-      await metricsStore.addTab({ ...BLOG_PAGE,      id: 10, metrics: lightMetrics });
+      await metricsStore.addTab({ ...BLOG_PAGE, id: 10, metrics: lightMetrics });
       await metricsStore.addTab({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics });
 
       const tabs = await metricsStore.getTabs();
-      const light = tabs.find(t => t.id === 10)!;
-      const heavy = tabs.find(t => t.id === 20)!;
+      const light = tabs.find((t) => t.id === 10)!;
+      const heavy = tabs.find((t) => t.id === 20)!;
 
       expect(heavy.carbon.totalCo2).toBeGreaterThanOrEqual(light.carbon.totalCo2);
     });
@@ -165,7 +164,7 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
     });
 
     it("has higher totalResourceSize than the blog page", () => {
-      const blog  = toMetrics(BLOG_PAGE.entries,      BLOG_PAGE.navigationDurationMs);
+      const blog = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
       const heavy = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
       expect(heavy.totalResourceSize).toBeGreaterThan(blog.totalResourceSize);
     });
@@ -190,7 +189,7 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
     });
 
     it("has a very small footprint compared to a full-page load", async () => {
-      const spaMetrics  = toMetrics(SPA_NAVIGATION.entries,  SPA_NAVIGATION.navigationDurationMs);
+      const spaMetrics = toMetrics(SPA_NAVIGATION.entries, SPA_NAVIGATION.navigationDurationMs);
       const blogMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
 
       expect(spaMetrics.totalResourceSize).toBeLessThan(blogMetrics.totalResourceSize);
@@ -200,24 +199,25 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
 
   describe("Daily session: multiple tabs accumulated", () => {
     it("totalMetrics sums request counts across all open tabs", async () => {
-      const blogMetrics  = toMetrics(BLOG_PAGE.entries,      BLOG_PAGE.navigationDurationMs);
+      const blogMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
       const heavyMetrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
-      const spaMetrics   = toMetrics(SPA_NAVIGATION.entries, SPA_NAVIGATION.navigationDurationMs);
+      const spaMetrics = toMetrics(SPA_NAVIGATION.entries, SPA_NAVIGATION.navigationDurationMs);
 
-      await metricsStore.addTab({ ...BLOG_PAGE,      id: 10, metrics: blogMetrics  });
+      await metricsStore.addTab({ ...BLOG_PAGE, id: 10, metrics: blogMetrics });
       await metricsStore.addTab({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics });
-      await metricsStore.addTab({ ...SPA_NAVIGATION, id: 30, metrics: spaMetrics   });
+      await metricsStore.addTab({ ...SPA_NAVIGATION, id: 30, metrics: spaMetrics });
 
       const total = await metricsStore.getTotalMetrics();
-      const expected = blogMetrics.requestCount + heavyMetrics.requestCount + spaMetrics.requestCount;
+      const expected =
+        blogMetrics.requestCount + heavyMetrics.requestCount + spaMetrics.requestCount;
       expect(total.requestCount).toBe(expected);
     });
 
     it("totalCarbon reflects the combined footprint of the session", async () => {
-      const blogMetrics  = toMetrics(BLOG_PAGE.entries,      BLOG_PAGE.navigationDurationMs);
+      const blogMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
       const heavyMetrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
 
-      await metricsStore.addTab({ ...BLOG_PAGE,      id: 10, metrics: blogMetrics  });
+      await metricsStore.addTab({ ...BLOG_PAGE, id: 10, metrics: blogMetrics });
       await metricsStore.addTab({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics });
 
       const carbon = await metricsStore.getTotalCarbon();

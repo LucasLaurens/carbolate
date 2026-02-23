@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      timezone: "Europe/Paris"
+    pull-request-branch-name:
+      separator: "_"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "Updating npm packages: "
+    labels:
+      - "chore"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

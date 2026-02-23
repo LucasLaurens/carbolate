@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import EntriesValidator from "./EntriesValidator";
-import { EntriesEnum } from "./enums/EntriesEnum";
+import EntriesValidator from "../performance/EntriesValidator";
+import { EntriesEnum } from "../performance/enums/EntriesEnum";
 
 describe("EntriesValidator", () => {
   it("validates when at least one entry type is present", () => {
@@ -17,7 +17,7 @@ describe("EntriesValidator", () => {
 
   it("validates with multiple entry types", () => {
     const validator = new EntriesValidator({
-      [EntriesEnum.RESOURCE]:   [],
+      [EntriesEnum.RESOURCE]: [],
       [EntriesEnum.NAVIGATION]: [],
     } as never);
     expect(validator.validate()).toBe(true);
