@@ -9,6 +9,7 @@ beforeEach(() => {
 
 // Minimal chrome.storage.local mock
 (globalThis as unknown as { chrome: unknown }).chrome = {
+  runtime: { lastError: undefined },
   storage: {
     local: {
       get: (keys: string[], callback: (result: Record<string, unknown>) => void) => {

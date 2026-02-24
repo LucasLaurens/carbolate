@@ -1,7 +1,6 @@
 import type { EntriesEnum } from "./enums/EntriesEnum";
 
 export default class EntriesValidator {
-  public readonly MIN = 1;
   private entries: Record<EntriesEnum, PerformanceEntry[]>;
 
   constructor(entries: Record<EntriesEnum, PerformanceEntry[]>) {
@@ -9,7 +8,7 @@ export default class EntriesValidator {
   }
 
   validate(): boolean {
-    return Object.keys(this.entries).length >= this.MIN;
+    return Object.values(this.entries).some((arr) => arr.length > 0);
   }
 
   message(): string {

@@ -14,7 +14,7 @@ import ResourceStrategy from "../performance/ResourceStrategy";
 import { metricsStore } from "../session/store";
 import type { Metrics } from "../session/types";
 
-vi.mock("../utils/date", () => ({ getTodayKey: () => "2026-02-23" }));
+vi.mock("../utils/date", () => ({ getDailyDate: () => "2026-02-23" }));
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 

@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { metricsStore } from "../session/store";
 
-// Fix the date so all calls share the same daily record
-vi.mock("../utils/date", () => ({ getTodayKey: () => "2026-02-23" }));
+vi.mock("../utils/date", () => ({ getDailyDate: () => "2026-02-23" }));
 
 const TAB_A = {
   id: 1,
@@ -171,14 +170,14 @@ describe("getTotalCarbon", () => {
 
 describe("getOrCreateDailyRecord", () => {
   it("creates an empty record for a new date", async () => {
-    const record = await metricsStore.getOrCreateDailyRecord("2026-01-01");
-    expect(record.date).toBe("2026-01-01");
+    const record = await metricsStore.findOrCreateDailyRecord();
+    expect(record.date).toBe("2026-02-23");
     expect(record.tabs).toHaveLength(0);
   });
 
   it("returns the same record on repeated calls", async () => {
-    await metricsStore.addTab(TAB_A); // adds to 2026-02-23 (mocked)
-    const record = await metricsStore.getOrCreateDailyRecord("2026-02-23");
+    await metricsStore.addTab(TAB_A);
+    const record = await metricsStore.findOrCreateDailyRecord();
     expect(record.tabs).toHaveLength(1);
   });
 });
