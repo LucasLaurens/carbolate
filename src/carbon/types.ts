@@ -1,6 +1,6 @@
 export type CarbonInput = {
-  transferSize: number;
-  cpuTime: number;
+  transferSize: number; // bytes
+  cpuTime: number; // milliseconds
 };
 
 export type CarbonEstimate = {
