@@ -31,10 +31,8 @@ export type SessionsStore = Record<string, DailyRecord>;
 
 export type MetricsStore = {
   // Daily record operations
-  getOrCreateDailyRecord: (date: string) => Promise<DailyRecord>;
-  addTabToDay: (date: string, tab: MetricTab) => Promise<void>;
-  updateTabInDay: (date: string, tabId: number, newMetrics: Metrics) => Promise<void>;
-  getDailyRecord: (date: string) => Promise<DailyRecord | null>;
+  findDailyRecord: () => Promise<DailyRecord | null>;
+  findOrCreateDailyRecord: () => Promise<DailyRecord>;
   getAllDays: () => Promise<DailyRecord[]>;
   // Today convenience methods
   addTab: (tab: Omit<MetricTab, "carbon">) => Promise<void>;
