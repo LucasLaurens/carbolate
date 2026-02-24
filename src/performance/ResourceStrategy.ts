@@ -9,7 +9,7 @@ type ResourceStrategyOutput = {
 export default class ResourceStrategy implements Strategy<Resource, ResourceStrategyOutput> {
   handle(resource: Resource[]): ResourceStrategyOutput {
     const resourceCount = resource.length;
-    // Somme des tailles transférées (réseau réel)
+    // Sum of transferred sizes (actual network bytes)
     const totalTransferSize = resource.reduce(
       (carry: number, item: Resource) => carry + item.transferSize,
       0,

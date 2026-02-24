@@ -15,12 +15,12 @@ describe("EntriesValidator", () => {
     expect(validator.validate()).toBe(false);
   });
 
-  it("validates with multiple entry types", () => {
+  it("rejects entries where all arrays are empty", () => {
     const validator = new EntriesValidator({
       [EntriesEnum.RESOURCE]: [],
       [EntriesEnum.NAVIGATION]: [],
     } as never);
-    expect(validator.validate()).toBe(true);
+    expect(validator.validate()).toBe(false);
   });
 
   it("returns a descriptive message", () => {
