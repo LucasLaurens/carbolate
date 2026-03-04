@@ -3,28 +3,49 @@ import EntriesValidator from "../../performance/EntriesValidator";
 import type { EntriesEnum } from "../../performance/enums/EntriesEnum";
 import { StrategyContext } from "../../performance/StrategyContext";
 import ResourceStrategy from "../../performance/ResourceStrategy";
-import type { Metrics } from "../../session/types";
 import { metricsStore } from "../../session/store";
+import type { DailyRecord } from "../../session/types";
 import { exportToCSV } from "../../utils/csv";
+import DayView from "./DayView";
+import PreferencesView, { DEFAULT_PREFERENCES } from "./PreferencesView";
+import type { Preferences } from "./PreferencesView";
 
-type State = { metrics: Metrics };
+type View = "day" | "preferences";
+
+type State = {
+  view: View;
+  record: DailyRecord | null;
+  preferences: Preferences;
+};
 
 export default class Popup extends Component<Record<string, never>, State> {
   state: State = {
-    metrics: {
-      requestCount: 0,
-      totalResourceSize: 0,
-      cpuTimeToLoad: 0,
-    },
+    view: "day",
+    record: null,
+    preferences: { ...DEFAULT_PREFERENCES },
+  };
+
+  componentDidMount(): void {
+    this.loadPreferences();
+    this.handleTabMetrics();
+  }
+
+  loadPreferences = async () => {
+    const stored = await chrome.storage.local.get(["preferences"]);
+    if (stored.preferences) {
+      this.setState({ preferences: { ...DEFAULT_PREFERENCES, ...stored.preferences } });
+    }
+  };
+
+  savePreferences = async (prefs: Preferences) => {
+    await chrome.storage.local.set({ preferences: prefs });
+    this.setState({ preferences: prefs });
   };
 
   handleTabMetrics = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
       tabs.forEach((currentTab: chrome.tabs.Tab) => {
-        if (!currentTab.id) {
-          console.info("This tab does not contain any id");
-          return;
-        }
+        if (!currentTab.id) return;
 
         chrome.tabs.sendMessage(
           currentTab.id,
@@ -32,7 +53,7 @@ export default class Popup extends Component<Record<string, never>, State> {
           async (response?: Record<string, PerformanceEntry[]>) => {
             const validator = new EntriesValidator(response ?? {});
             if (!validator.validate()) {
-              console.log(validator.message());
+              await this.refreshRecord();
               return;
             }
 
@@ -53,7 +74,7 @@ export default class Popup extends Component<Record<string, never>, State> {
             if (!hasExistingTabById) {
               const url = currentTab.url ?? "";
               const domain = url ? new URL(url).hostname : "";
-              metricsStore.addTab({
+              await metricsStore.addTab({
                 id: currentTab.id!,
                 url,
                 domain,
@@ -61,17 +82,22 @@ export default class Popup extends Component<Record<string, never>, State> {
                 meta: { status: 200, date: Date.now() },
               });
             } else {
-              metricsStore.updateTabMetrics(currentTab.id!, newMetrics, { status: 200, date: Date.now() });
+              await metricsStore.updateTabMetrics(currentTab.id!, newMetrics, {
+                status: 200,
+                date: Date.now(),
+              });
             }
 
-            metricsStore
-              .getTotalMetrics()
-              .then((metrics: Metrics) => this.setState({ metrics: metrics }))
-              .catch((error) => console.warn("Unable to update the current metrics state", error));
+            await this.refreshRecord();
           },
         );
       });
     });
+  };
+
+  refreshRecord = async () => {
+    const record = await metricsStore.findDailyRecord();
+    this.setState({ record });
   };
 
   handleExport = async () => {
@@ -79,33 +105,39 @@ export default class Popup extends Component<Record<string, never>, State> {
     exportToCSV(records);
   };
 
-  componentDidMount(): void {
-    this.handleTabMetrics();
-  }
-
   render() {
-    const { metrics } = this.state;
+    const { view, record, preferences } = this.state;
 
     return (
-      <div className="p-5 w-100 flex flex-col gap-4 items-center justify-center">
-        <ul>
-          <li>📦 Total resource size: {metrics.totalResourceSize.toFixed(2)}MB</li>
-          <li>🔗 Number of requests: {metrics.requestCount}</li>
-          <li>⏱ Estimated CPU time: {metrics.cpuTimeToLoad.toFixed(2)}s</li>
-        </ul>
+      <div className="w-80 p-4 flex flex-col gap-3">
+        <div className="flex gap-1 border-b border-gray-200 pb-2">
+          <button
+            className={`flex-1 py-1 px-2 text-sm font-medium cursor-pointer ${view === "day" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+            onClick={() => this.setState({ view: "day" })}
+          >
+            📊 Aujourd'hui
+          </button>
+          <button
+            className={`flex-1 py-1 px-2 text-sm font-medium cursor-pointer ${view === "preferences" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+            onClick={() => this.setState({ view: "preferences" })}
+          >
+            ⚙️ Préférences
+          </button>
+        </div>
 
-        <button
-          className="w-fit p-2 text-center rounded-md cursor-pointer text-white bg-blue-500 hover:bg-blue-700"
-          onClick={this.handleTabMetrics}
-        >
-          🔄 Refresh Data
-        </button>
-        <button
-          className="w-fit p-2 text-center rounded-md cursor-pointer text-white bg-green-500 hover:bg-green-700"
-          onClick={this.handleExport}
-        >
-          📥 Exporter CSV
-        </button>
+        {view === "day" && <DayView record={record} onRefresh={this.handleTabMetrics} />}
+        {view === "preferences" && (
+          <PreferencesView preferences={preferences} onSave={this.savePreferences} />
+        )}
+
+        {view === "day" && (
+          <button
+            className="w-full p-2 rounded-md cursor-pointer text-white bg-green-500 hover:bg-green-700 text-sm"
+            onClick={this.handleExport}
+          >
+            📥 Exporter CSV
+          </button>
+        )}
       </div>
     );
   }
