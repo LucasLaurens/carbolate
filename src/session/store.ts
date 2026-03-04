@@ -22,6 +22,27 @@ const baseRecord = (date: string): DailyRecord => ({
   totalCarbon: { ...emptyCarbon },
 });
 
+// In-memory cache
+let cache: DailyRecord | null = null;
+let cacheDate: string = "";
+
+export function invalidateCache(): void {
+  cache = null;
+  cacheDate = "";
+}
+
+// Register reset hook for test environments
+(globalThis as Record<string, unknown>).__carbolateCacheReset = invalidateCache;
+
+async function getCachedDailyRecord(): Promise<DailyRecord | null> {
+  const today = getDailyDate();
+  if (cache && cacheDate === today) return cache;
+  const sessions = await ChromeStorage.getSessions();
+  cache = sessions[today] ?? null;
+  cacheDate = today;
+  return cache;
+}
+
 const addTabToRecord = async (tab: MetricTab): Promise<void> => {
   const date = getDailyDate();
   const sessions = await ChromeStorage.getSessions();
@@ -34,6 +55,7 @@ const addTabToRecord = async (tab: MetricTab): Promise<void> => {
     ...sessions,
     [date]: { ...record, tabs, totalMetrics, totalCarbon },
   });
+  invalidateCache();
 };
 
 const updateTabInRecord = async (tabId: number, newMetrics: Metrics, meta?: Partial<{ status: number; date: number }>): Promise<void> => {
@@ -55,20 +77,26 @@ const updateTabInRecord = async (tabId: number, newMetrics: Metrics, meta?: Part
     ...sessions,
     [date]: { ...record, tabs, totalMetrics, totalCarbon },
   });
+  invalidateCache();
 };
 
 export const metricsStore: MetricsStore = {
   findDailyRecord: async (): Promise<DailyRecord | null> => {
-    const sessions = await ChromeStorage.getSessions();
-    return sessions[getDailyDate()] ?? null;
+    return getCachedDailyRecord();
   },
 
   findOrCreateDailyRecord: async (): Promise<DailyRecord> => {
     const date = getDailyDate();
     const sessions = await ChromeStorage.getSessions();
-    if (sessions[date]) return sessions[date];
+    if (sessions[date]) {
+      cache = sessions[date];
+      cacheDate = date;
+      return sessions[date];
+    }
     const record = baseRecord(date);
     await ChromeStorage.setSessions({ ...sessions, [date]: record });
+    cache = record;
+    cacheDate = date;
     return record;
   },
 
@@ -78,7 +106,7 @@ export const metricsStore: MetricsStore = {
   },
 
   hasExistingTabById: async (tabId: number): Promise<boolean> => {
-    const record = await metricsStore.findDailyRecord();
+    const record = await getCachedDailyRecord();
     return record?.tabs.some((tab) => tab.id === tabId) ?? false;
   },
 
@@ -92,17 +120,17 @@ export const metricsStore: MetricsStore = {
   },
 
   getTabs: async (): Promise<MetricTab[]> => {
-    const record = await metricsStore.findDailyRecord();
+    const record = await getCachedDailyRecord();
     return record?.tabs ?? [];
   },
 
   getTotalMetrics: async (): Promise<Metrics> => {
-    const record = await metricsStore.findDailyRecord();
+    const record = await getCachedDailyRecord();
     return record?.totalMetrics ?? { ...emptyMetrics };
   },
 
   getTotalCarbon: async (): Promise<CarbonEstimate> => {
-    const record = await metricsStore.findDailyRecord();
+    const record = await getCachedDailyRecord();
     return record?.totalCarbon ?? { ...emptyCarbon };
   },
 
@@ -112,14 +140,16 @@ export const metricsStore: MetricsStore = {
     const sessions = await ChromeStorage.getSessions();
     const today = getDailyDate();
 
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - retentionDays);
-    const cutoffDate = cutoff.toISOString().split("T")[0];
+    // Use getDailyDate()-style YYYY-MM-DD strings to avoid timezone drift
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+    const cutoff = cutoffDate.toLocaleDateString("sv"); // "sv" locale gives YYYY-MM-DD
 
     const filtered = Object.fromEntries(
-      Object.entries(sessions).filter(([date]) => date >= cutoffDate || date === today),
+      Object.entries(sessions).filter(([date]) => date >= cutoff || date === today),
     );
 
     await ChromeStorage.setSessions(filtered);
+    invalidateCache();
   },
 };

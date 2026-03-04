@@ -1,14 +1,21 @@
-export const getDailyDate = (): string => new Date().toISOString().slice(0, 10);
+export const getDailyDate = (): string => new Date().toLocaleDateString("sv"); // YYYY-MM-DD, timezone-safe
 
 export const isToday = (dateStr: string): boolean => dateStr === getDailyDate();
 
 export const isThisWeek = (dateStr: string): boolean => {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 7);
-  return date >= startOfWeek && date < endOfWeek;
+  const today = getDailyDate();
+  const todayDate = new Date(today);
+  // Monday as start of week (EU/FR standard): getDay() returns 0=Sun, 1=Mon ... 6=Sat
+  const dayOfWeek = todayDate.getDay(); // 0 (Sun) – 6 (Sat)
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+  const monday = new Date(todayDate);
+  monday.setDate(todayDate.getDate() - daysFromMonday);
+  const mondayStr = monday.toLocaleDateString("sv");
+
+  const nextMonday = new Date(monday);
+  nextMonday.setDate(monday.getDate() + 7);
+  const nextMondayStr = nextMonday.toLocaleDateString("sv");
+
+  return dateStr >= mondayStr && dateStr < nextMondayStr;
 };

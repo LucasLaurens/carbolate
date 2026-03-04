@@ -1,18 +1,7 @@
 import { Component } from "react";
+import type { Preferences } from "../../config/preferences";
 
-export type ResetPeriod = "daily" | "weekly";
-
-export type Preferences = {
-  resetPeriod: ResetPeriod; // V1: daily, V2: weekly
-  autoExportBeforeReset: boolean;
-  retentionDays: number; // 1 = today only, 7 = keep a week, -1 = keep all
-};
-
-export const DEFAULT_PREFERENCES: Preferences = {
-  resetPeriod: "daily",
-  autoExportBeforeReset: false,
-  retentionDays: 1,
-};
+export type { Preferences };
 
 type Props = {
   preferences: Preferences;

@@ -1,21 +1,19 @@
 import type { SessionsStore } from "../session/types";
-
-export type Preferences = {
-  retentionDays: number; // 1 = today only, 7 = keep a week, -1 = keep all
-  autoExportBeforeReset: boolean;
-};
-
-export const DEFAULT_PREFERENCES: Preferences = {
-  retentionDays: 1,
-  autoExportBeforeReset: false,
-};
+import { DEFAULT_PREFERENCES, type Preferences } from "../config/preferences";
 
 type StorageData = {
   sessions: SessionsStore;
   preferences: Preferences;
 };
 
-export const ChromeStorage = {
+export interface IStorage {
+  getSessions(): Promise<SessionsStore>;
+  setSessions(sessions: SessionsStore): Promise<void>;
+  getPreferences(): Promise<Preferences>;
+  setPreferences(preferences: Preferences): Promise<void>;
+}
+
+export const ChromeStorage: IStorage = {
   getSessions: (): Promise<SessionsStore> =>
     new Promise((resolve, reject) =>
       chrome.storage.local.get(["sessions"], (result) => {

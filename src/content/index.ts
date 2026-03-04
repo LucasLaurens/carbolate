@@ -1,17 +1,13 @@
 import { EntriesEnum } from "../performance/enums/EntriesEnum";
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "entries") {
     const resource = performance.getEntriesByType(EntriesEnum.RESOURCE);
     const navigation = performance.getEntriesByType(EntriesEnum.NAVIGATION);
-    // const paint = performance.getEntriesByType(EntriesEnum.PAINT);
-    // const longtask = performance.getEntriesByType(EntriesEnum.LONGTASK);
 
-    sendResponse({
-      resource,
-      navigation,
-      // paint,
-      // longtask
-    });
+    sendResponse({ resource, navigation });
+  } else {
+    sendResponse(null);
   }
+  return true;
 });
