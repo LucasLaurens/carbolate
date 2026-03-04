@@ -14,16 +14,16 @@ Fichiers modifiés :
 
 ---
 
-### Phase 2 — Reset et nettoyage quotidien ✅
+### Phase 2 — Reset et nettoyage ✅
 **Branche** : `feat/phase-2-daily-reset`
 
-Un `chrome.alarm` se déclenche automatiquement à minuit chaque jour. Il lit la préférence `retentionDays` et supprime les données trop anciennes. Configuré à l'installation de l'extension et au démarrage du navigateur.
+Un `chrome.alarm` se déclenche automatiquement selon la période configurée. Il lit la préférence `retentionDays` et supprime les données trop anciennes. Configuré à l'installation de l'extension et au démarrage du navigateur.
 
 Fichiers modifiés :
 - `src/storage/ChromeStorage.ts` — type `Preferences`, `getPreferences()`, `setPreferences()`
 - `src/session/types.ts` — méthode `clearPastDays` dans `MetricsStore`
 - `src/session/store.ts` — implémentation de `clearPastDays`
-- `src/background/index.ts` — `scheduleDailyReset()`, listeners `onInstalled`/`onStartup`, handler alarme
+- `src/background/index.ts` — `scheduleReset(prefs)`, listeners `onInstalled`/`onStartup`, handler alarme
 
 ---
 
@@ -53,26 +53,51 @@ Fichiers créés / modifiés :
 
 ---
 
-## Évolutions prévues
+### Refactoring qualité ✅
+**Branche** : `main`
 
-### V2 — Période hebdomadaire
-La base est déjà en place (toggle "Hebdomadaire" dans les préférences, `retentionDays = 7`). Il reste à :
-- Ajouter une vue "Semaine" dans le popup (graphique sur 7 jours)
-- Adapter le `scheduleDailyReset` pour planifier un reset hebdomadaire (lundi ou dimanche)
-- Ajouter `isThisWeek(dateStr)` déjà disponible dans `src/utils/date.ts`
+Audit complet et corrections de bugs critiques, violations SOLID et problèmes de performance.
+
+Fichiers créés :
+- `src/config/preferences.ts` — source unique de vérité pour `Preferences` (bug : `resetPeriod` perdu au reload)
+- `src/utils/url.ts` — `parseDomain()` sécurisé (bug : crash sur `chrome://newtab`)
+- `src/carbon/ICarbonSource.ts` — interface OCP pour sources d'émission
+- `src/carbon/sources/NetworkCarbonSource.ts` + `CpuCarbonSource.ts` — implémentations concrètes
+- `src/session/TabCollector.ts` — extraction de la logique Chrome hors du Popup (SRP)
+
+Fichiers modifiés :
+- `src/carbon/CarbonCalculator.ts` — accepte `ICarbonSource[]` (OCP)
+- `src/storage/ChromeStorage.ts` — importe `Preferences` depuis `config/`, ajoute interface `IStorage`
+- `src/performance/EntriesValidator.ts` — valide spécifiquement les entrées `resource` (bug : `navigation` seule passait la validation)
+- `src/content/index.ts` — `return true` + fallback `sendResponse(null)` (bug : callback jamais appelé)
+- `src/session/store.ts` — cache in-memory + cutoff timezone-safe via `toLocaleDateString("sv")`
+- `src/background/index.ts` — `scheduleReset(prefs)` avec période correcte pour le mode hebdomadaire
+- `src/utils/date.ts` — `getDailyDate` timezone-safe, `isThisWeek` avec lundi comme début de semaine
+- `src/components/popup/PreferencesView.tsx` — importe depuis `config/preferences.ts`
+- `src/components/popup/DayView.tsx` — top-K O(n) + prop `isLoading`
+- `src/components/popup/Popup.tsx` — utilise `TabCollector`, `parseDomain`, `ChromeStorage`, `isLoading`
+
+---
+
+## Évolutions prévues
 
 ### V2 — Vue semaine
 - Graphique en barres : CO₂ par jour sur les 7 derniers jours
 - Comparaison avec la semaine précédente
+- `isThisWeek(dateStr)` déjà disponible dans `src/utils/date.ts`
 
 ### V2 — Seuils et alertes
 - Badge sur l'icône avec le CO₂ du jour
 - Notification si seuil dépassé (configurable)
 
+### V2 — Export automatique planifié
+- Export CSV déclenché automatiquement avant chaque reset si `autoExportBeforeReset = true`
+- À implémenter dans le handler `chrome.alarms.onAlarm` de `background/index.ts`
+
 ### V3 — Comparaisons sectorielles
 - Équivalences visuelles (km en voiture, heures de streaming, etc.)
 - Score journalier vs moyenne mondiale
 
-### V3 — Export automatique planifié
-- Export CSV déclenché automatiquement avant chaque reset si `autoExportBeforeReset = true`
-- À implémenter dans le handler `chrome.alarms.onAlarm` de `background/index.ts`
+### V3 — Sources d'émission additionnelles
+- GPU, mémoire, streaming audio
+- Injecter de nouvelles `ICarbonSource` dans `CarbonCalculator` sans modifier le calculateur

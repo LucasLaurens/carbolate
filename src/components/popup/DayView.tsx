@@ -4,7 +4,7 @@ import type { DailyRecord } from "../../session/types";
 
 Chart.register(ArcElement, Tooltip, Legend, DoughnutController);
 
-type Props = { record: DailyRecord | null; onRefresh: () => void };
+type Props = { record: DailyRecord | null; onRefresh: () => void; isLoading?: boolean };
 
 type DomainData = { domain: string; totalCo2: number };
 
@@ -38,10 +38,24 @@ export default class DayView extends Component<Props> {
       domainMap.set(tab.domain, existing + tab.carbon.totalCo2);
     }
 
-    const domains: DomainData[] = Array.from(domainMap.entries())
-      .map(([domain, totalCo2]) => ({ domain, totalCo2 }))
-      .sort((a, b) => b.totalCo2 - a.totalCo2)
-      .slice(0, 5);
+    const all: DomainData[] = Array.from(domainMap.entries()).map(([domain, totalCo2]) => ({ domain, totalCo2 }));
+    // Top-5 selection in O(n) using partial sort
+    const K = 5;
+    const domains: DomainData[] = all.length <= K
+      ? all.sort((a, b) => b.totalCo2 - a.totalCo2)
+      : (() => {
+          const top: DomainData[] = [];
+          for (const item of all) {
+            if (top.length < K) {
+              top.push(item);
+              if (top.length === K) top.sort((a, b) => a.totalCo2 - b.totalCo2);
+            } else if (item.totalCo2 > top[0].totalCo2) {
+              top[0] = item;
+              top.sort((a, b) => a.totalCo2 - b.totalCo2);
+            }
+          }
+          return top.sort((a, b) => b.totalCo2 - a.totalCo2);
+        })();
 
     if (domains.length === 0) return;
 
@@ -69,7 +83,7 @@ export default class DayView extends Component<Props> {
   }
 
   render() {
-    const { record, onRefresh } = this.props;
+    const { record, onRefresh, isLoading } = this.props;
     const totalCarbon = record?.totalCarbon ?? { networkCo2: 0, cpuCo2: 0, totalCo2: 0 };
     const totalMetrics = record?.totalMetrics ?? { requestCount: 0, totalResourceSize: 0, cpuTimeToLoad: 0 };
     const tabCount = record?.tabs.length ?? 0;
@@ -109,10 +123,11 @@ export default class DayView extends Component<Props> {
         )}
 
         <button
-          className="w-full p-2 rounded-md cursor-pointer text-white bg-blue-500 hover:bg-blue-700 text-sm"
+          className={`w-full p-2 rounded-md text-white text-sm ${isLoading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700 cursor-pointer"}`}
           onClick={onRefresh}
+          disabled={isLoading}
         >
-          🔄 Actualiser
+          {isLoading ? "⏳ Actualisation..." : "🔄 Actualiser"}
         </button>
       </div>
     );

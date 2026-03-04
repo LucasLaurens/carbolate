@@ -5,6 +5,9 @@ let store: Record<string, unknown> = {};
 
 beforeEach(() => {
   store = {};
+  // Reset the store.ts in-memory cache without importing the module directly
+  // (a direct import would cause date.ts to load before vi.mock is applied)
+  (globalThis as Record<string, unknown | (() => void)>).__carbolateCacheReset?.();
 });
 
 // Minimal chrome.storage.local mock

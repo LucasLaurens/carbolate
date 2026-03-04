@@ -1,18 +1,25 @@
 import type { Carbon, CarbonEstimate, CarbonInput } from "./types";
-import { CARBON_PER_GB, NETWORK_RATIO, CPU_FACTOR } from "./constants";
+import type { ICarbonSource } from "./ICarbonSource";
+import { NetworkCarbonSource } from "./sources/NetworkCarbonSource";
+import { CpuCarbonSource } from "./sources/CpuCarbonSource";
+
+const DEFAULT_SOURCES: ICarbonSource[] = [new NetworkCarbonSource(), new CpuCarbonSource()];
 
 export default class CarbonCalculator implements Carbon<CarbonInput, CarbonEstimate> {
+  private sources: ICarbonSource[];
+
+  constructor(sources: ICarbonSource[] = DEFAULT_SOURCES) {
+    this.sources = sources;
+  }
+
   calculate(input: CarbonInput[]): CarbonEstimate {
-    const totalGB = input.reduce((calc, item) => calc + item.transferSize, 0) / 1_000_000_000;
-    const totalSec = input.reduce((calc, item) => calc + item.cpuTime, 0) / 1000;
-
-    const networkCo2 = totalGB * CARBON_PER_GB * NETWORK_RATIO;
-    const cpuCo2 = totalSec * CPU_FACTOR;
-
+    const [networkCo2, cpuCo2] = this.sources.map((s) => s.calculate(input));
+    const network = Math.round(networkCo2 ?? 0);
+    const cpu = Math.round(cpuCo2 ?? 0);
     return {
-      networkCo2: Math.round(networkCo2),
-      cpuCo2: Math.round(cpuCo2),
-      totalCo2: Math.round(networkCo2 + cpuCo2),
+      networkCo2: network,
+      cpuCo2: cpu,
+      totalCo2: network + cpu,
     };
   }
 }
