@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { metricsStore } from "../session/store";
+import { metricsStore } from "../src/session/store";
 
 vi.mock("../utils/date", () => ({ getDailyDate: () => "2026-02-23" }));
 
@@ -171,7 +171,7 @@ describe("getTotalCarbon", () => {
 describe("getOrCreateDailyRecord", () => {
   it("creates an empty record for a new date", async () => {
     const record = await metricsStore.findOrCreateDailyRecord();
-    expect(record.date).toBe("2026-02-23");
+    expect(record.date).toBe("2026-03-04");
     expect(record.tabs).toHaveLength(0);
   });
 

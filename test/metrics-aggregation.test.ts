@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sumMetrics } from "../session/aggregator";
+import { sumMetrics } from "../src/session/aggregator";
 
 describe("sumMetrics", () => {
   it("returns zeros for an empty array", () => {
