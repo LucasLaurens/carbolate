@@ -62,7 +62,13 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   (async () => {
     const hasExisting = await metricsStore.hasExistingTabById(tabId);
     if (!hasExisting) {
-      await metricsStore.addTab({ id: tabId, url, domain, metrics, meta: { status: 200, date: Date.now() } });
+      await metricsStore.addTab({
+        id: tabId,
+        url,
+        domain,
+        metrics,
+        meta: { status: 200, date: Date.now() },
+      });
     } else {
       await metricsStore.updateTabMetrics(tabId, metrics, { status: 200, date: Date.now() });
     }

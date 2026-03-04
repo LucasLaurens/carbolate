@@ -1,7 +1,9 @@
 function collectAndSend(): void {
-  const resource = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).map((e) => ({
-    transferSize: e.transferSize,
-  }));
+  const resource = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).map(
+    (e) => ({
+      transferSize: e.transferSize,
+    }),
+  );
   const navigation = performance.getEntriesByType("navigation").map((e) => ({
     duration: e.duration,
   }));

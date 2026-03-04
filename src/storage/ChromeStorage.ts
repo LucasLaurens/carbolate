@@ -34,7 +34,10 @@ export const ChromeStorage: IStorage = {
     new Promise((resolve, reject) =>
       chrome.storage.local.get(["preferences"], (result) => {
         if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-        resolve({ ...DEFAULT_PREFERENCES, ...((result as Partial<StorageData>).preferences ?? {}) });
+        resolve({
+          ...DEFAULT_PREFERENCES,
+          ...((result as Partial<StorageData>).preferences ?? {}),
+        });
       }),
     ),
 

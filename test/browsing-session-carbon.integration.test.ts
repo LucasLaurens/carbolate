@@ -9,10 +9,10 @@
  *     → CarbonEstimate    (assert final footprint)
  */
 import { describe, it, expect, vi } from "vitest";
-import { StrategyContext } from "../performance/StrategyContext";
-import ResourceStrategy from "../performance/ResourceStrategy";
-import { metricsStore } from "../session/store";
-import type { Metrics } from "../session/types";
+import { StrategyContext } from "../src/performance/StrategyContext";
+import ResourceStrategy from "../src/performance/ResourceStrategy";
+import { metricsStore } from "../src/session/store";
+import type { Metrics } from "../src/session/types";
 
 vi.mock("../utils/date", () => ({ getDailyDate: () => "2026-02-23" }));
 

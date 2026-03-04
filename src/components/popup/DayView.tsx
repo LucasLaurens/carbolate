@@ -38,24 +38,28 @@ export default class DayView extends Component<Props> {
       domainMap.set(tab.domain, existing + tab.carbon.totalCo2);
     }
 
-    const all: DomainData[] = Array.from(domainMap.entries()).map(([domain, totalCo2]) => ({ domain, totalCo2 }));
+    const all: DomainData[] = Array.from(domainMap.entries()).map(([domain, totalCo2]) => ({
+      domain,
+      totalCo2,
+    }));
     // Top-5 selection in O(n) using partial sort
     const K = 5;
-    const domains: DomainData[] = all.length <= K
-      ? all.sort((a, b) => b.totalCo2 - a.totalCo2)
-      : (() => {
-          const top: DomainData[] = [];
-          for (const item of all) {
-            if (top.length < K) {
-              top.push(item);
-              if (top.length === K) top.sort((a, b) => a.totalCo2 - b.totalCo2);
-            } else if (item.totalCo2 > top[0].totalCo2) {
-              top[0] = item;
-              top.sort((a, b) => a.totalCo2 - b.totalCo2);
+    const domains: DomainData[] =
+      all.length <= K
+        ? all.sort((a, b) => b.totalCo2 - a.totalCo2)
+        : (() => {
+            const top: DomainData[] = [];
+            for (const item of all) {
+              if (top.length < K) {
+                top.push(item);
+                if (top.length === K) top.sort((a, b) => a.totalCo2 - b.totalCo2);
+              } else if (item.totalCo2 > top[0].totalCo2) {
+                top[0] = item;
+                top.sort((a, b) => a.totalCo2 - b.totalCo2);
+              }
             }
-          }
-          return top.sort((a, b) => b.totalCo2 - a.totalCo2);
-        })();
+            return top.sort((a, b) => b.totalCo2 - a.totalCo2);
+          })();
 
     if (domains.length === 0) return;
 
@@ -85,7 +89,11 @@ export default class DayView extends Component<Props> {
   render() {
     const { record, onRefresh, isLoading } = this.props;
     const totalCarbon = record?.totalCarbon ?? { networkCo2: 0, cpuCo2: 0, totalCo2: 0 };
-    const totalMetrics = record?.totalMetrics ?? { requestCount: 0, totalResourceSize: 0, cpuTimeToLoad: 0 };
+    const totalMetrics = record?.totalMetrics ?? {
+      requestCount: 0,
+      totalResourceSize: 0,
+      cpuTimeToLoad: 0,
+    };
     const tabCount = record?.tabs.length ?? 0;
 
     return (
@@ -114,12 +122,17 @@ export default class DayView extends Component<Props> {
         {tabCount > 0 && (
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-2">Top domaines par CO₂</h3>
-            <canvas ref={(el) => { this.chartRef = el; }} height={160} />
+            <canvas
+              ref={(el) => {
+                this.chartRef = el;
+              }}
+              height={160}
+            />
           </div>
         )}
 
         {tabCount === 0 && (
-          <p className="text-center text-gray-400 text-sm py-4">Aucune donnée pour aujourd'hui</p>
+          <p className="text-center text-gray-400 text-sm py-4">Aucune donnée pour aujourd hui</p>
         )}
 
         <button
