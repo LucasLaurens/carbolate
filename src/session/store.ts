@@ -104,4 +104,21 @@ export const metricsStore: MetricsStore = {
     const record = await metricsStore.findDailyRecord();
     return record?.totalCarbon ?? { ...emptyCarbon };
   },
+
+  clearPastDays: async (retentionDays: number): Promise<void> => {
+    if (retentionDays === -1) return; // Keep everything
+
+    const sessions = await ChromeStorage.getSessions();
+    const today = getDailyDate();
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - retentionDays);
+    const cutoffDate = cutoff.toISOString().split("T")[0];
+
+    const filtered = Object.fromEntries(
+      Object.entries(sessions).filter(([date]) => date >= cutoffDate || date === today),
+    );
+
+    await ChromeStorage.setSessions(filtered);
+  },
 };

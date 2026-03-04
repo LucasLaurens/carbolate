@@ -41,4 +41,5 @@ export type MetricsStore = {
   getTotalMetrics: () => Promise<Metrics>;
   getTotalCarbon: () => Promise<CarbonEstimate>;
   hasExistingTabById: (tabId: number) => Promise<boolean>;
+  clearPastDays: (retentionDays: number) => Promise<void>;
 };
