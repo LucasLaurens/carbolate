@@ -15,6 +15,30 @@ Deux clés sont utilisées :
 
 ## Types TypeScript
 
+### `Preferences` — configuration utilisateur
+
+Défini dans **`src/config/preferences.ts`** (source unique de vérité — ne pas redéfinir ailleurs).
+
+```typescript
+type ResetPeriod = "daily" | "weekly";
+
+type Preferences = {
+  resetPeriod:           ResetPeriod; // "daily" | "weekly"
+  retentionDays:         number;       // 1 = today only | 7 = 1 semaine | -1 = tout
+  autoExportBeforeReset: boolean;      // Exporter CSV avant nettoyage
+};
+
+const DEFAULT_PREFERENCES: Preferences = {
+  resetPeriod: "daily",
+  retentionDays: 1,
+  autoExportBeforeReset: false,
+};
+```
+
+> Tous les modules (`ChromeStorage`, `Popup`, `PreferencesView`, `background`) importent depuis `src/config/preferences.ts`. Ne jamais redéfinir ce type localement.
+
+---
+
 ### `Metrics` — métriques brutes d'un onglet
 
 ```typescript
@@ -31,7 +55,7 @@ type Metrics = {
 type MetricTab = {
   id:      number;  // chrome.tabs.Tab.id
   url:     string;  // URL complète
-  domain:  string;  // hostname (ex: "github.com")
+  domain:  string;  // hostname (ex: "github.com"), "" si URL invalide
   metrics: Metrics;
   meta: {
     status: number; // Status HTTP (ex: 200)
@@ -55,7 +79,7 @@ type CarbonEstimate = {
 
 ```typescript
 type DailyRecord = {
-  date:         string;        // "YYYY-MM-DD" (ISO)
+  date:         string;        // "YYYY-MM-DD" en heure locale (via getDailyDate())
   tabs:         MetricTab[];   // Onglets trackés dans la journée
   totalMetrics: Metrics;       // Somme des metrics de tous les tabs
   totalCarbon:  CarbonEstimate;// Somme des carbons de tous les tabs
@@ -67,22 +91,6 @@ type DailyRecord = {
 ```typescript
 type SessionsStore = Record<string, DailyRecord>;
 // Exemple : { "2026-03-04": DailyRecord, "2026-03-03": DailyRecord }
-```
-
-### `Preferences` — configuration utilisateur
-
-```typescript
-type Preferences = {
-  retentionDays:        number;  // 1 = today only | 7 = 1 semaine | -1 = tout
-  autoExportBeforeReset: boolean; // Exporter CSV avant nettoyage
-  resetPeriod:          "daily" | "weekly"; // Affiché dans l'UI
-};
-
-const DEFAULT_PREFERENCES: Preferences = {
-  retentionDays: 1,
-  autoExportBeforeReset: false,
-  resetPeriod: "daily",
-};
 ```
 
 ---
@@ -128,9 +136,9 @@ const DEFAULT_PREFERENCES: Preferences = {
     }
   },
   "preferences": {
+    "resetPeriod": "daily",
     "retentionDays": 1,
-    "autoExportBeforeReset": false,
-    "resetPeriod": "daily"
+    "autoExportBeforeReset": false
   }
 }
 ```
@@ -139,6 +147,17 @@ const DEFAULT_PREFERENCES: Preferences = {
 
 ## API ChromeStorage
 
+`ChromeStorage` implémente l'interface `IStorage` (mockable pour les tests).
+
+```typescript
+interface IStorage {
+  getSessions(): Promise<SessionsStore>;
+  setSessions(sessions: SessionsStore): Promise<void>;
+  getPreferences(): Promise<Preferences>;
+  setPreferences(preferences: Preferences): Promise<void>;
+}
+```
+
 ```typescript
 // Lecture des sessions
 ChromeStorage.getSessions(): Promise<SessionsStore>
@@ -146,7 +165,7 @@ ChromeStorage.getSessions(): Promise<SessionsStore>
 // Écriture complète (full replace)
 ChromeStorage.setSessions(sessions: SessionsStore): Promise<void>
 
-// Lecture des préférences (avec merge des defaults)
+// Lecture des préférences (avec merge des defaults depuis config/preferences.ts)
 ChromeStorage.getPreferences(): Promise<Preferences>
 
 // Écriture des préférences
@@ -159,8 +178,10 @@ ChromeStorage.setPreferences(preferences: Preferences): Promise<void>
 
 ## API metricsStore
 
+`metricsStore` maintient un **cache in-memory** du `DailyRecord` courant. Le cache est invalidé automatiquement à chaque écriture. Les lectures répétées (pendant une session popup) n'engendrent qu'un seul appel I/O.
+
 ```typescript
-// Lecture
+// Lecture (cache in-memory pour le jour courant)
 metricsStore.findDailyRecord()         → DailyRecord | null   (jour courant)
 metricsStore.findOrCreateDailyRecord() → DailyRecord          (crée si absent)
 metricsStore.getAllDays()              → DailyRecord[]         (tous les jours, triés)
@@ -169,8 +190,12 @@ metricsStore.getTotalMetrics()         → Metrics               (totaux du jour
 metricsStore.getTotalCarbon()          → CarbonEstimate        (CO₂ du jour)
 metricsStore.hasExistingTabById(id)    → boolean
 
-// Écriture
+// Écriture (invalide le cache)
 metricsStore.addTab(tab)                               → void  (nouveau tab)
 metricsStore.updateTabMetrics(id, metrics, meta?)      → void  (màj tab existant)
 metricsStore.clearPastDays(retentionDays)              → void  (nettoyage)
 ```
+
+### Calcul du cutoff dans `clearPastDays`
+
+La date de coupure est calculée en **heure locale** via `toLocaleDateString("sv")` (locale "sv" = format `YYYY-MM-DD`), évitant les décalages UTC qui pouvaient supprimer ou conserver des jours incorrectement.
