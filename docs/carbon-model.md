@@ -24,18 +24,46 @@ Définies dans `src/carbon/constants.ts` :
 
 ---
 
+## Architecture OCP — ICarbonSource
+
+Le calcul est décomposé en **sources indépendantes** via l'interface `ICarbonSource` :
+
+```typescript
+// src/carbon/ICarbonSource.ts
+interface ICarbonSource {
+  calculate(inputs: CarbonInput[]): number; // retourne des gCO₂e
+}
+```
+
+`CarbonCalculator` accepte un tableau de sources dans son constructeur. Par défaut :
+
+```typescript
+new CarbonCalculator([new NetworkCarbonSource(), new CpuCarbonSource()])
+```
+
+Pour ajouter une nouvelle source d'émission (GPU, streaming audio, etc.), il suffit de créer une classe implémentant `ICarbonSource` et de l'injecter — sans modifier `CarbonCalculator`.
+
+---
+
 ## Formules
 
-Implémentées dans `src/carbon/CarbonCalculator.ts` :
+Chaque source implémente sa propre formule :
 
+**NetworkCarbonSource** (`src/carbon/sources/NetworkCarbonSource.ts`) :
 ```
 totalGB    = Σ(transferSize) / 1_000_000_000   [bytes → Go]
-totalSec   = Σ(cpuTime) / 1000                 [ms → secondes]
+networkCo2 = totalGB × CARBON_PER_GB × NETWORK_RATIO
+```
 
-networkCo2 = totalGB  × CARBON_PER_GB × NETWORK_RATIO
-cpuCo2     = totalSec × CPU_FACTOR
+**CpuCarbonSource** (`src/carbon/sources/CpuCarbonSource.ts`) :
+```
+totalSec = Σ(cpuTime) / 1000   [ms → secondes]
+cpuCo2   = totalSec × CPU_FACTOR
+```
 
-totalCo2   = round(networkCo2) + round(cpuCo2)
+**CarbonCalculator** agrège :
+```
+totalCo2 = round(networkCo2) + round(cpuCo2)
 ```
 
 ### Exemple concret
@@ -56,7 +84,7 @@ totalCo2   = 1g
 
 ## Sources des données d'entrée
 
-Les données proviennent de l'API `Performance` native du navigateur, collectées par le content script :
+Les données proviennent de l'API `Performance` native du navigateur, collectées par le content script et traitées par `TabCollector` :
 
 | Champ CarbonInput | Source Performance API | Unité |
 |---|---|---|
@@ -64,6 +92,8 @@ Les données proviennent de l'API `Performance` native du navigateur, collectée
 | `cpuTime` | `PerformanceNavigationTiming.duration` | ms |
 
 `transferSize` représente la taille **compressée** réellement transférée sur le réseau (0 si cache). `duration` est le temps total de la navigation (DOMContentLoaded + sous-ressources).
+
+> **Note** : `EntriesValidator` valide spécifiquement que les entrées `resource` existent (pas seulement `navigation`), car seules les entrées `resource` sont utilisées en aval par `ResourceStrategy`.
 
 ---
 

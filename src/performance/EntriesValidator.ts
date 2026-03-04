@@ -1,14 +1,14 @@
-import type { EntriesEnum } from "./enums/EntriesEnum";
+import { EntriesEnum } from "./enums/EntriesEnum";
 
 export default class EntriesValidator {
-  private entries: Record<EntriesEnum, PerformanceEntry[]>;
+  private entries: Partial<Record<EntriesEnum, PerformanceEntry[]>>;
 
-  constructor(entries: Record<EntriesEnum, PerformanceEntry[]>) {
+  constructor(entries: Partial<Record<EntriesEnum, PerformanceEntry[]>>) {
     this.entries = entries;
   }
 
   validate(): boolean {
-    return Object.values(this.entries).some((arr) => arr.length > 0);
+    return (this.entries[EntriesEnum.RESOURCE]?.length ?? 0) > 0;
   }
 
   message(): string {
