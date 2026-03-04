@@ -5,6 +5,7 @@ import { StrategyContext } from "../../performance/StrategyContext";
 import ResourceStrategy from "../../performance/ResourceStrategy";
 import type { Metrics } from "../../session/types";
 import { metricsStore } from "../../session/store";
+import { exportToCSV } from "../../utils/csv";
 
 type State = { metrics: Metrics };
 
@@ -73,6 +74,11 @@ export default class Popup extends Component<Record<string, never>, State> {
     });
   };
 
+  handleExport = async () => {
+    const records = await metricsStore.getAllDays();
+    exportToCSV(records);
+  };
+
   componentDidMount(): void {
     this.handleTabMetrics();
   }
@@ -93,6 +99,12 @@ export default class Popup extends Component<Record<string, never>, State> {
           onClick={this.handleTabMetrics}
         >
           🔄 Refresh Data
+        </button>
+        <button
+          className="w-fit p-2 text-center rounded-md cursor-pointer text-white bg-green-500 hover:bg-green-700"
+          onClick={this.handleExport}
+        >
+          📥 Exporter CSV
         </button>
       </div>
     );
