@@ -9,10 +9,10 @@ Carbolate est une extension Chrome qui estime l'empreinte carbone de votre navig
 ## Fonctionnalités
 
 ### Collecte automatique
-- À chaque ouverture du popup, les métriques de l'onglet actif sont collectées automatiquement
+- À chaque chargement d'une nouvelle page, les métriques sont collectées **automatiquement** par le content script et envoyées au background
 - Si l'onglet a déjà été tracké dans la journée, ses métriques **et** ses métadonnées (date, status) sont mises à jour
-- Le bouton "🔄 Actualiser" est désactivé pendant la collecte pour éviter les doubles soumissions
-- Les URLs non collectables (`chrome://`, `about:blank`, `file://`) sont gérées silencieusement sans crash
+- Le bouton "🔄 Actualiser" relit le storage pour afficher les données les plus récentes
+- Les URLs non collectables (`chrome://`, `about:blank`, `file://`) sont ignorées silencieusement
 
 ### Dashboard jour courant
 La vue principale affiche 4 indicateurs pour la journée en cours :
@@ -55,23 +55,42 @@ Quand "Export auto avant reset" est activé, un CSV est généré automatiquemen
 
 ## Flux utilisateur
 
+### Chargement d'une page (collecte automatique)
+```
+Utilisateur navigue vers une nouvelle URL
+  → Content script déclenché sur window.load
+  → performance.getEntriesByType("resource") → liste des ressources réseau
+  → performance.getEntriesByType("navigation") → timing de chargement
+  → Convertis en plain objects { transferSize }, { duration }
+  → chrome.runtime.sendMessage({ type: "page_metrics", ... })
+    → Background reçoit le message + sender.tab.{id, url}
+    → EntriesValidator → valide que "resource" n'est pas vide
+    → ResourceStrategy → { resourceCount, totalTransferSize }
+    → Metrics calculées + carbon estimé
+    → hasExistingTabById ?
+      ├─ Non → metricsStore.addTab(...)
+      └─ Oui → metricsStore.updateTabMetrics(...)
+    → Données persistées dans ChromeStorage
+```
+
 ### Ouverture du popup
 ```
 Utilisateur clique sur l'icône Carbolate
   → Popup monté (componentDidMount)
   → Préférences chargées depuis ChromeStorage.getPreferences()
-  → handleTabMetrics() déclenché automatiquement
-    → isLoading = true (bouton Actualiser désactivé)
-    → TabCollector.collect(tabId)
-      → Content script interrogé pour l'onglet actif
-      → EntriesValidator valide que des entrées "resource" existent
-      → ResourceStrategy → { resourceCount, totalTransferSize }
-      → Retourne Metrics | null
-    → Si null : refresh de l'affichage sans écriture
-    → Si Metrics : addTab ou updateTabMetrics
-    → findDailyRecord() → setState({ record })
-    → isLoading = false
+  → handleRefresh() déclenché automatiquement
+    → metricsStore.findDailyRecord() → lit ChromeStorage
+    → setState({ record })
   → DayView affichée avec les données du jour
+```
+
+### Bouton Actualiser
+```
+Utilisateur clique "🔄 Actualiser"
+  → isLoading = true (bouton désactivé)
+  → metricsStore.findDailyRecord() → relit ChromeStorage
+  → setState({ record })
+  → isLoading = false
 ```
 
 ### Export manuel
@@ -108,8 +127,8 @@ Minuit (ou fin de semaine si mode hebdomadaire)
 
 ## Limites connues
 
-- La collecte ne fonctionne que sur les pages web standards — `chrome://`, `file://`, `about:blank` retournent `null` sans crash
-- Les performances sont mesurées au moment de l'ouverture du popup : une page chargée il y a longtemps peut avoir des métriques incomplètes
+- La collecte ne fonctionne que sur les pages web standards — `chrome://`, `file://`, `about:blank` ne déclenchent pas le content script
+- Les pages déjà ouvertes avant l'installation de l'extension n'auront pas leur content script injecté — elles devront être rechargées
 - Le calcul CO₂ est une **estimation** basée sur des moyennes sectorielles, pas une mesure exacte
-- `chrome.downloads` requiert la permission `"downloads"` dans le manifest
-- Le changement de période de reset (quotidien ↔ hebdomadaire) n'est effectif qu'au prochain démarrage du navigateur (c'est à ce moment que l'alarme est recréée avec la bonne période)
+- **L'export CSV ne fonctionne pas actuellement** : `utils/csv.ts` utilise `chrome.downloads.download` mais la permission `"downloads"` est absente du manifest — à ajouter
+- Le changement de période de reset (quotidien ↔ hebdomadaire) n'est effectif qu'au prochain démarrage du navigateur
