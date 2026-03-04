@@ -36,7 +36,7 @@ const addTabToRecord = async (tab: MetricTab): Promise<void> => {
   });
 };
 
-const updateTabInRecord = async (tabId: number, newMetrics: Metrics): Promise<void> => {
+const updateTabInRecord = async (tabId: number, newMetrics: Metrics, meta?: Partial<{ status: number; date: number }>): Promise<void> => {
   const date = getDailyDate();
   const sessions = await ChromeStorage.getSessions();
   const record = sessions[date];
@@ -45,7 +45,8 @@ const updateTabInRecord = async (tabId: number, newMetrics: Metrics): Promise<vo
   const tabs = record.tabs.map((tab) => {
     if (tab.id !== tabId) return tab;
     const metrics = { ...tab.metrics, ...newMetrics };
-    return { ...tab, metrics, carbon: calculator.calculate([carbonMetricsCallback(metrics)]) };
+    const updatedMeta = meta ? { ...tab.meta, ...meta } : tab.meta;
+    return { ...tab, metrics, meta: updatedMeta, carbon: calculator.calculate([carbonMetricsCallback(metrics)]) };
   });
   const totalMetrics = sumMetrics(tabs.map((t) => t.metrics));
   const totalCarbon = sumCarbonEstimates(tabs.map((t) => t.carbon));
@@ -86,8 +87,8 @@ export const metricsStore: MetricsStore = {
     await addTabToRecord({ ...tab, carbon });
   },
 
-  updateTabMetrics: async (tabId: number, newMetrics: Metrics): Promise<void> => {
-    await updateTabInRecord(tabId, newMetrics);
+  updateTabMetrics: async (tabId: number, newMetrics: Metrics, meta?: Partial<{ status: number; date: number }>): Promise<void> => {
+    await updateTabInRecord(tabId, newMetrics, meta);
   },
 
   getTabs: async (): Promise<MetricTab[]> => {
