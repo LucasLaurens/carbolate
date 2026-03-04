@@ -1,7 +1,5 @@
 import { Component } from "react";
 import { metricsStore } from "../../session/store";
-import { TabCollector } from "../../session/TabCollector";
-import { parseDomain } from "../../utils/url";
 import { ChromeStorage } from "../../storage/ChromeStorage";
 import { DEFAULT_PREFERENCES, type Preferences } from "../../config/preferences";
 import type { DailyRecord } from "../../session/types";
@@ -18,8 +16,6 @@ type State = {
   isLoading: boolean;
 };
 
-const tabCollector = new TabCollector();
-
 export default class Popup extends Component<Record<string, never>, State> {
   state: State = {
     view: "day",
@@ -30,7 +26,7 @@ export default class Popup extends Component<Record<string, never>, State> {
 
   componentDidMount(): void {
     this.loadPreferences();
-    this.handleTabMetrics();
+    this.handleRefresh();
   }
 
   loadPreferences = async () => {
@@ -51,54 +47,17 @@ export default class Popup extends Component<Record<string, never>, State> {
     }
   };
 
-  handleTabMetrics = () => {
+  handleRefresh = async () => {
     if (this.state.isLoading) return;
     this.setState({ isLoading: true });
-
-    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-      try {
-        for (const currentTab of tabs) {
-          if (!currentTab.id) continue;
-
-          const metrics = await tabCollector.collect(currentTab.id);
-          if (!metrics) {
-            await this.refreshRecord();
-            continue;
-          }
-
-          const url = currentTab.url ?? "";
-          const domain = parseDomain(url);
-          const tabId = currentTab.id;
-
-          const hasExisting = await metricsStore.hasExistingTabById(tabId);
-          if (!hasExisting) {
-            await metricsStore.addTab({
-              id: tabId,
-              url,
-              domain,
-              metrics,
-              meta: { status: 200, date: Date.now() },
-            });
-          } else {
-            await metricsStore.updateTabMetrics(tabId, metrics, {
-              status: 200,
-              date: Date.now(),
-            });
-          }
-
-          await this.refreshRecord();
-        }
-      } catch (e) {
-        console.error("Failed to collect tab metrics", e);
-      } finally {
-        this.setState({ isLoading: false });
-      }
-    });
-  };
-
-  refreshRecord = async () => {
-    const record = await metricsStore.findDailyRecord();
-    this.setState({ record });
+    try {
+      const record = await metricsStore.findDailyRecord();
+      this.setState({ record });
+    } catch (e) {
+      console.error("Failed to load record", e);
+    } finally {
+      this.setState({ isLoading: false });
+    }
   };
 
   handleExport = async () => {
@@ -127,7 +86,7 @@ export default class Popup extends Component<Record<string, never>, State> {
         </div>
 
         {view === "day" && (
-          <DayView record={record} onRefresh={this.handleTabMetrics} isLoading={isLoading} />
+          <DayView record={record} onRefresh={this.handleRefresh} isLoading={isLoading} />
         )}
         {view === "preferences" && (
           <PreferencesView preferences={preferences} onSave={this.savePreferences} />

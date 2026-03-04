@@ -12,14 +12,14 @@ src/
 │   └── preferences.ts              # Source unique de vérité : Preferences, ResetPeriod, DEFAULT_PREFERENCES
 │
 ├── background/
-│   └── index.ts                    # Background service worker Chrome — alarme reset
+│   └── index.ts                    # Background service worker Chrome — alarme reset + réception métriques
 │
 ├── content/
-│   └── index.ts                    # Content script (injecté sur chaque page)
+│   └── index.ts                    # Content script (injecté sur chaque page) — push métriques au background
 │
 ├── components/
 │   └── popup/
-│       ├── Popup.tsx               # Composant principal, gestion de l'état global
+│       ├── Popup.tsx               # Composant principal, lecture du storage, gestion de l'état global
 │       ├── DayView.tsx             # Vue "Aujourd'hui" + chart domaines
 │       └── PreferencesView.tsx     # Vue "Préférences"
 │
@@ -34,7 +34,6 @@ src/
 │
 ├── session/
 │   ├── store.ts                    # metricsStore — CRUD DailyRecord + cache in-memory
-│   ├── TabCollector.ts             # Collecte Chrome isolée du Popup (SRP)
 │   ├── aggregator.ts               # sumMetrics, sumCarbonEstimates
 │   └── types.ts                    # Metrics, MetricTab, DailyRecord, SessionsStore, MetricsStore
 │
@@ -60,42 +59,35 @@ src/
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Page web (onglet actif)                 │
+│                  Page web (nouvel onglet chargé)            │
 │  performance.getEntriesByType("resource")   → réseau        │
 │  performance.getEntriesByType("navigation") → CPU/timing    │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ chrome.tabs.sendMessage({ type: "entries" })
+                       │ sérialisé en plain objects
+                       │ chrome.runtime.sendMessage({ type: "page_metrics", ... })
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Content Script                            │
-│  Écoute les messages "entries"                              │
-│  Répond avec { resource: [...], navigation: [...] }         │
-│  Retourne null pour les types inconnus                      │
+│                    Content Script (content/index.ts)         │
+│  Déclenché sur window.load (ou document.readyState=complete) │
+│  Convertit PerformanceEntry → plain objects sérialisables    │
+│    resource : [{ transferSize }]                             │
+│    navigation : [{ duration }]                               │
+│  Envoie chrome.runtime.sendMessage → Background              │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ callback response
+                       │ message "page_metrics" + sender.tab.{id, url}
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    TabCollector.collect(tabId)               │
+│                    Background (background/index.ts)          │
 │                                                             │
 │  1. EntriesValidator → valide que "resource" n'est pas vide │
 │  2. StrategyContext(ResourceStrategy)                       │
 │     → { resourceCount, totalTransferSize }                  │
 │  3. Construit Metrics { requestCount, totalResourceSize,    │
 │     cpuTimeToLoad }                                         │
-│  Retourne Metrics | null                                    │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Popup / handleTabMetrics()                │
-│                                                             │
-│  isLoading = true (désactive le bouton Actualiser)         │
-│  parseDomain(url) → hostname sécurisé                      │
-│  hasExistingTabById ?                                       │
+│  4. parseDomain(sender.tab.url) → hostname sécurisé         │
+│  5. hasExistingTabById ?                                    │
 │    ├─ Non → metricsStore.addTab(...)                        │
 │    └─ Oui → metricsStore.updateTabMetrics(...)              │
-│  metricsStore.findDailyRecord() → setState({ record })      │
-│  isLoading = false                                          │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
@@ -120,6 +112,15 @@ src/
 │                                                             │
 │  Clé "sessions"     → SessionsStore (Record<date, DailyRecord>)│
 │  Clé "preferences"  → Preferences (source : config/preferences.ts)│
+└──────────────────────┬──────────────────────────────────────┘
+                       │ lecture seule
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Popup (Popup.tsx)                         │
+│                                                             │
+│  componentDidMount → metricsStore.findDailyRecord()         │
+│  Bouton "Actualiser" → metricsStore.findDailyRecord()       │
+│  Affiche DayView avec le DailyRecord du jour                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -155,13 +156,10 @@ const calc = new CarbonCalculator([
 ### Store Pattern + cache in-memory
 `metricsStore` expose une API haut niveau pour gérer les `DailyRecord`. Les lectures répétées dans une même session (popup ouvert) utilisent un cache in-memory invalidé à chaque écriture — évite les I/O redondants vers `chrome.storage.local`.
 
-### SRP — TabCollector vs Popup
-La logique de collecte Chrome (sendMessage, validation, strategy) est isolée dans `TabCollector`. `Popup.tsx` ne fait qu'appeler `collect()` et réagit au résultat.
-
 ### Séparation Background / Popup / Content
-- Le **Background script** tourne en arrière-plan en permanence → gère les alarmes et le reset périodique
-- Le **Popup** se monte/démonte à chaque ouverture → collecte les données via `TabCollector`
-- Le **Content script** est injecté sur chaque page → répond passivement aux messages
+- Le **Background script** tourne en arrière-plan en permanence → collecte les métriques envoyées par les content scripts, gère les alarmes et le reset périodique
+- Le **Popup** se monte/démonte à chaque ouverture → lit le storage uniquement (lecture pure)
+- Le **Content script** est injecté sur chaque page → collecte les données Performance API au chargement et les pousse au background
 
 ---
 
@@ -174,12 +172,17 @@ Pour fonctionner, l'extension nécessite les permissions suivantes dans `manifes
   "permissions": [
     "storage",
     "alarms",
-    "downloads",
     "tabs",
-    "activeTab"
+    "scripting",
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback",
+    "sidePanel",
+    "contextMenus"
   ],
+  "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],
@@ -187,3 +190,13 @@ Pour fonctionner, l'extension nécessite les permissions suivantes dans `manifes
   }]
 }
 ```
+
+> **Note** : `"downloads"` est actuellement absent du manifest, ce qui empêche l'export CSV (`chrome.downloads.download` dans `utils/csv.ts`). À ajouter pour activer l'export.
+
+### Pourquoi `"type": "module"` sur le background
+
+Le bundle `background.js` généré par Vite/Rollup utilise des `import` ES module (chunks partagés dans `assets/`). Sans `"type": "module"`, Chrome exécute le service worker en mode script classique et lève une `SyntaxError`. Avec ce flag, le service worker est un ES module et peut importer ses dépendances normalement.
+
+### Pourquoi `content.js` est différent
+
+Chrome **ne supporte pas** les ES modules dans les content scripts. `content.js` est donc bundlé sans aucun `import` externe : toutes ses dépendances sont inlinées au moment du build Vite, produisant un script autonome.
