@@ -1,1 +1,1 @@
-var r=(e=>(e.RESOURCE="resource",e.NAVIGATION="navigation",e.PAINT="paint",e.LONGTASK="longtask",e))(r||{});chrome.runtime.onMessage.addListener((e,o,n)=>{if(e.type==="entries"){const t=performance.getEntriesByType(r.RESOURCE),a=performance.getEntriesByType(r.NAVIGATION);n({resource:t,navigation:a})}});
+import{E as r}from"./assets/EntriesEnum-CDtQ8Coj.js";chrome.runtime.onMessage.addListener((n,s,e)=>{if(n.type==="entries"){const t=performance.getEntriesByType(r.RESOURCE),i=performance.getEntriesByType(r.NAVIGATION);e({resource:t,navigation:i})}else e(null);return!0});
