@@ -1,13 +1,16 @@
-import { EntriesEnum } from "../performance/enums/EntriesEnum";
+function collectAndSend(): void {
+  const resource = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).map((e) => ({
+    transferSize: e.transferSize,
+  }));
+  const navigation = performance.getEntriesByType("navigation").map((e) => ({
+    duration: e.duration,
+  }));
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "entries") {
-    const resource = performance.getEntriesByType(EntriesEnum.RESOURCE);
-    const navigation = performance.getEntriesByType(EntriesEnum.NAVIGATION);
+  chrome.runtime.sendMessage({ type: "page_metrics", resource, navigation });
+}
 
-    sendResponse({ resource, navigation });
-  } else {
-    sendResponse(null);
-  }
-  return true;
-});
+if (document.readyState === "complete") {
+  collectAndSend();
+} else {
+  window.addEventListener("load", collectAndSend, { once: true });
+}
