@@ -60,8 +60,7 @@ export default class Popup extends Component<Record<string, never>, State> {
                 meta: { status: 200, date: Date.now() },
               });
             } else {
-              // todo: update status and date too
-              metricsStore.updateTabMetrics(currentTab.id!, newMetrics);
+              metricsStore.updateTabMetrics(currentTab.id!, newMetrics, { status: 200, date: Date.now() });
             }
 
             metricsStore
