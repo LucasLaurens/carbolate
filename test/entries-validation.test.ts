@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import EntriesValidator from "../performance/EntriesValidator";
-import { EntriesEnum } from "../performance/enums/EntriesEnum";
+import EntriesValidator from "../src/performance/EntriesValidator";
+import { EntriesEnum } from "../src/performance/enums/EntriesEnum";
 
 describe("EntriesValidator", () => {
   it("validates when at least one entry type is present", () => {

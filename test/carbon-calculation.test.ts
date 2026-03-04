@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import CarbonCalculator from "../carbon/CarbonCalculator";
+import CarbonCalculator from "../src/carbon/CarbonCalculator";
 
 describe("CarbonCalculator", () => {
   const calc = new CarbonCalculator();

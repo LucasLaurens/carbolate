@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import ResourceStrategy from "../performance/ResourceStrategy";
+import ResourceStrategy from "../src/performance/ResourceStrategy";
 
 describe("ResourceStrategy", () => {
   const strategy = new ResourceStrategy();
