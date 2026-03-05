@@ -3,7 +3,10 @@ import type { CarbonContributionSource, ContributionMetric } from "./CarbonContr
 import { NetworkCarbonSource } from "./sources/NetworkCarbonSource";
 import { CpuCarbonSource } from "./sources/CpuCarbonSource";
 
-const DEFAULT_SOURCES: CarbonContributionSource[] = [new NetworkCarbonSource(), new CpuCarbonSource()];
+const DEFAULT_SOURCES: CarbonContributionSource[] = [
+  new NetworkCarbonSource(),
+  new CpuCarbonSource(),
+];
 
 export default class CarbonCalculator implements Carbon<CarbonInput, CarbonEstimate> {
   private sources: CarbonContributionSource[];
@@ -21,13 +24,10 @@ export default class CarbonCalculator implements Carbon<CarbonInput, CarbonEstim
       { networkCo2: 0, cpuCo2: 0 },
     );
 
-    const network = Math.round(totals.networkCo2);
-    const cpu = Math.round(totals.cpuCo2);
-
     return {
-      networkCo2: network,
-      cpuCo2: cpu,
-      totalCo2: network + cpu,
+      networkCo2: totals.networkCo2,
+      cpuCo2: totals.cpuCo2,
+      totalCo2: totals.networkCo2 + totals.cpuCo2,
     };
   }
 }

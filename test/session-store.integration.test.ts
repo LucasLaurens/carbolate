@@ -171,7 +171,7 @@ describe("getTotalCarbon", () => {
 describe("getOrCreateDailyRecord", () => {
   it("creates an empty record for a new date", async () => {
     const record = await metricsStore.findOrCreateDailyRecord();
-    expect(record.date).toBe("2026-03-04");
+    expect(record.date).toBe(new Date().toISOString().slice(0, 10));
     expect(record.tabs).toHaveLength(0);
   });
 
