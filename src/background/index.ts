@@ -8,6 +8,7 @@ import ResourceStrategy from "../performance/ResourceStrategy";
 
 const RESET_ALARM = "reset";
 
+// todo : split method with utils/date
 function scheduleReset(prefs: Preferences): void {
   const now = new Date();
   const midnight = new Date();
@@ -30,12 +31,14 @@ chrome.runtime.onStartup.addListener(async () => {
   scheduleReset(prefs);
 });
 
+// todo: type hint alarm
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== RESET_ALARM) return;
   const prefs = await ChromeStorage.getPreferences();
   await metricsStore.clearPastDays(prefs.retentionDays);
 });
 
+// todo: type hint message and sender
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type !== "page_metrics") return false;
   if (!sender.tab?.id || !sender.tab?.url) return false;
