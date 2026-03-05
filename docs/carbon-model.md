@@ -24,13 +24,13 @@ Définies dans `src/carbon/constants.ts` :
 
 ---
 
-## Architecture OCP — ICarbonSource
+## Architecture OCP — CarbonContributionSource
 
-Le calcul est décomposé en **sources indépendantes** via l'interface `ICarbonSource` :
+Le calcul est décomposé en **sources indépendantes** via l'interface `CarbonContributionSource` :
 
 ```typescript
-// src/carbon/ICarbonSource.ts
-interface ICarbonSource {
+// src/carbon/CarbonContributionSource.ts
+interface CarbonContributionSource {
   calculate(inputs: CarbonInput[]): number; // retourne des gCO₂e
 }
 ```
@@ -41,7 +41,7 @@ interface ICarbonSource {
 new CarbonCalculator([new NetworkCarbonSource(), new CpuCarbonSource()])
 ```
 
-Pour ajouter une nouvelle source d'émission (GPU, streaming audio, etc.), il suffit de créer une classe implémentant `ICarbonSource` et de l'injecter — sans modifier `CarbonCalculator`.
+Pour ajouter une nouvelle source d'émission (GPU, streaming audio, etc.), il suffit de créer une classe implémentant `CarbonContributionSource` et de l'injecter — sans modifier `CarbonCalculator`.
 
 ---
 

@@ -1,3 +1,4 @@
+// todo: remove func and pass the resource and navigation to the background message
 function collectAndSend(): void {
   const resource = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).map(
     (e) => ({
@@ -11,6 +12,7 @@ function collectAndSend(): void {
   chrome.runtime.sendMessage({ type: "page_metrics", resource, navigation });
 }
 
+// todo: send without check readyState
 if (document.readyState === "complete") {
   collectAndSend();
 } else {
