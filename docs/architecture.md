@@ -24,13 +24,13 @@ src/
 │       └── PreferencesView.tsx     # Vue "Préférences"
 │
 ├── carbon/
-│   ├── CarbonCalculator.ts         # Moteur de calcul CO₂ (accepte ICarbonSource[])
-│   ├── ICarbonSource.ts            # Interface OCP pour sources d'émission
+│   ├── CarbonCalculator.ts         # Moteur de calcul CO₂ (accepte CarbonContributionSource[])
+│   ├── CarbonContributionSource.ts            # Interface OCP pour sources d'émission
 │   ├── constants.ts                # Constantes de calibration
 │   ├── types.ts                    # CarbonInput, CarbonEstimate, Carbon<I,O>
 │   └── sources/
-│       ├── NetworkCarbonSource.ts  # Émissions réseau (implémente ICarbonSource)
-│       └── CpuCarbonSource.ts      # Émissions CPU (implémente ICarbonSource)
+│       ├── NetworkCarbonSource.ts  # Émissions réseau (implémente CarbonContributionSource)
+│       └── CpuCarbonSource.ts      # Émissions CPU (implémente CarbonContributionSource)
 │
 ├── session/
 │   ├── store.ts                    # metricsStore — CRUD DailyRecord + cache in-memory
@@ -138,12 +138,12 @@ const result = ctx.execute(resourceEntries); // { resourceCount, totalTransferSi
 
 Extensible : on pourra ajouter des stratégies pour PAINT, LONGTASK, etc.
 
-### Open/Closed — ICarbonSource
+### Open/Closed — CarbonContributionSource
 `CarbonCalculator` accepte un tableau de sources d'émission. Ajouter une nouvelle source (ex: GPU, streaming) ne nécessite pas de modifier `CarbonCalculator` :
 
 ```typescript
 // Ajout d'une source sans toucher au calculateur
-class GpuCarbonSource implements ICarbonSource {
+class GpuCarbonSource implements CarbonContributionSource {
   calculate(inputs: CarbonInput[]): number { ... }
 }
 const calc = new CarbonCalculator([
