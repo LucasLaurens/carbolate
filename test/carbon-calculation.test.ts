@@ -9,11 +9,11 @@ describe("CarbonCalculator", () => {
   });
 
   it("calculates network CO2 from transfer size (1 GB)", () => {
-    // networkCo2 = 1 GB * 442 g/GB * 0.75 = 331.5 → rounded to 332
+    // networkCo2 = 1 GB * 442 g/GB * 0.75 = 331.5
     const result = calc.calculate([{ transferSize: 1_000_000_000, cpuTime: 0 }]);
-    expect(result.networkCo2).toBe(332);
+    expect(result.networkCo2).toBe(331.5);
     expect(result.cpuCo2).toBe(0);
-    expect(result.totalCo2).toBe(332);
+    expect(result.totalCo2).toBe(331.5);
   });
 
   it("calculates CPU CO2 from cpu time (1 000 000 ms = 1 000 s)", () => {
@@ -30,7 +30,7 @@ describe("CarbonCalculator", () => {
       { transferSize: 500_000_000, cpuTime: 0 },
       { transferSize: 500_000_000, cpuTime: 0 },
     ]);
-    expect(result.networkCo2).toBe(332);
+    expect(result.networkCo2).toBe(331.5);
   });
 
   it("combines network and CPU CO2 in totalCo2", () => {

@@ -5,9 +5,9 @@ import { DEFAULT_PREFERENCES, type Preferences } from "../../config/preferences"
 import type { DailyRecord } from "../../session/types";
 import { exportToCSV } from "../../utils/csv";
 import DayView from "./DayView";
-import PreferencesView from "./PreferencesView";
+import SettingsView from "./SettingsView";
 
-type View = "day" | "preferences";
+type View = "day" | "settings";
 
 type State = {
   view: View;
@@ -75,31 +75,31 @@ export default class Popup extends Component<Record<string, never>, State> {
             className={`flex-1 py-1 px-2 text-sm font-medium cursor-pointer ${view === "day" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
             onClick={() => this.setState({ view: "day" })}
           >
-            📊 Aujourd hui
+            📊 Today
           </button>
-          <button
-            className={`flex-1 py-1 px-2 text-sm font-medium cursor-pointer ${view === "preferences" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
-            onClick={() => this.setState({ view: "preferences" })}
+          {/* <button
+            className={`flex-1 py-1 px-2 text-sm font-medium cursor-pointer ${view === "settings" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+            onClick={() => this.setState({ view: "settings" })}
           >
-            ⚙️ Préférences
-          </button>
+            ⚙️ Settings
+          </button> */}
         </div>
 
         {view === "day" && (
           <DayView record={record} onRefresh={this.handleRefresh} isLoading={isLoading} />
         )}
-        {view === "preferences" && (
-          <PreferencesView preferences={preferences} onSave={this.savePreferences} />
+        {view === "settings" && (
+          <SettingsView preferences={preferences} onSave={this.savePreferences} />
         )}
 
-        {view === "day" && (
+        {/* {view === "day" && (
           <button
             className="w-full p-2 rounded-md cursor-pointer text-white bg-green-500 hover:bg-green-700 text-sm"
             onClick={this.handleExport}
           >
             📥 Exporter CSV
           </button>
-        )}
+        )} */}
       </div>
     );
   }
