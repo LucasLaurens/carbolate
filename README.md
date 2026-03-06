@@ -1,31 +1,30 @@
-# Documentation Carbolate
+# Carbolate
 
-Carbolate est une extension Chrome qui mesure et estime l'empreinte carbone de votre navigation web en analysant les requêtes réseau et le temps CPU des pages visitées.
+Carbolate is a Chrome extension that measures and estimates the carbon footprint of your web browsing by analyzing network requests and CPU time of visited pages.
 
-## Index de la documentation
+## Documentation index
 
-| Fichier | Description |
+| File | Description |
 |---|---|
-| [architecture.md](./docs/architecture.md) | Structure du projet, flux de données, patterns utilisés |
-| [fonctionnel.md](./docs/fonctionnel.md) | Fonctionnalités, comportement attendu, flux utilisateur |
-| [carbon-model.md](./docs/carbon-model.md) | Modèle de calcul CO₂, constantes, formules |
-| [storage.md](./docs/storage.md) | Schéma des données persistées, types TypeScript |
-| [roadmap.md](./docs/roadmap.md) | Phases implémentées et évolutions prévues |
+| [architecture.md](./docs/architecture.md) | Project structure, data flow, design patterns |
+| [features.md](./docs/features.md) | Features, expected behavior, user flows |
+| [carbon-model.md](./docs/carbon-model.md) | CO₂ calculation model, constants, formulas |
+| [storage.md](./docs/storage.md) | Persisted data schema, TypeScript types |
 
-## Vue d'ensemble rapide
+## Quick overview
 
 ```
-Extension Chrome
-├── Popup (React)         → Interface utilisateur (320px)
-├── Background script     → Reset quotidien via chrome.alarms
-├── Content script        → Collecte des Performance Entries sur chaque page
-└── Chrome Storage        → Persistance locale des sessions et préférences
+Chrome Extension
+├── Popup (React)         → User interface (320px)
+├── Background script     → Daily reset via chrome.alarms
+├── Content script        → Collects Performance Entries on each page
+└── Chrome Storage        → Local persistence for sessions and preferences
 ```
 
-## Stack technique
+## Tech stack
 
-- **UI** : React 18 (class components), Tailwind CSS v4, chart.js
-- **Langage** : TypeScript strict
-- **Build** : Vite + @vitejs/plugin-react
-- **Tests** : Vitest
-- **Qualité** : ESLint, Prettier, Husky (pre-commit)
+- **UI**: React 18 (class components), Tailwind CSS v4, chart.js
+- **Language**: TypeScript strict
+- **Build**: Vite + @vitejs/plugin-react
+- **Tests**: Vitest
+- **Quality**: ESLint, Prettier, Husky (pre-commit)

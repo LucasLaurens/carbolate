@@ -1,30 +1,30 @@
 import { describe, it, expect } from "vitest";
-import EntriesValidator from "../src/performance/EntriesValidator";
-import { EntriesEnum } from "../src/performance/enums/EntriesEnum";
+import PageMetricsValidator from "../src/performance/PageMetricsValidator";
+import { PerformanceEntryType } from "../src/performance/enums/PerformanceEntryType";
 
-describe("EntriesValidator", () => {
+describe("PageMetricsValidator", () => {
   it("validates when at least one entry type is present", () => {
-    const validator = new EntriesValidator({
-      [EntriesEnum.RESOURCE]: [{ name: "https://example.com/script.js" }],
+    const validator = new PageMetricsValidator({
+      [PerformanceEntryType.RESOURCE]: [{ name: "https://example.com/script.js" }],
     } as never);
     expect(validator.validate()).toBe(true);
   });
 
   it("rejects an empty entries object", () => {
-    const validator = new EntriesValidator({} as never);
+    const validator = new PageMetricsValidator({} as never);
     expect(validator.validate()).toBe(false);
   });
 
   it("rejects entries where all arrays are empty", () => {
-    const validator = new EntriesValidator({
-      [EntriesEnum.RESOURCE]: [],
-      [EntriesEnum.NAVIGATION]: [],
+    const validator = new PageMetricsValidator({
+      [PerformanceEntryType.RESOURCE]: [],
+      [PerformanceEntryType.NAVIGATION]: [],
     } as never);
     expect(validator.validate()).toBe(false);
   });
 
   it("returns a descriptive message", () => {
-    const validator = new EntriesValidator({} as never);
+    const validator = new PageMetricsValidator({} as never);
     expect(validator.message()).toMatch(/entries/i);
   });
 });

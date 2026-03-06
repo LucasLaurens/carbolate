@@ -5,7 +5,7 @@ export const isToday = (dateStr: string): boolean => dateStr === getDailyDate();
 export const isThisWeek = (dateStr: string): boolean => {
   const today = getDailyDate();
   const todayDate = new Date(today);
-  // Monday as start of week (EU/FR standard): getDay() returns 0=Sun, 1=Mon ... 6=Sat
+  // Monday as start of week (ISO 8601 standard): getDay() returns 0=Sun, 1=Mon ... 6=Sat
   const dayOfWeek = todayDate.getDay(); // 0 (Sun) – 6 (Sat)
   const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 

@@ -1,77 +1,77 @@
-# Modèle de calcul CO₂
+# CO₂ Calculation Model
 
-## Principe général
+## General principle
 
-Carbolate estime l'empreinte carbone d'une visite web à partir de deux composantes :
-1. **Émissions réseau** : liées aux données transférées (bytes téléchargés)
-2. **Émissions CPU** : liées au temps de traitement de la page
+Carbolate estimates the carbon footprint of a web visit from two components:
+1. **Network emissions**: related to transferred data (downloaded bytes)
+2. **CPU emissions**: related to page processing time
 
-Le résultat est exprimé en **grammes équivalent CO₂ (gCO₂e)**, arrondi à l'entier le plus proche.
+The result is expressed in **grams of CO₂ equivalent (gCO₂e)**, rounded to the nearest integer.
 
 ---
 
-## Constantes de calibration
+## Calibration constants
 
-Définies dans `src/carbon/constants.ts` :
+Defined in `src/carbon/constants.ts`:
 
-| Constante | Valeur | Description |
+| Constant | Value | Description |
 |---|---|---|
-| `CARBON_PER_GB` | `442` gCO₂e/Go | Intensité carbone du réseau par gigaoctet transféré |
-| `NETWORK_RATIO` | `0.75` | Part du réseau vs appareil utilisateur (75% réseau, 25% device) |
-| `CPU_FACTOR` | `0.012` gCO₂e/s | Intensité carbone par seconde de CPU actif |
+| `CARBON_PER_GB` | `442` gCO₂e/GB | Carbon intensity of the network per transferred gigabyte |
+| `NETWORK_RATIO` | `0.75` | Network share vs. user device (75% network, 25% device) |
+| `CPU_FACTOR` | `0.012` gCO₂e/s | Carbon intensity per second of active CPU |
 
-> Ces valeurs sont issues de moyennes sectorielles (études IEA, Shift Project). Elles représentent une estimation raisonnable pour un mix énergétique mondial moyen.
+> These values come from industry averages (IEA, Shift Project studies). They represent a reasonable estimate for a global average energy mix.
 
 ---
 
-## Architecture OCP — CarbonContributionSource
+## OCP Architecture — CarbonContributionSource
 
-Le calcul est décomposé en **sources indépendantes** via l'interface `CarbonContributionSource` :
+The calculation is decomposed into **independent sources** via the `CarbonContributionSource` interface:
 
 ```typescript
 // src/carbon/CarbonContributionSource.ts
 interface CarbonContributionSource {
-  calculate(inputs: CarbonInput[]): number; // retourne des gCO₂e
+  calculate(inputs: CarbonInput[]): number; // returns gCO₂e
 }
 ```
 
-`CarbonCalculator` accepte un tableau de sources dans son constructeur. Par défaut :
+`CarbonCalculator` accepts an array of sources in its constructor. By default:
 
 ```typescript
 new CarbonCalculator([new NetworkCarbonSource(), new CpuCarbonSource()])
 ```
 
-Pour ajouter une nouvelle source d'émission (GPU, streaming audio, etc.), il suffit de créer une classe implémentant `CarbonContributionSource` et de l'injecter — sans modifier `CarbonCalculator`.
+To add a new emission source (GPU, audio streaming, etc.), simply create a class implementing `CarbonContributionSource` and inject it — without modifying `CarbonCalculator`.
 
 ---
 
-## Formules
+## Formulas
 
-Chaque source implémente sa propre formule :
+Each source implements its own formula:
 
-**NetworkCarbonSource** (`src/carbon/sources/NetworkCarbonSource.ts`) :
+**NetworkCarbonSource** (`src/carbon/sources/NetworkCarbonSource.ts`):
 ```
-totalGB    = Σ(transferSize) / 1_000_000_000   [bytes → Go]
+totalGB    = Σ(transferSize) / 1_000_000_000   [bytes → GB]
 networkCo2 = totalGB × CARBON_PER_GB × NETWORK_RATIO
 ```
 
-**CpuCarbonSource** (`src/carbon/sources/CpuCarbonSource.ts`) :
+**CpuCarbonSource** (`src/carbon/sources/CpuCarbonSource.ts`):
 ```
-totalSec = Σ(cpuTime) / 1000   [ms → secondes]
+totalSec = Σ(cpuTime) / 1000   [ms → seconds]
 cpuCo2   = totalSec × CPU_FACTOR
 ```
 
-**CarbonCalculator** agrège :
+**CarbonCalculator** aggregates:
 ```
 totalCo2 = round(networkCo2) + round(cpuCo2)
 ```
 
-### Exemple concret
+### Concrete example
 
-Pour un onglet qui charge **2 MB** de ressources avec **1,5s** de CPU :
+For a tab loading **2 MB** of resources with **1.5s** of CPU:
 
 ```
-totalGB    = 2_000_000 / 1_000_000_000 = 0.002 Go
+totalGB    = 2_000_000 / 1_000_000_000 = 0.002 GB
 totalSec   = 1500 / 1000 = 1.5 s
 
 networkCo2 = 0.002 × 442 × 0.75 = 0.663 → 1g
@@ -82,24 +82,24 @@ totalCo2   = 1g
 
 ---
 
-## Sources des données d'entrée
+## Input data sources
 
-Les données proviennent de l'API `Performance` native du navigateur, collectées par le content script et traitées par `TabCollector` :
+Data comes from the browser's native `Performance` API, collected by the content script and processed by `TabCollector`:
 
-| Champ CarbonInput | Source Performance API | Unité |
+| CarbonInput field | Performance API source | Unit |
 |---|---|---|
 | `transferSize` | `PerformanceResourceTiming.transferSize` | bytes |
 | `cpuTime` | `PerformanceNavigationTiming.duration` | ms |
 
-`transferSize` représente la taille **compressée** réellement transférée sur le réseau (0 si cache). `duration` est le temps total de la navigation (DOMContentLoaded + sous-ressources).
+`transferSize` represents the **compressed** size actually transferred over the network (0 if cached). `duration` is the total navigation time (DOMContentLoaded + sub-resources).
 
-> **Note** : `EntriesValidator` valide spécifiquement que les entrées `resource` existent (pas seulement `navigation`), car seules les entrées `resource` sont utilisées en aval par `ResourceStrategy`.
+> **Note**: `EntriesValidator` specifically validates that `resource` entries exist (not just `navigation`), because only `resource` entries are used downstream by `ResourceStrategy`.
 
 ---
 
-## Conversion dans le store
+## Conversion in the store
 
-Avant de passer au calculateur, les métriques sont converties depuis leur format de stockage interne (dans `src/session/store.ts`) :
+Before passing to the calculator, metrics are converted from their internal storage format (in `src/session/store.ts`):
 
 ```typescript
 const carbonMetricsCallback = (m: Metrics): CarbonInput => ({
@@ -108,11 +108,11 @@ const carbonMetricsCallback = (m: Metrics): CarbonInput => ({
 });
 ```
 
-> Note : `totalResourceSize` est stocké en MB (mébibytes, 1024²) dans `Metrics` mais la formule utilise des Go décimaux (1000³). Cette légère imprécision (~7%) est négligeable pour une estimation d'ordre de grandeur.
+> Note: `totalResourceSize` is stored in MB (mebibytes, 1024²) in `Metrics` but the formula uses decimal GB (1000³). This slight imprecision (~7%) is negligible for an order-of-magnitude estimate.
 
 ---
 
-## Agrégation par onglet et par jour
+## Aggregation per tab and per day
 
 ```typescript
 // src/session/aggregator.ts
@@ -120,4 +120,4 @@ sumMetrics(tabs)         → { requestCount, totalResourceSize, cpuTimeToLoad }
 sumCarbonEstimates(tabs) → { networkCo2, cpuCo2, totalCo2 }
 ```
 
-Chaque `MetricTab` possède son propre `carbon`. Le `DailyRecord.totalCarbon` est la **somme** des carbones de tous les onglets du jour. Cela signifie que visiter le même domaine plusieurs fois **cumule** les émissions.
+Each `MetricTab` has its own `carbon`. The `DailyRecord.totalCarbon` is the **sum** of the carbon values of all tabs for the day. This means visiting the same domain multiple times **accumulates** emissions.
