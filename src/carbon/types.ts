@@ -9,6 +9,8 @@ export type CarbonEstimate = {
   totalCo2: number;
 };
 
-export interface Carbon<Input, Output> {
+export type ContributionMetric = keyof Omit<CarbonEstimate, "totalCo2">;
+
+export interface FootprintCalculator<Input, Output> {
   calculate(inputs: Input[]): Output;
 }

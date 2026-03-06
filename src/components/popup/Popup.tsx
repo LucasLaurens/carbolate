@@ -1,7 +1,8 @@
 import { Component } from "react";
 import { metricsStore } from "../../session/store";
 import { ChromeStorage } from "../../storage/ChromeStorage";
-import { DEFAULT_PREFERENCES, type Preferences } from "../../config/preferences";
+import { DEFAULT_PREFERENCES } from "../../config/preferences";
+import type { Preferences } from "../../config/types";
 import type { DailyRecord } from "../../session/types";
 import { exportToCSV } from "../../utils/csv";
 import DayView from "./DayView";
@@ -97,7 +98,7 @@ export default class Popup extends Component<Record<string, never>, State> {
             className="w-full p-2 rounded-md cursor-pointer text-white bg-green-500 hover:bg-green-700 text-sm"
             onClick={this.handleExport}
           >
-            📥 Exporter CSV
+            📥 Export CSV
           </button>
         )} */}
       </div>

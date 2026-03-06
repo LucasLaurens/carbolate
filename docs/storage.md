@@ -1,31 +1,31 @@
-# Schéma de données et persistance
+# Data schema and persistence
 
-## Stockage
+## Storage
 
-Toutes les données sont persistées dans **`chrome.storage.local`** via `src/storage/ChromeStorage.ts`.
+All data is persisted in **`chrome.storage.local`** via `src/storage/ChromeStorage.ts`.
 
-Deux clés sont utilisées :
+Two keys are used:
 
-| Clé | Type | Description |
+| Key | Type | Description |
 |---|---|---|
-| `"sessions"` | `SessionsStore` | Historique des sessions par jour |
-| `"preferences"` | `Preferences` | Configuration utilisateur |
+| `"sessions"` | `SessionsStore` | Session history by day |
+| `"preferences"` | `Preferences` | User configuration |
 
 ---
 
-## Types TypeScript
+## TypeScript types
 
-### `Preferences` — configuration utilisateur
+### `Preferences` — user configuration
 
-Défini dans **`src/config/preferences.ts`** (source unique de vérité — ne pas redéfinir ailleurs).
+Defined in **`src/config/preferences.ts`** (single source of truth — do not redefine elsewhere).
 
 ```typescript
 type ResetPeriod = "daily" | "weekly";
 
 type Preferences = {
   resetPeriod:           ResetPeriod; // "daily" | "weekly"
-  retentionDays:         number;       // 1 = today only | 7 = 1 semaine | -1 = tout
-  autoExportBeforeReset: boolean;      // Exporter CSV avant nettoyage
+  retentionDays:         number;       // 1 = today only | 7 = 1 week | -1 = keep all
+  autoExportBeforeReset: boolean;      // Export CSV before cleanup
 };
 
 const DEFAULT_PREFERENCES: Preferences = {
@@ -35,67 +35,67 @@ const DEFAULT_PREFERENCES: Preferences = {
 };
 ```
 
-> Tous les modules (`ChromeStorage`, `Popup`, `PreferencesView`, `background`) importent depuis `src/config/preferences.ts`. Ne jamais redéfinir ce type localement.
+> All modules (`ChromeStorage`, `Popup`, `PreferencesView`, `background`) import from `src/config/preferences.ts`. Never redefine this type locally.
 
 ---
 
-### `Metrics` — métriques brutes d'un onglet
+### `Metrics` — raw metrics for a tab
 
 ```typescript
 type Metrics = {
-  requestCount:      number; // Nombre de requêtes HTTP/HTTPS
-  totalResourceSize: number; // Taille totale transférée (MB)
-  cpuTimeToLoad:     number; // Durée navigation (secondes)
+  requestCount:      number; // Number of HTTP/HTTPS requests
+  totalResourceSize: number; // Total transferred size (MB)
+  cpuTimeToLoad:     number; // Navigation duration (seconds)
 };
 ```
 
-### `MetricTab` — un onglet tracké
+### `MetricTab` — a tracked tab
 
 ```typescript
 type MetricTab = {
   id:      number;  // chrome.tabs.Tab.id
-  url:     string;  // URL complète
-  domain:  string;  // hostname (ex: "github.com"), "" si URL invalide
+  url:     string;  // Full URL
+  domain:  string;  // hostname (e.g. "github.com"), "" if URL is invalid
   metrics: Metrics;
   meta: {
-    status: number; // Status HTTP (ex: 200)
-    date:   number; // Timestamp Unix (ms) de la dernière collecte
+    status: number; // HTTP status (e.g. 200)
+    date:   number; // Unix timestamp (ms) of the last collection
   };
   carbon: CarbonEstimate;
 };
 ```
 
-### `CarbonEstimate` — résultat du calcul CO₂
+### `CarbonEstimate` — CO₂ calculation result
 
 ```typescript
 type CarbonEstimate = {
-  networkCo2: number; // gCO₂e émis par le réseau
-  cpuCo2:     number; // gCO₂e émis par le CPU
+  networkCo2: number; // gCO₂e emitted by the network
+  cpuCo2:     number; // gCO₂e emitted by the CPU
   totalCo2:   number; // networkCo2 + cpuCo2
 };
 ```
 
-### `DailyRecord` — toutes les données d'un jour
+### `DailyRecord` — all data for a day
 
 ```typescript
 type DailyRecord = {
-  date:         string;        // "YYYY-MM-DD" en heure locale (via getDailyDate())
-  tabs:         MetricTab[];   // Onglets trackés dans la journée
-  totalMetrics: Metrics;       // Somme des metrics de tous les tabs
-  totalCarbon:  CarbonEstimate;// Somme des carbons de tous les tabs
+  date:         string;        // "YYYY-MM-DD" in local time (via getDailyDate())
+  tabs:         MetricTab[];   // Tabs tracked during the day
+  totalMetrics: Metrics;       // Sum of metrics across all tabs
+  totalCarbon:  CarbonEstimate;// Sum of carbon across all tabs
 };
 ```
 
-### `SessionsStore` — dictionnaire de jours
+### `SessionsStore` — dictionary of days
 
 ```typescript
 type SessionsStore = Record<string, DailyRecord>;
-// Exemple : { "2026-03-04": DailyRecord, "2026-03-03": DailyRecord }
+// Example: { "2026-03-04": DailyRecord, "2026-03-03": DailyRecord }
 ```
 
 ---
 
-## Exemple de payload complet
+## Full payload example
 
 ```json
 {
@@ -145,9 +145,9 @@ type SessionsStore = Record<string, DailyRecord>;
 
 ---
 
-## API ChromeStorage
+## ChromeStorage API
 
-`ChromeStorage` implémente l'interface `IStorage` (mockable pour les tests).
+`ChromeStorage` implements the `IStorage` interface (mockable for tests).
 
 ```typescript
 interface IStorage {
@@ -159,43 +159,43 @@ interface IStorage {
 ```
 
 ```typescript
-// Lecture des sessions
+// Read sessions
 ChromeStorage.getSessions(): Promise<SessionsStore>
 
-// Écriture complète (full replace)
+// Full write (full replace)
 ChromeStorage.setSessions(sessions: SessionsStore): Promise<void>
 
-// Lecture des préférences (avec merge des defaults depuis config/preferences.ts)
+// Read preferences (merged with defaults from config/preferences.ts)
 ChromeStorage.getPreferences(): Promise<Preferences>
 
-// Écriture des préférences
+// Write preferences
 ChromeStorage.setPreferences(preferences: Preferences): Promise<void>
 ```
 
-> **Important** : `setSessions` effectue un **remplacement complet** — toujours lire avant d'écrire pour ne pas perdre les autres jours.
+> **Important**: `setSessions` performs a **full replacement** — always read before writing to avoid losing other days.
 
 ---
 
-## API metricsStore
+## metricsStore API
 
-`metricsStore` maintient un **cache in-memory** du `DailyRecord` courant. Le cache est invalidé automatiquement à chaque écriture. Les lectures répétées (pendant une session popup) n'engendrent qu'un seul appel I/O.
+`metricsStore` maintains an **in-memory cache** of the current `DailyRecord`. The cache is invalidated automatically on every write. Repeated reads (during a popup session) result in only one I/O call.
 
 ```typescript
-// Lecture (cache in-memory pour le jour courant)
-metricsStore.findDailyRecord()         → DailyRecord | null   (jour courant)
-metricsStore.findOrCreateDailyRecord() → DailyRecord          (crée si absent)
-metricsStore.getAllDays()              → DailyRecord[]         (tous les jours, triés)
-metricsStore.getTabs()                 → MetricTab[]           (onglets du jour)
-metricsStore.getTotalMetrics()         → Metrics               (totaux du jour)
-metricsStore.getTotalCarbon()          → CarbonEstimate        (CO₂ du jour)
+// Read (in-memory cache for the current day)
+metricsStore.findDailyRecord()         → DailyRecord | null   (current day)
+metricsStore.findOrCreateDailyRecord() → DailyRecord          (creates if missing)
+metricsStore.getAllDays()              → DailyRecord[]         (all days, sorted)
+metricsStore.getTabs()                 → MetricTab[]           (today's tabs)
+metricsStore.getTotalMetrics()         → Metrics               (today's totals)
+metricsStore.getTotalCarbon()          → CarbonEstimate        (today's CO₂)
 metricsStore.hasExistingTabById(id)    → boolean
 
-// Écriture (invalide le cache)
-metricsStore.addTab(tab)                               → void  (nouveau tab)
-metricsStore.updateTabMetrics(id, metrics, meta?)      → void  (màj tab existant)
-metricsStore.clearPastDays(retentionDays)              → void  (nettoyage)
+// Write (invalidates the cache)
+metricsStore.addTab(tab)                               → void  (new tab)
+metricsStore.updateTabMetrics(id, metrics, meta?)      → void  (update existing tab)
+metricsStore.clearPastDays(retentionDays)              → void  (cleanup)
 ```
 
-### Calcul du cutoff dans `clearPastDays`
+### Cutoff calculation in `clearPastDays`
 
-La date de coupure est calculée en **heure locale** via `toLocaleDateString("sv")` (locale "sv" = format `YYYY-MM-DD`), évitant les décalages UTC qui pouvaient supprimer ou conserver des jours incorrectement.
+The cutoff date is computed in **local time** via `toLocaleDateString("sv")` (locale "sv" = `YYYY-MM-DD` format), avoiding UTC offsets that could incorrectly delete or retain days.

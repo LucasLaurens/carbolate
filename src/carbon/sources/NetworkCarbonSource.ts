@@ -1,4 +1,4 @@
-import type { CarbonContributionSource } from "../CarbonContributionSource";
+import type { CarbonContributionSource } from "../contracts/CarbonContributionSource";
 import type { CarbonInput } from "../types";
 import { CARBON_PER_GB, NETWORK_RATIO } from "../constants";
 

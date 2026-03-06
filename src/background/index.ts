@@ -1,10 +1,10 @@
 import { metricsStore } from "../session/store";
 import { ChromeStorage } from "../storage/ChromeStorage";
-import type { Preferences } from "../config/preferences";
+import type { Preferences } from "../config/types";
 import { parseDomain } from "../utils/url";
-import EntriesValidator from "../performance/EntriesValidator";
-import { StrategyContext } from "../performance/StrategyContext";
-import ResourceStrategy from "../performance/ResourceStrategy";
+import PageMetricsValidator from "../performance/PageMetricsValidator";
+import { MetricsProcessorContext } from "../performance/MetricsProcessorContext";
+import NetworkMetricsExtractor from "../performance/NetworkMetricsExtractor";
 
 const RESET_ALARM = "reset";
 
@@ -51,11 +51,11 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   const url = sender.tab.url;
   const domain = parseDomain(url);
 
-  const validator = new EntriesValidator({ resource, navigation } as never);
-  if (!validator.validate()) return false;
+  const metricsValidator = new PageMetricsValidator({ resource, navigation } as never);
+  if (!metricsValidator.validate()) return false;
 
-  const strategyContext = new StrategyContext(new ResourceStrategy());
-  const { resourceCount, totalTransferSize } = strategyContext.execute(resource);
+  const metricsProcessor = new MetricsProcessorContext(new NetworkMetricsExtractor());
+  const { resourceCount, totalTransferSize } = metricsProcessor.execute(resource);
   const metrics = {
     requestCount: resourceCount,
     totalResourceSize: totalTransferSize / (1024 * 1024),
