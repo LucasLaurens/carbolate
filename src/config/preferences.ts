@@ -1,10 +1,4 @@
-export type ResetPeriod = "daily" | "weekly";
-
-export type Preferences = {
-  resetPeriod: ResetPeriod;
-  retentionDays: number; // 1 | 7 | -1
-  autoExportBeforeReset: boolean;
-};
+import type { Preferences } from "./types";
 
 export const DEFAULT_PREFERENCES: Preferences = {
   resetPeriod: "daily",

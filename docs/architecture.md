@@ -1,102 +1,102 @@
-# Architecture technique
+# Technical architecture
 
-## Structure des fichiers
+## File structure
 
 ```
 src/
-├── main.tsx                        # Point d'entrée React
-├── App.tsx                         # Composant racine → <Popup />
-├── global.d.ts                     # Déclaration module *.css
+├── main.tsx                        # React entry point
+├── App.tsx                         # Root component → <Popup />
+├── global.d.ts                     # Module declaration for *.css
 │
 ├── config/
-│   └── preferences.ts              # Source unique de vérité : Preferences, ResetPeriod, DEFAULT_PREFERENCES
+│   └── preferences.ts              # Single source of truth: Preferences, ResetPeriod, DEFAULT_PREFERENCES
 │
 ├── background/
-│   └── index.ts                    # Background service worker Chrome — alarme reset + réception métriques
+│   └── index.ts                    # Chrome background service worker — reset alarm + metrics reception
 │
 ├── content/
-│   └── index.ts                    # Content script (injecté sur chaque page) — push métriques au background
+│   └── index.ts                    # Content script (injected on every page) — pushes metrics to background
 │
 ├── components/
 │   └── popup/
-│       ├── Popup.tsx               # Composant principal, lecture du storage, gestion de l'état global
-│       ├── DayView.tsx             # Vue "Aujourd'hui" + chart domaines
-│       └── PreferencesView.tsx     # Vue "Préférences"
+│       ├── Popup.tsx               # Main component, storage reads, global state management
+│       ├── DayView.tsx             # "Today" view + domain chart
+│       └── PreferencesView.tsx     # "Preferences" view
 │
 ├── carbon/
-│   ├── CarbonCalculator.ts         # Moteur de calcul CO₂ (accepte CarbonContributionSource[])
-│   ├── CarbonContributionSource.ts            # Interface OCP pour sources d'émission
-│   ├── constants.ts                # Constantes de calibration
+│   ├── CarbonCalculator.ts         # CO₂ calculation engine (accepts CarbonContributionSource[])
+│   ├── CarbonContributionSource.ts # OCP interface for emission sources
+│   ├── constants.ts                # Calibration constants
 │   ├── types.ts                    # CarbonInput, CarbonEstimate, Carbon<I,O>
 │   └── sources/
-│       ├── NetworkCarbonSource.ts  # Émissions réseau (implémente CarbonContributionSource)
-│       └── CpuCarbonSource.ts      # Émissions CPU (implémente CarbonContributionSource)
+│       ├── NetworkCarbonSource.ts  # Network emissions (implements CarbonContributionSource)
+│       └── CpuCarbonSource.ts      # CPU emissions (implements CarbonContributionSource)
 │
 ├── session/
-│   ├── store.ts                    # metricsStore — CRUD DailyRecord + cache in-memory
+│   ├── store.ts                    # metricsStore — CRUD DailyRecord + in-memory cache
 │   ├── aggregator.ts               # sumMetrics, sumCarbonEstimates
 │   └── types.ts                    # Metrics, MetricTab, DailyRecord, SessionsStore, MetricsStore
 │
 ├── storage/
-│   └── ChromeStorage.ts            # Abstraction chrome.storage.local (implémente IStorage)
+│   └── ChromeStorage.ts            # chrome.storage.local abstraction (implements IStorage)
 │
 ├── performance/
-│   ├── StrategyContext.ts          # Contexte Strategy (pattern)
-│   ├── ResourceStrategy.ts         # Stratégie analyse ressources réseau
-│   ├── EntriesValidator.ts         # Validation que les entrées "resource" existent
-│   ├── contracts/                  # Interfaces Resource, Strategy<I,O>
+│   ├── StrategyContext.ts          # Strategy context (pattern)
+│   ├── ResourceStrategy.ts         # Network resource analysis strategy
+│   ├── EntriesValidator.ts         # Validates that "resource" entries exist
+│   ├── contracts/                  # Resource, Strategy<I,O> interfaces
 │   └── enums/                      # EntriesEnum, ResourceInitiatorTypeEnum
 │
 └── utils/
-    ├── date.ts                     # getDailyDate (timezone-safe), isToday, isThisWeek (lundi=début)
-    ├── url.ts                      # parseDomain — wrapper sécurisé autour de new URL()
+    ├── date.ts                     # getDailyDate (timezone-safe), isToday, isThisWeek (Monday=start)
+    ├── url.ts                      # parseDomain — safe wrapper around new URL()
     └── csv.ts                      # exportToCSV
 ```
 
 ---
 
-## Flux de données complet
+## Full data flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                  Page web (nouvel onglet chargé)            │
-│  performance.getEntriesByType("resource")   → réseau        │
+│                  Web page (new tab loaded)                  │
+│  performance.getEntriesByType("resource")   → network       │
 │  performance.getEntriesByType("navigation") → CPU/timing    │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ sérialisé en plain objects
+                       │ serialized as plain objects
                        │ chrome.runtime.sendMessage({ type: "page_metrics", ... })
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Content Script (content/index.ts)         │
-│  Déclenché sur window.load (ou document.readyState=complete) │
-│  Convertit PerformanceEntry → plain objects sérialisables    │
-│    resource : [{ transferSize }]                             │
-│    navigation : [{ duration }]                               │
-│  Envoie chrome.runtime.sendMessage → Background              │
+│                    Content Script (content/index.ts)        │
+│  Triggered on window.load (or document.readyState=complete) │
+│  Converts PerformanceEntry → serializable plain objects     │
+│    resource   : [{ transferSize }]                          │
+│    navigation : [{ duration }]                              │
+│  Sends chrome.runtime.sendMessage → Background              │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ message "page_metrics" + sender.tab.{id, url}
+                       │ "page_metrics" message + sender.tab.{id, url}
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Background (background/index.ts)          │
+│                    Background (background/index.ts)         │
 │                                                             │
-│  1. EntriesValidator → valide que "resource" n'est pas vide │
+│  1. EntriesValidator → validates that "resource" is not empty│
 │  2. StrategyContext(ResourceStrategy)                       │
 │     → { resourceCount, totalTransferSize }                  │
-│  3. Construit Metrics { requestCount, totalResourceSize,    │
+│  3. Builds Metrics { requestCount, totalResourceSize,       │
 │     cpuTimeToLoad }                                         │
-│  4. parseDomain(sender.tab.url) → hostname sécurisé         │
-│  5. hasExistingTabById ?                                    │
-│    ├─ Non → metricsStore.addTab(...)                        │
-│    └─ Oui → metricsStore.updateTabMetrics(...)              │
+│  4. parseDomain(sender.tab.url) → safe hostname             │
+│  5. hasExistingTabById?                                     │
+│    ├─ No  → metricsStore.addTab(...)                        │
+│    └─ Yes → metricsStore.updateTabMetrics(...)              │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    metricsStore (session/store.ts)           │
+│                    metricsStore (session/store.ts)          │
 │                                                             │
-│  Cache in-memory (DailyRecord + date) :                    │
-│    → Lecture : retourne le cache si date = aujourd'hui     │
-│    → Écriture : invalide le cache                          │
+│  In-memory cache (DailyRecord + date):                      │
+│    → Read : returns cache if date = today                   │
+│    → Write: invalidates the cache                           │
 │                                                             │
 │  addTab / updateTabMetrics                                  │
 │    → CarbonCalculator.calculate([CarbonInput])              │
@@ -108,64 +108,64 @@ src/
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│               ChromeStorage (chrome.storage.local)          │
+│               ChromeStorage (chrome.storage.local)         │
 │                                                             │
-│  Clé "sessions"     → SessionsStore (Record<date, DailyRecord>)│
-│  Clé "preferences"  → Preferences (source : config/preferences.ts)│
+│  Key "sessions"     → SessionsStore (Record<date, DailyRecord>)│
+│  Key "preferences"  → Preferences (source: config/preferences.ts)│
 └──────────────────────┬──────────────────────────────────────┘
-                       │ lecture seule
+                       │ read-only
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Popup (Popup.tsx)                         │
+│                    Popup (Popup.tsx)                        │
 │                                                             │
 │  componentDidMount → metricsStore.findDailyRecord()         │
-│  Bouton "Actualiser" → metricsStore.findDailyRecord()       │
-│  Affiche DayView avec le DailyRecord du jour                │
+│  "Refresh" button  → metricsStore.findDailyRecord()         │
+│  Displays DayView with today's DailyRecord                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Patterns architecturaux
+## Architectural patterns
 
 ### Strategy Pattern
-`StrategyContext<Input, Output>` permet de brancher différentes stratégies d'analyse de performance. Actuellement : `ResourceStrategy` qui calcule `resourceCount` et `totalTransferSize`.
+`StrategyContext<Input, Output>` allows plugging in different performance analysis strategies. Currently: `ResourceStrategy` which computes `resourceCount` and `totalTransferSize`.
 
 ```typescript
 const ctx = new StrategyContext(new ResourceStrategy());
 const result = ctx.execute(resourceEntries); // { resourceCount, totalTransferSize }
 ```
 
-Extensible : on pourra ajouter des stratégies pour PAINT, LONGTASK, etc.
+Extensible: additional strategies can be added for PAINT, LONGTASK, etc.
 
 ### Open/Closed — CarbonContributionSource
-`CarbonCalculator` accepte un tableau de sources d'émission. Ajouter une nouvelle source (ex: GPU, streaming) ne nécessite pas de modifier `CarbonCalculator` :
+`CarbonCalculator` accepts an array of emission sources. Adding a new source (e.g. GPU, streaming) does not require modifying `CarbonCalculator`:
 
 ```typescript
-// Ajout d'une source sans toucher au calculateur
+// Adding a source without touching the calculator
 class GpuCarbonSource implements CarbonContributionSource {
   calculate(inputs: CarbonInput[]): number { ... }
 }
 const calc = new CarbonCalculator([
   new NetworkCarbonSource(),
   new CpuCarbonSource(),
-  new GpuCarbonSource(), // ← ajout ici seulement
+  new GpuCarbonSource(), // ← added here only
 ]);
 ```
 
-### Store Pattern + cache in-memory
-`metricsStore` expose une API haut niveau pour gérer les `DailyRecord`. Les lectures répétées dans une même session (popup ouvert) utilisent un cache in-memory invalidé à chaque écriture — évite les I/O redondants vers `chrome.storage.local`.
+### Store Pattern + in-memory cache
+`metricsStore` exposes a high-level API for managing `DailyRecord` objects. Repeated reads within the same session (popup open) use an in-memory cache invalidated on every write — avoids redundant I/O to `chrome.storage.local`.
 
-### Séparation Background / Popup / Content
-- Le **Background script** tourne en arrière-plan en permanence → collecte les métriques envoyées par les content scripts, gère les alarmes et le reset périodique
-- Le **Popup** se monte/démonte à chaque ouverture → lit le storage uniquement (lecture pure)
-- Le **Content script** est injecté sur chaque page → collecte les données Performance API au chargement et les pousse au background
+### Background / Popup / Content separation
+- The **Background script** runs persistently in the background → collects metrics sent by content scripts, manages alarms and periodic resets
+- The **Popup** mounts/unmounts on every open → reads storage only (pure read)
+- The **Content script** is injected on every page → collects Performance API data on load and pushes it to the background
 
 ---
 
-## Manifest requis (permissions)
+## Required manifest (permissions)
 
-Pour fonctionner, l'extension nécessite les permissions suivantes dans `manifest.json` :
+For the extension to work, the following permissions are required in `manifest.json`:
 
 ```json
 {
@@ -191,12 +191,12 @@ Pour fonctionner, l'extension nécessite les permissions suivantes dans `manifes
 }
 ```
 
-> **Note** : `"downloads"` est actuellement absent du manifest, ce qui empêche l'export CSV (`chrome.downloads.download` dans `utils/csv.ts`). À ajouter pour activer l'export.
+> **Note**: `"downloads"` is currently missing from the manifest, which prevents CSV export (`chrome.downloads.download` in `utils/csv.ts`). Needs to be added to enable export.
 
-### Pourquoi `"type": "module"` sur le background
+### Why `"type": "module"` on the background
 
-Le bundle `background.js` généré par Vite/Rollup utilise des `import` ES module (chunks partagés dans `assets/`). Sans `"type": "module"`, Chrome exécute le service worker en mode script classique et lève une `SyntaxError`. Avec ce flag, le service worker est un ES module et peut importer ses dépendances normalement.
+The `background.js` bundle generated by Vite/Rollup uses ES module `import` statements (shared chunks in `assets/`). Without `"type": "module"`, Chrome runs the service worker in classic script mode and throws a `SyntaxError`. With this flag, the service worker is an ES module and can import its dependencies normally.
 
-### Pourquoi `content.js` est différent
+### Why `content.js` is different
 
-Chrome **ne supporte pas** les ES modules dans les content scripts. `content.js` est donc bundlé sans aucun `import` externe : toutes ses dépendances sont inlinées au moment du build Vite, produisant un script autonome.
+Chrome **does not support** ES modules in content scripts. `content.js` is therefore bundled with no external `import` statements: all dependencies are inlined at Vite build time, producing a self-contained script.

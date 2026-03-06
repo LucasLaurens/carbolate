@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import ResourceStrategy from "../src/performance/ResourceStrategy";
+import NetworkMetricsExtractor from "../src/performance/NetworkMetricsExtractor";
 
-describe("ResourceStrategy", () => {
-  const strategy = new ResourceStrategy();
+describe("NetworkMetricsExtractor", () => {
+  const strategy = new NetworkMetricsExtractor();
 
   it("returns zeros for an empty resource list", () => {
     const result = strategy.handle([]);

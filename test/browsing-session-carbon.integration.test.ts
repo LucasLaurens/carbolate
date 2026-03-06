@@ -9,8 +9,8 @@
  *     → CarbonEstimate    (assert final footprint)
  */
 import { describe, it, expect, vi } from "vitest";
-import { StrategyContext } from "../src/performance/StrategyContext";
-import ResourceStrategy from "../src/performance/ResourceStrategy";
+import { MetricsProcessorContext } from "../src/performance/MetricsProcessorContext";
+import NetworkMetricsExtractor from "../src/performance/NetworkMetricsExtractor";
 import { metricsStore } from "../src/session/store";
 import type { Metrics } from "../src/session/types";
 
@@ -31,7 +31,7 @@ function toMetrics(
   resourceEntries: { transferSize: number }[],
   navigationDurationMs: number,
 ): Metrics {
-  const ctx = new StrategyContext(new ResourceStrategy());
+  const ctx = new MetricsProcessorContext(new NetworkMetricsExtractor());
   const { resourceCount, totalTransferSize } = ctx.execute(resourceEntries);
   return {
     requestCount: resourceCount,
