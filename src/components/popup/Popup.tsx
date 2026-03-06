@@ -72,12 +72,12 @@ export default class Popup extends Component<Record<string, never>, State> {
     return (
       <div className="w-80 p-4 flex flex-col gap-3">
         <div className="flex gap-1 border-b border-gray-200 pb-2">
-          <button
+          {/* <button
             className={`flex-1 py-1 px-2 text-sm font-medium cursor-pointer ${view === "day" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
             onClick={() => this.setState({ view: "day" })}
-          >
-            📊 Today
-          </button>
+          > */}
+          📊 Today
+          {/* </button> */}
           {/* <button
             className={`flex-1 py-1 px-2 text-sm font-medium cursor-pointer ${view === "settings" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
             onClick={() => this.setState({ view: "settings" })}
