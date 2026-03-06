@@ -1,13 +1,15 @@
 import type { MetricTab } from "../../../session/types";
 import type { StatColor, DomainData } from "./types";
 
-export const CHART_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
+// export const CHART_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
+export const CHART_COLORS = ["#3b82f6"];
 
 export const COLOR_CLASSES: Record<StatColor, { bg: string; value: string; label: string }> = {
   green: { bg: "bg-green-50", value: "text-green-700", label: "text-green-600" },
-  blue: { bg: "bg-blue-50", value: "text-blue-700", label: "text-blue-600" },
-  purple: { bg: "bg-purple-50", value: "text-purple-700", label: "text-purple-600" },
+  yellow: { bg: "bg-yellow-50", value: "text-yellow-700", label: "text-yellow-600" },
   orange: { bg: "bg-orange-50", value: "text-orange-700", label: "text-orange-600" },
+  red: { bg: "bg-red-50", value: "text-red-700", label: "text-red-600" },
+  blue: { bg: "bg-blue-50", value: "text-blue-700", label: "text-blue-600" },
 };
 
 export function formatCo2(value: number): string {
