@@ -1,5 +1,5 @@
-import type { Carbon, CarbonEstimate, CarbonInput } from "./types";
-import type { CarbonContributionSource, ContributionMetric } from "./CarbonContributionSource";
+import type { FootprintCalculator, CarbonEstimate, CarbonInput, ContributionMetric } from "./types";
+import type { CarbonContributionSource } from "./contracts/CarbonContributionSource";
 import { NetworkCarbonSource } from "./sources/NetworkCarbonSource";
 import { CpuCarbonSource } from "./sources/CpuCarbonSource";
 
@@ -8,7 +8,7 @@ const DEFAULT_SOURCES: CarbonContributionSource[] = [
   new CpuCarbonSource(),
 ];
 
-export default class CarbonCalculator implements Carbon<CarbonInput, CarbonEstimate> {
+export default class CarbonCalculator implements FootprintCalculator<CarbonInput, CarbonEstimate> {
   private sources: CarbonContributionSource[];
 
   constructor(sources: CarbonContributionSource[] = DEFAULT_SOURCES) {

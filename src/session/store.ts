@@ -10,12 +10,12 @@ const calculator = new CarbonCalculator();
 const emptyMetrics: Metrics = { requestCount: 0, totalResourceSize: 0, cpuTimeToLoad: 0 };
 const emptyCarbon: CarbonEstimate = { networkCo2: 0, cpuCo2: 0, totalCo2: 0 };
 
-const carbonMetricsCallback = (m: Metrics): CarbonInput => ({
+const toCarbonInput = (m: Metrics): CarbonInput => ({
   transferSize: m.totalResourceSize * 1024 * 1024, // MiB → bytes
   cpuTime: m.cpuTimeToLoad * 1000, // s → ms
 });
 
-const baseRecord = (date: string): DailyRecord => ({
+const emptyDailyRecord = (date: string): DailyRecord => ({
   date,
   tabs: [],
   totalMetrics: { ...emptyMetrics },
@@ -46,7 +46,7 @@ async function getCachedDailyRecord(): Promise<DailyRecord | null> {
 const addTabToRecord = async (tab: MetricTab): Promise<void> => {
   const date = getDailyDate();
   const sessions = await ChromeStorage.getSessions();
-  const record = sessions[date] ?? baseRecord(date);
+  const record = sessions[date] ?? emptyDailyRecord(date);
   const tabs = [...record.tabs, tab];
   const totalMetrics = sumMetrics(tabs.map((t) => t.metrics));
   const totalCarbon = sumCarbonEstimates(tabs.map((t) => t.carbon));
@@ -76,7 +76,7 @@ const updateTabInRecord = async (
       ...tab,
       metrics,
       meta: updatedMeta,
-      carbon: calculator.calculate([carbonMetricsCallback(metrics)]),
+      carbon: calculator.calculate([toCarbonInput(metrics)]),
     };
   });
   const totalMetrics = sumMetrics(tabs.map((t) => t.metrics));
@@ -102,7 +102,7 @@ export const metricsStore: MetricsStore = {
       cacheDate = date;
       return sessions[date];
     }
-    const record = baseRecord(date);
+    const record = emptyDailyRecord(date);
     await ChromeStorage.setSessions({ ...sessions, [date]: record });
     cache = record;
     cacheDate = date;
@@ -120,7 +120,7 @@ export const metricsStore: MetricsStore = {
   },
 
   addTab: async (tab: Omit<MetricTab, "carbon">): Promise<void> => {
-    const carbon = calculator.calculate([carbonMetricsCallback(tab.metrics)]);
+    const carbon = calculator.calculate([toCarbonInput(tab.metrics)]);
     await addTabToRecord({ ...tab, carbon });
   },
 

@@ -1,5 +1,5 @@
 // Based on chrome (v1)
-export enum ResourceInitiatorTypeEnum {
+export enum ResourceInitiatorType {
   BEACON = "beacon",
   BODY = "body",
   EMBED = "embed",

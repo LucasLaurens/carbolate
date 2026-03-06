@@ -1,19 +1,9 @@
+import { DEFAULT_PREFERENCES } from "../config/preferences";
+import type { Preferences } from "../config/types";
 import type { SessionsStore } from "../session/types";
-import { DEFAULT_PREFERENCES, type Preferences } from "../config/preferences";
+import type { BrowsingDataStore, StorageData } from "./types";
 
-type StorageData = {
-  sessions: SessionsStore;
-  preferences: Preferences;
-};
-
-export interface IStorage {
-  getSessions(): Promise<SessionsStore>;
-  setSessions(sessions: SessionsStore): Promise<void>;
-  getPreferences(): Promise<Preferences>;
-  setPreferences(preferences: Preferences): Promise<void>;
-}
-
-export const ChromeStorage: IStorage = {
+export const ChromeStorage: BrowsingDataStore = {
   getSessions: (): Promise<SessionsStore> =>
     new Promise((resolve, reject) =>
       chrome.storage.local.get(["sessions"], (result) => {
