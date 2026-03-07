@@ -1,8 +1,10 @@
 import type { MetricTab } from "../../../session/types";
 import type { StatColor, DomainData } from "./types";
 
-// export const CHART_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
-export const CHART_COLORS = ["#3b82f6"];
+// green, orange, red, blue, purple
+// export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"];
+// green, orange, red, blue, blue
+export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#3b82f6"];
 
 export const COLOR_CLASSES: Record<StatColor, { bg: string; value: string; label: string }> = {
   green: { bg: "bg-green-50", value: "text-green-700", label: "text-green-600" },
