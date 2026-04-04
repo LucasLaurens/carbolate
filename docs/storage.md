@@ -147,10 +147,10 @@ type SessionsStore = Record<string, DailyRecord>;
 
 ## ChromeStorage API
 
-`ChromeStorage` implements the `IStorage` interface (mockable for tests).
+`ChromeStorage` implements the `BrowsingDataStore` interface (mockable for tests).
 
 ```typescript
-interface IStorage {
+interface BrowsingDataStore {
   getSessions(): Promise<SessionsStore>;
   setSessions(sessions: SessionsStore): Promise<void>;
   getPreferences(): Promise<Preferences>;

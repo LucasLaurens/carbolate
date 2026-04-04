@@ -6,10 +6,12 @@
 src/
 ├── main.tsx                        # React entry point
 ├── App.tsx                         # Root component → <Popup />
+├── App.css                         # Global styles
 ├── global.d.ts                     # Module declaration for *.css
 │
 ├── config/
-│   └── preferences.ts              # Single source of truth: Preferences, ResetPeriod, DEFAULT_PREFERENCES
+│   ├── types.ts                    # ResetPeriod, Preferences types
+│   └── preferences.ts              # Single source of truth: DEFAULT_PREFERENCES
 │
 ├── background/
 │   └── index.ts                    # Chrome background service worker — reset alarm + metrics reception
@@ -20,35 +22,46 @@ src/
 ├── components/
 │   └── popup/
 │       ├── Popup.tsx               # Main component, storage reads, global state management
-│       ├── DayView.tsx             # "Today" view + domain chart
-│       └── PreferencesView.tsx     # "Preferences" view
+│       ├── DayView/
+│       │   ├── index.tsx           # Daily dashboard — stats grid + domain chart
+│       │   ├── types.ts            # StatColor, DomainData types
+│       │   ├── StatsGrid.tsx       # 2×2 card grid (CO₂, data, requests, tabs)
+│       │   ├── DomainChart.tsx     # Doughnut chart — top 5 domains by CO₂
+│       │   └── utils.ts            # formatCo2(), aggregateDomains(), COLOR_CLASSES
+│       └── SettingsView.tsx        # Preferences form
 │
 ├── carbon/
+│   ├── types.ts                    # CarbonInput, CarbonEstimate, FootprintCalculator
+│   ├── constants.ts                # CARBON_PER_GB (442), NETWORK_RATIO (0.75), CPU_FACTOR (0.012)
 │   ├── CarbonCalculator.ts         # CO₂ calculation engine (accepts CarbonContributionSource[])
-│   ├── CarbonContributionSource.ts # OCP interface for emission sources
-│   ├── constants.ts                # Calibration constants
-│   ├── types.ts                    # CarbonInput, CarbonEstimate, Carbon<I,O>
+│   └── contracts/
+│       └── CarbonContributionSource.ts  # OCP interface for emission sources
 │   └── sources/
 │       ├── NetworkCarbonSource.ts  # Network emissions (implements CarbonContributionSource)
 │       └── CpuCarbonSource.ts      # CPU emissions (implements CarbonContributionSource)
 │
 ├── session/
+│   ├── types.ts                    # Metrics, MetricTab, DailyRecord, SessionsStore, MetricsStore
 │   ├── store.ts                    # metricsStore — CRUD DailyRecord + in-memory cache
-│   ├── aggregator.ts               # sumMetrics, sumCarbonEstimates
-│   └── types.ts                    # Metrics, MetricTab, DailyRecord, SessionsStore, MetricsStore
+│   └── aggregator.ts               # sumMetrics, sumCarbonEstimates
 │
 ├── storage/
-│   └── ChromeStorage.ts            # chrome.storage.local abstraction (implements IStorage)
+│   └── ChromeStorage.ts            # chrome.storage.local abstraction (implements BrowsingDataStore)
 │
 ├── performance/
-│   ├── StrategyContext.ts          # Strategy context (pattern)
-│   ├── ResourceStrategy.ts         # Network resource analysis strategy
-│   ├── EntriesValidator.ts         # Validates that "resource" entries exist
-│   ├── contracts/                  # Resource, Strategy<I,O> interfaces
-│   └── enums/                      # EntriesEnum, ResourceInitiatorTypeEnum
+│   ├── types.ts                    # ExtractedMetrics (resourceCount, totalTransferSize)
+│   ├── contracts/
+│   │   ├── MetricsExtractor.ts     # Interface: handle(input[]) → Output
+│   │   └── NetworkResource.ts      # Interface: { transferSize }
+│   ├── enums/
+│   │   ├── PerformanceEntryType.ts      # RESOURCE, NAVIGATION, PAINT, LONGTASK
+│   │   └── ResourceInitiatorType.ts     # BEACON, BODY, FETCH, FRAME, etc.
+│   ├── NetworkMetricsExtractor.ts  # Sums resource counts & transfer sizes
+│   ├── MetricsProcessorContext.ts  # Strategy context: holds extractor, delegates execution
+│   └── PageMetricsValidator.ts     # Validates that "resource" entries exist
 │
 └── utils/
-    ├── date.ts                     # getDailyDate (timezone-safe), isToday, isThisWeek (Monday=start)
+    ├── date.ts                     # getDailyDate (timezone-safe), isToday, isThisWeek
     ├── url.ts                      # parseDomain — safe wrapper around new URL()
     └── csv.ts                      # exportToCSV
 ```
@@ -79,8 +92,8 @@ src/
 ┌─────────────────────────────────────────────────────────────┐
 │                    Background (background/index.ts)         │
 │                                                             │
-│  1. EntriesValidator → validates that "resource" is not empty│
-│  2. StrategyContext(ResourceStrategy)                       │
+│  1. PageMetricsValidator → validates "resource" not empty   │
+│  2. MetricsProcessorContext(NetworkMetricsExtractor)        │
 │     → { resourceCount, totalTransferSize }                  │
 │  3. Builds Metrics { requestCount, totalResourceSize,       │
 │     cpuTimeToLoad }                                         │
@@ -129,14 +142,14 @@ src/
 ## Architectural patterns
 
 ### Strategy Pattern
-`StrategyContext<Input, Output>` allows plugging in different performance analysis strategies. Currently: `ResourceStrategy` which computes `resourceCount` and `totalTransferSize`.
+`MetricsProcessorContext<Input, Output>` allows plugging in different performance analysis strategies. Currently: `NetworkMetricsExtractor` which computes `resourceCount` and `totalTransferSize`.
 
 ```typescript
-const ctx = new StrategyContext(new ResourceStrategy());
+const ctx = new MetricsProcessorContext(new NetworkMetricsExtractor());
 const result = ctx.execute(resourceEntries); // { resourceCount, totalTransferSize }
 ```
 
-Extensible: additional strategies can be added for PAINT, LONGTASK, etc.
+Extensible: additional extractors can be added for PAINT, LONGTASK analysis without modifying the background.
 
 ### Open/Closed — CarbonContributionSource
 `CarbonCalculator` accepts an array of emission sources. Adding a new source (e.g. GPU, streaming) does not require modifying `CarbonCalculator`:
@@ -157,7 +170,7 @@ const calc = new CarbonCalculator([
 `metricsStore` exposes a high-level API for managing `DailyRecord` objects. Repeated reads within the same session (popup open) use an in-memory cache invalidated on every write — avoids redundant I/O to `chrome.storage.local`.
 
 ### Background / Popup / Content separation
-- The **Background script** runs persistently in the background → collects metrics sent by content scripts, manages alarms and periodic resets
+- The **Background script** runs persistently → collects metrics sent by content scripts, manages alarms and periodic resets
 - The **Popup** mounts/unmounts on every open → reads storage only (pure read)
 - The **Content script** is injected on every page → collects Performance API data on load and pushes it to the background
 
@@ -195,7 +208,7 @@ For the extension to work, the following permissions are required in `manifest.j
 
 ### Why `"type": "module"` on the background
 
-The `background.js` bundle generated by Vite/Rollup uses ES module `import` statements (shared chunks in `assets/`). Without `"type": "module"`, Chrome runs the service worker in classic script mode and throws a `SyntaxError`. With this flag, the service worker is an ES module and can import its dependencies normally.
+The `background.js` bundle generated by Vite/Rollup uses ES module `import` statements. Without `"type": "module"`, Chrome runs the service worker in classic script mode and throws a `SyntaxError`.
 
 ### Why `content.js` is different
 

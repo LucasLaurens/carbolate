@@ -48,6 +48,40 @@ Ne pas sur-ingénierer : si un pattern ajoute des couches sans valeur, ne l'util
 - Les tests existants (`npm test`, Vitest) doivent toujours passer avant et après chaque modification.
 - Un test qui dépend de l'ordre d'exécution ou de l'état global est un signal d'architecture à corriger, pas à contourner.
 
+## Documentation
+
+Le dossier `docs/` contient la documentation vivante du projet, organisée en deux axes :
+
+```
+docs/
+  architecture.md     # Flux de données, modules, décisions techniques structurantes
+  features.md         # Fonctionnalités exposées à l'utilisateur, comportements attendus
+  decisions/          # ADR (Architecture Decision Records) — une décision = un fichier
+```
+
+**Quand mettre à jour la doc :**
+- Nouveau module ou changement de responsabilité d'un fichier → `architecture.md`
+- Nouvelle fonctionnalité visible par l'utilisateur ou changement de comportement → `features.md`
+- Décision technique non-triviale (choix d'algorithme, abandon d'une approche, compromis) → un fichier `decisions/YYYY-MM-DD-sujet.md`
+
+**Ce qu'on documente :**
+- Le **pourquoi** d'un choix d'architecture, pas le code lui-même
+- Les **contrats** entre modules (ce qu'un module attend, ce qu'il produit)
+- Les **comportements fonctionnels** (conditions, cas limites, règles métier)
+
+**Ce qu'on ne documente pas ici :**
+- Le détail d'implémentation — c'est le rôle du code et des commentaires inline
+- L'historique des commits — c'est le rôle de git
+
+**Format ADR minimal** (`decisions/YYYY-MM-DD-sujet.md`) :
+```markdown
+# Titre de la décision
+
+**Contexte** : pourquoi cette décision était nécessaire
+**Décision** : ce qui a été choisi
+**Conséquences** : ce que ça implique (avantages, contraintes acceptées)
+```
+
 ## Commits & attribution
 
 - Les messages de commit ne mentionnent pas Claude, l'IA, ni aucun outil de génération. Le code appartient au projet, pas à son auteur circonstanciel.
