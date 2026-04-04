@@ -29,7 +29,7 @@ Defined in `src/carbon/constants.ts`:
 The calculation is decomposed into **independent sources** via the `CarbonContributionSource` interface:
 
 ```typescript
-// src/carbon/CarbonContributionSource.ts
+// src/carbon/contracts/CarbonContributionSource.ts
 interface CarbonContributionSource {
   calculate(inputs: CarbonInput[]): number; // returns gCO₂e
 }
@@ -84,7 +84,7 @@ totalCo2   = 1g
 
 ## Input data sources
 
-Data comes from the browser's native `Performance` API, collected by the content script and processed by `TabCollector`:
+Data comes from the browser's native `Performance` API, collected by the content script and processed by the background via `NetworkMetricsExtractor`:
 
 | CarbonInput field | Performance API source | Unit |
 |---|---|---|
@@ -93,7 +93,7 @@ Data comes from the browser's native `Performance` API, collected by the content
 
 `transferSize` represents the **compressed** size actually transferred over the network (0 if cached). `duration` is the total navigation time (DOMContentLoaded + sub-resources).
 
-> **Note**: `EntriesValidator` specifically validates that `resource` entries exist (not just `navigation`), because only `resource` entries are used downstream by `ResourceStrategy`.
+> **Note**: `PageMetricsValidator` specifically validates that `resource` entries exist (not just `navigation`), because only `resource` entries are used downstream by `NetworkMetricsExtractor`.
 
 ---
 
