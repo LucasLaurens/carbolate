@@ -48,6 +48,14 @@ Ne pas sur-ingénierer : si un pattern ajoute des couches sans valeur, ne l'util
 - Les tests existants (`npm test`, Vitest) doivent toujours passer avant et après chaque modification.
 - Un test qui dépend de l'ordre d'exécution ou de l'état global est un signal d'architecture à corriger, pas à contourner.
 
+## Tests
+
+- Après toute modification ou ajout significatif (nouveau module, refactor, changement de comportement), lancer `npm test` avant de considérer le travail terminé.
+- Tous les tests doivent passer. Un test cassé bloque — il ne s'ignore pas et ne se commente pas.
+- Si un nouveau comportement est ajouté, un test doit couvrir ce comportement avant ou en même temps que le code.
+- Si un bug est corrigé, un test doit reproduire ce bug avant la correction (regression test).
+- Les tests sont dans `src/**/*.test.ts` — même dossier que le module testé, pas dans un dossier `tests/` séparé.
+
 ## Documentation
 
 Le dossier `docs/` contient la documentation vivante du projet, organisée en deux axes :
