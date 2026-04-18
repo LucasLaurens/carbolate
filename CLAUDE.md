@@ -90,6 +90,20 @@ docs/
 **Conséquences** : ce que ça implique (avantages, contraintes acceptées)
 ```
 
+## Sécurité — Rate limiting sur les actions UI
+
+Les messages `page_metrics` du content script ne sont pas limités — chaque chargement de page (y compris les rechargements) est une donnée valide pour le calcul d'empreinte.
+
+**Tout nouveau bouton ou action utilisateur** qui produit un effet de bord (export, appel API, écriture storage) doit passer par le `RateLimiter` (`src/security/RateLimiter.ts`) :
+
+```ts
+if (!rateLimiter.isAllowed("nom-de-l-action")) return;
+```
+
+- La clé est le nom de l'action (`"csv-export"`, `"refresh"`, etc.) — chaque action a son propre compteur.
+- La limite est de 10 appels par fenêtre de 60s. Au-delà, le throttle est quadratique : 1s, 4s, 9s…
+- Instancier un seul `RateLimiter` par contexte UI (popup, side panel) — pas un par bouton.
+
 ## Commits & attribution
 
 - Les messages de commit ne mentionnent pas Claude, l'IA, ni aucun outil de génération. Le code appartient au projet, pas à son auteur circonstanciel.
