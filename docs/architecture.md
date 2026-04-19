@@ -60,6 +60,9 @@ src/
 │   ├── MetricsProcessorContext.ts  # Strategy context: holds extractor, delegates execution
 │   └── PageMetricsValidator.ts     # Validates that "resource" entries exist
 │
+├── security/
+│   └── RateLimiter.ts              # Rate limiter for UI actions — quadratic throttle on excess calls
+│
 └── utils/
     ├── date.ts                     # getDailyDate (timezone-safe), isToday, isThisWeek
     ├── url.ts                      # parseDomain — safe wrapper around new URL()
@@ -168,6 +171,20 @@ const calc = new CarbonCalculator([
 
 ### Store Pattern + in-memory cache
 `metricsStore` exposes a high-level API for managing `DailyRecord` objects. Repeated reads within the same session (popup open) use an in-memory cache invalidated on every write — avoids redundant I/O to `chrome.storage.local`.
+
+### Security — RateLimiter
+`RateLimiter` (`src/security/RateLimiter.ts`) protects all side-effecting UI actions (export, refresh, storage writes) from abuse. Each action has its own counter, scoped by string key.
+
+- **Window**: 60 seconds, 10 calls max
+- **Throttle**: quadratic on excess — delay grows as `excess² × 1s` (1s, 4s, 9s…)
+- **Usage**: one `RateLimiter` instance per UI context (popup, side panel), passed to action handlers
+
+```typescript
+const limiter = new RateLimiter();
+if (!limiter.isAllowed("csv-export")) return;
+```
+
+`page_metrics` messages from the content script are **not** rate-limited — every page load is a valid data point.
 
 ### Background / Popup / Content separation
 - The **Background script** runs persistently → collects metrics sent by content scripts, manages alarms and periodic resets

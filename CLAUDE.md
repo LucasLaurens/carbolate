@@ -67,6 +67,8 @@ docs/
   decisions/          # ADR (Architecture Decision Records) — une décision = un fichier
 ```
 
+**La doc fait partie de la définition de "done".** Une tâche n'est pas terminée tant que la documentation n'a pas été mise à jour. Même règle que les tests : si la doc est fausse ou manquante, c'est un blocage, pas une dette.
+
 **Quand mettre à jour la doc :**
 - Nouveau module ou changement de responsabilité d'un fichier → `architecture.md`
 - Nouvelle fonctionnalité visible par l'utilisateur ou changement de comportement → `features.md`
