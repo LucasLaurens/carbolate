@@ -34,7 +34,8 @@ async function handlePageMetrics(
   tabId: number,
   url: string,
 ): Promise<void> {
-  const domain = parseDomain(url);
+  const parsed = parseDomain(url);
+  if (!parsed.valid) return;
   const validator = new PageMetricsValidator({ resource, navigation } as never);
   if (!validator.validate()) return;
 
@@ -52,7 +53,7 @@ async function handlePageMetrics(
     await metricsStore.addTab({
       id: tabId,
       url,
-      domain,
+      domain: parsed.domain,
       metrics,
       carbon,
       meta: { status: 200, date: Date.now() },
