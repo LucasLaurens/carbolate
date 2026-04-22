@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { metricsStore } from "../src/session/store";
+import { computeCarbon, withCarbon } from "./helpers";
 
 vi.mock("../utils/date", () => ({ getDailyDate: () => "2026-02-23" }));
 
@@ -23,7 +24,7 @@ const TAB_B = {
 
 describe("addTab / getTabs", () => {
   it("stores a tab and retrieves it", async () => {
-    await metricsStore.addTab(TAB_A);
+    await metricsStore.addTab(withCarbon(TAB_A));
 
     const tabs = await metricsStore.getTabs();
     expect(tabs).toHaveLength(1);
@@ -31,8 +32,8 @@ describe("addTab / getTabs", () => {
     expect(tabs[0].domain).toBe("example.com");
   });
 
-  it("attaches a carbon estimate when adding a tab", async () => {
-    await metricsStore.addTab(TAB_A);
+  it("stores the provided carbon estimate", async () => {
+    await metricsStore.addTab(withCarbon(TAB_A));
 
     const tabs = await metricsStore.getTabs();
     const { carbon } = tabs[0];
@@ -43,13 +44,31 @@ describe("addTab / getTabs", () => {
   });
 
   it("stores multiple tabs independently", async () => {
-    await metricsStore.addTab(TAB_A);
-    await metricsStore.addTab(TAB_B);
+    await metricsStore.addTab(withCarbon(TAB_A));
+    await metricsStore.addTab(withCarbon(TAB_B));
 
     const tabs = await metricsStore.getTabs();
     expect(tabs).toHaveLength(2);
     expect(tabs.map((t) => t.id)).toContain(1);
     expect(tabs.map((t) => t.id)).toContain(2);
+  });
+});
+
+// ─── concurrent writes ──────────────────────────────────────────────────────
+
+describe("concurrent addTab calls", () => {
+  it("serializes concurrent writes without data loss", async () => {
+    const tabs = [
+      TAB_A,
+      TAB_B,
+      { ...TAB_A, id: 3, url: "https://third.com", domain: "third.com" },
+    ];
+
+    await Promise.all(tabs.map((tab) => metricsStore.addTab(withCarbon(tab))));
+
+    const stored = await metricsStore.getTabs();
+    expect(stored).toHaveLength(3);
+    expect(stored.map((t) => t.id).sort()).toEqual([1, 2, 3]);
   });
 });
 
@@ -61,12 +80,12 @@ describe("hasExistingTabById", () => {
   });
 
   it("returns true for a tab that was just added", async () => {
-    await metricsStore.addTab(TAB_A);
+    await metricsStore.addTab(withCarbon(TAB_A));
     expect(await metricsStore.hasExistingTabById(TAB_A.id)).toBe(true);
   });
 
   it("returns false for an id that does not exist", async () => {
-    await metricsStore.addTab(TAB_A);
+    await metricsStore.addTab(withCarbon(TAB_A));
     expect(await metricsStore.hasExistingTabById(999)).toBe(false);
   });
 });
@@ -75,38 +94,32 @@ describe("hasExistingTabById", () => {
 
 describe("updateTabMetrics", () => {
   it("replaces the metrics of the target tab", async () => {
-    await metricsStore.addTab(TAB_A);
+    await metricsStore.addTab(withCarbon(TAB_A));
 
     const updated = { requestCount: 20, totalResourceSize: 50, cpuTimeToLoad: 3.0 };
-    await metricsStore.updateTabMetrics(TAB_A.id, updated);
+    await metricsStore.updateTabMetrics(TAB_A.id, updated, computeCarbon(updated));
 
     const tabs = await metricsStore.getTabs();
     expect(tabs[0].metrics).toMatchObject(updated);
   });
 
-  it("recalculates the tab's carbon estimate after an update", async () => {
-    await metricsStore.addTab(TAB_A);
+  it("stores the updated carbon estimate for the target tab", async () => {
+    await metricsStore.addTab(withCarbon(TAB_A));
     const [before] = await metricsStore.getTabs();
 
-    await metricsStore.updateTabMetrics(TAB_A.id, {
-      requestCount: 20,
-      totalResourceSize: 1_000, // much larger → more CO2
-      cpuTimeToLoad: 3.0,
-    });
+    const bigMetrics = { requestCount: 20, totalResourceSize: 1_000, cpuTimeToLoad: 3.0 };
+    await metricsStore.updateTabMetrics(TAB_A.id, bigMetrics, computeCarbon(bigMetrics));
 
     const [after] = await metricsStore.getTabs();
     expect(after.carbon.totalCo2).toBeGreaterThanOrEqual(before.carbon.totalCo2);
   });
 
   it("does not affect other tabs", async () => {
-    await metricsStore.addTab(TAB_A);
-    await metricsStore.addTab(TAB_B);
+    await metricsStore.addTab(withCarbon(TAB_A));
+    await metricsStore.addTab(withCarbon(TAB_B));
 
-    await metricsStore.updateTabMetrics(TAB_A.id, {
-      requestCount: 99,
-      totalResourceSize: 99,
-      cpuTimeToLoad: 99,
-    });
+    const bigMetrics = { requestCount: 99, totalResourceSize: 99, cpuTimeToLoad: 99 };
+    await metricsStore.updateTabMetrics(TAB_A.id, bigMetrics, computeCarbon(bigMetrics));
 
     const tabs = await metricsStore.getTabs();
     const tabB = tabs.find((t) => t.id === TAB_B.id)!;
@@ -123,8 +136,8 @@ describe("getTotalMetrics", () => {
   });
 
   it("sums metrics across all tabs for the day", async () => {
-    await metricsStore.addTab(TAB_A);
-    await metricsStore.addTab(TAB_B);
+    await metricsStore.addTab(withCarbon(TAB_A));
+    await metricsStore.addTab(withCarbon(TAB_B));
 
     const total = await metricsStore.getTotalMetrics();
     expect(total.requestCount).toBe(TAB_A.metrics.requestCount + TAB_B.metrics.requestCount);
@@ -134,12 +147,9 @@ describe("getTotalMetrics", () => {
   });
 
   it("reflects an update to a tab's metrics", async () => {
-    await metricsStore.addTab(TAB_A);
-    await metricsStore.updateTabMetrics(TAB_A.id, {
-      requestCount: 99,
-      totalResourceSize: 0,
-      cpuTimeToLoad: 0,
-    });
+    await metricsStore.addTab(withCarbon(TAB_A));
+    const newMetrics = { requestCount: 99, totalResourceSize: 0, cpuTimeToLoad: 0 };
+    await metricsStore.updateTabMetrics(TAB_A.id, newMetrics, computeCarbon(newMetrics));
 
     const total = await metricsStore.getTotalMetrics();
     expect(total.requestCount).toBe(99);
@@ -155,11 +165,8 @@ describe("getTotalCarbon", () => {
   });
 
   it("returns a non-zero total when tabs have resource data", async () => {
-    // 1 GB → non-trivial carbon
-    await metricsStore.addTab({
-      ...TAB_A,
-      metrics: { requestCount: 1, totalResourceSize: 1_000, cpuTimeToLoad: 0 },
-    });
+    const tab = { ...TAB_A, metrics: { requestCount: 1, totalResourceSize: 1_000, cpuTimeToLoad: 0 } };
+    await metricsStore.addTab(withCarbon(tab));
 
     const carbon = await metricsStore.getTotalCarbon();
     expect(carbon.totalCo2).toBeGreaterThanOrEqual(0);
@@ -176,7 +183,7 @@ describe("getOrCreateDailyRecord", () => {
   });
 
   it("returns the same record on repeated calls", async () => {
-    await metricsStore.addTab(TAB_A);
+    await metricsStore.addTab(withCarbon(TAB_A));
     const record = await metricsStore.findOrCreateDailyRecord();
     expect(record.tabs).toHaveLength(1);
   });

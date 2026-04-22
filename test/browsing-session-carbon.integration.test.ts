@@ -4,8 +4,9 @@
  * Each test mimics what happens when a user opens a tab:
  *   Performance API entries (content script)
  *     → ResourceStrategy  (extract count + bytes)
- *     → Metrics           (same transform as Popup.tsx)
- *     → metricsStore      (persist + compute carbon)
+ *     → Metrics           (same transform as background/index.ts)
+ *     → CarbonCalculator  (compute carbon estimate)
+ *     → metricsStore      (persist)
  *     → CarbonEstimate    (assert final footprint)
  */
 import { describe, it, expect, vi } from "vitest";
@@ -13,6 +14,7 @@ import { MetricsProcessorContext } from "../src/performance/MetricsProcessorCont
 import NetworkMetricsExtractor from "../src/performance/NetworkMetricsExtractor";
 import { metricsStore } from "../src/session/store";
 import type { Metrics } from "../src/session/types";
+import { withCarbon, computeCarbon } from "./helpers";
 
 vi.mock("../utils/date", () => ({ getDailyDate: () => "2026-02-23" }));
 
@@ -24,7 +26,7 @@ function resource(transferSize: number) {
 }
 
 /**
- * Replicates the exact transform from Popup.tsx:
+ * Replicates the exact transform from background/index.ts:
  *   raw entries + navigation → Metrics stored in metricsStore
  */
 function toMetrics(
@@ -132,9 +134,9 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
       expect(metrics.totalResourceSize).toBeCloseTo(0.57, 2); // 598 000 bytes / 1 048 576 ≈ 0.570 MB
     });
 
-    it("stores the tab and attaches a carbon estimate", async () => {
+    it("stores the tab with its carbon estimate", async () => {
       const metrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-      await metricsStore.addTab({ ...BLOG_PAGE, metrics });
+      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, metrics }));
 
       const [tab] = await metricsStore.getTabs();
       expect(tab.carbon).toBeDefined();
@@ -145,8 +147,8 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
       const lightMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
       const heavyMetrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
 
-      await metricsStore.addTab({ ...BLOG_PAGE, id: 10, metrics: lightMetrics });
-      await metricsStore.addTab({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics });
+      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, id: 10, metrics: lightMetrics }));
+      await metricsStore.addTab(withCarbon({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics }));
 
       const tabs = await metricsStore.getTabs();
       const light = tabs.find((t) => t.id === 10)!;
@@ -171,7 +173,7 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
 
     it("produces a cpu CO2 contribution from its long load time", async () => {
       const metrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
-      await metricsStore.addTab({ ...ECOMMERCE_PAGE, metrics });
+      await metricsStore.addTab(withCarbon({ ...ECOMMERCE_PAGE, metrics }));
 
       const [tab] = await metricsStore.getTabs();
       // cpuTimeToLoad = 4.5 s → cpuCo2 = 4.5 * 0.012 = 0.054 → rounded to 0
@@ -203,9 +205,9 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
       const heavyMetrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
       const spaMetrics = toMetrics(SPA_NAVIGATION.entries, SPA_NAVIGATION.navigationDurationMs);
 
-      await metricsStore.addTab({ ...BLOG_PAGE, id: 10, metrics: blogMetrics });
-      await metricsStore.addTab({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics });
-      await metricsStore.addTab({ ...SPA_NAVIGATION, id: 30, metrics: spaMetrics });
+      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, id: 10, metrics: blogMetrics }));
+      await metricsStore.addTab(withCarbon({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics }));
+      await metricsStore.addTab(withCarbon({ ...SPA_NAVIGATION, id: 30, metrics: spaMetrics }));
 
       const total = await metricsStore.getTotalMetrics();
       const expected =
@@ -213,30 +215,28 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
       expect(total.requestCount).toBe(expected);
     });
 
-    it("totalCarbon reflects the combined footprint of the session", async () => {
+    it("totalCarbon equals the sum of individual tab estimates", async () => {
       const blogMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
       const heavyMetrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
 
-      await metricsStore.addTab({ ...BLOG_PAGE, id: 10, metrics: blogMetrics });
-      await metricsStore.addTab({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics });
+      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, id: 10, metrics: blogMetrics }));
+      await metricsStore.addTab(withCarbon({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics }));
 
       const carbon = await metricsStore.getTotalCarbon();
-      expect(carbon.totalCo2).toBeGreaterThanOrEqual(0);
-      // Total CO2 must equal the sum of individual CO2 amounts (up to rounding)
       const tabs = await metricsStore.getTabs();
       const individualSum = tabs.reduce((s, t) => s + t.carbon.totalCo2, 0);
-      // The store recomputes from raw metrics, so results may differ from individual tab sum by ≤1
-      expect(Math.abs(carbon.totalCo2 - individualSum)).toBeLessThanOrEqual(1);
+
+      expect(carbon.totalCo2).toBeCloseTo(individualSum, 10);
     });
 
     it("re-visiting a tab updates its metrics and propagates to the daily total", async () => {
       const initialMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-      await metricsStore.addTab({ ...BLOG_PAGE, id: 10, metrics: initialMetrics });
+      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, id: 10, metrics: initialMetrics }));
 
       // User scrolls, more images load — resource count doubles
       const refreshedEntries = [...BLOG_PAGE.entries, ...BLOG_PAGE.entries];
       const refreshedMetrics = toMetrics(refreshedEntries, 400);
-      await metricsStore.updateTabMetrics(10, refreshedMetrics);
+      await metricsStore.updateTabMetrics(10, refreshedMetrics, computeCarbon(refreshedMetrics));
 
       const total = await metricsStore.getTotalMetrics();
       expect(total.requestCount).toBe(refreshedMetrics.requestCount);

@@ -5,10 +5,18 @@ import { parseDomain } from "../utils/url";
 import PageMetricsValidator from "../performance/PageMetricsValidator";
 import { MetricsProcessorContext } from "../performance/MetricsProcessorContext";
 import NetworkMetricsExtractor from "../performance/NetworkMetricsExtractor";
+import CarbonCalculator from "../carbon/CarbonCalculator";
+import type { CarbonInput } from "../carbon/types";
+import type { Metrics } from "../session/types";
 
 const RESET_ALARM = "reset";
+const calculator = new CarbonCalculator();
 
-// todo : split method with utils/date
+const toCarbonInput = (m: Metrics): CarbonInput => ({
+  transferSize: m.totalResourceSize * 1024 * 1024, // MiB → bytes
+  cpuTime: m.cpuTimeToLoad * 1000, // s → ms
+});
+
 function scheduleReset(prefs: Preferences): void {
   const now = new Date();
   const midnight = new Date();
@@ -18,6 +26,43 @@ function scheduleReset(prefs: Preferences): void {
   const periodInMinutes = prefs.resetPeriod === "weekly" ? 7 * 24 * 60 : 24 * 60;
 
   chrome.alarms.create(RESET_ALARM, { delayInMinutes, periodInMinutes });
+}
+
+async function handlePageMetrics(
+  resource: { transferSize: number }[],
+  navigation: { duration: number }[],
+  tabId: number,
+  url: string,
+): Promise<void> {
+  const domain = parseDomain(url);
+  const validator = new PageMetricsValidator({ resource, navigation } as never);
+  if (!validator.validate()) return;
+
+  const processor = new MetricsProcessorContext(new NetworkMetricsExtractor());
+  const { resourceCount, totalTransferSize } = processor.execute(resource);
+  const metrics: Metrics = {
+    requestCount: resourceCount,
+    totalResourceSize: totalTransferSize / (1024 * 1024),
+    cpuTimeToLoad: navigation?.[0]?.duration ? navigation[0].duration / 1000 : 0,
+  };
+  const carbon = calculator.calculate([toCarbonInput(metrics)]);
+
+  const hasExisting = await metricsStore.hasExistingTabById(tabId);
+  if (!hasExisting) {
+    await metricsStore.addTab({
+      id: tabId,
+      url,
+      domain,
+      metrics,
+      carbon,
+      meta: { status: 200, date: Date.now() },
+    });
+  } else {
+    await metricsStore.updateTabMetrics(tabId, metrics, carbon, {
+      status: 200,
+      date: Date.now(),
+    });
+  }
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -31,14 +76,12 @@ chrome.runtime.onStartup.addListener(async () => {
   scheduleReset(prefs);
 });
 
-// todo: type hint alarm
-chrome.alarms.onAlarm.addListener(async (alarm) => {
+chrome.alarms.onAlarm.addListener(async (alarm: chrome.alarms.Alarm) => {
   if (alarm.name !== RESET_ALARM) return;
   const prefs = await ChromeStorage.getPreferences();
   await metricsStore.clearPastDays(prefs.retentionDays);
 });
 
-// todo: type hint message and sender
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type !== "page_metrics") return false;
   if (!sender.tab?.id || !sender.tab?.url) return false;
@@ -47,35 +90,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     resource: { transferSize: number }[];
     navigation: { duration: number }[];
   };
-  const tabId = sender.tab.id;
-  const url = sender.tab.url;
-  const domain = parseDomain(url);
 
-  const metricsValidator = new PageMetricsValidator({ resource, navigation } as never);
-  if (!metricsValidator.validate()) return false;
-
-  const metricsProcessor = new MetricsProcessorContext(new NetworkMetricsExtractor());
-  const { resourceCount, totalTransferSize } = metricsProcessor.execute(resource);
-  const metrics = {
-    requestCount: resourceCount,
-    totalResourceSize: totalTransferSize / (1024 * 1024),
-    cpuTimeToLoad: navigation?.[0]?.duration ? navigation[0].duration / 1000 : 0,
-  };
-
-  (async () => {
-    const hasExisting = await metricsStore.hasExistingTabById(tabId);
-    if (!hasExisting) {
-      await metricsStore.addTab({
-        id: tabId,
-        url,
-        domain,
-        metrics,
-        meta: { status: 200, date: Date.now() },
-      });
-    } else {
-      await metricsStore.updateTabMetrics(tabId, metrics, { status: 200, date: Date.now() });
-    }
-  })();
-
+  handlePageMetrics(resource, navigation, sender.tab.id, sender.tab.url);
   return false;
 });

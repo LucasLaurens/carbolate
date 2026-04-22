@@ -35,10 +35,11 @@ export type MetricsStore = {
   findOrCreateDailyRecord: () => Promise<DailyRecord>;
   getAllDays: () => Promise<DailyRecord[]>;
   // Today convenience methods
-  addTab: (tab: Omit<MetricTab, "carbon">) => Promise<void>;
+  addTab: (tab: MetricTab) => Promise<void>;
   updateTabMetrics: (
     tabId: number,
     newMetrics: Metrics,
+    carbon: CarbonEstimate,
     meta?: Partial<{ status: number; date: number }>,
   ) => Promise<void>;
   getTabs: () => Promise<MetricTab[]>;
