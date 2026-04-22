@@ -7,10 +7,6 @@ export class MetricsProcessorContext<Input, Output> {
     this.extractor = extractor;
   }
 
-  public setExtractor(extractor: MetricsExtractor<Input, Output>) {
-    this.extractor = extractor;
-  }
-
   public execute(input: Input[]): Output {
     return this.extractor.handle(input);
   }
