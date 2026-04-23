@@ -14,6 +14,19 @@ export const COLOR_CLASSES: Record<StatColor, { bg: string; value: string; label
   blue: { bg: "bg-blue-50", value: "text-blue-700", label: "text-blue-600" },
 };
 
+export type CarbonLevel = { color: StatColor; niveau: string; name: string };
+
+const CARBON_LEVELS: Array<{ maxCo2: number } & CarbonLevel> = [
+  { maxCo2: 50, color: "green", niveau: "🥇", name: "Sobre" },
+  { maxCo2: 250, color: "yellow", niveau: "🥈", name: "Modéré" },
+  { maxCo2: 600, color: "orange", niveau: "🥉", name: "Intensif" },
+  { maxCo2: Infinity, color: "red", niveau: "⛔", name: "Excessif" },
+];
+
+export function getCarbonLevel(totalCo2: number): CarbonLevel {
+  return CARBON_LEVELS.find(({ maxCo2 }) => totalCo2 < maxCo2)!;
+}
+
 export function formatCo2(value: number): string {
   if (value >= 10) return value.toFixed(1);
   if (value >= 1) return value.toFixed(2);
