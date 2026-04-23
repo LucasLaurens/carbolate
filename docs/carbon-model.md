@@ -31,6 +31,7 @@ The calculation is decomposed into **independent sources** via the `CarbonContri
 ```typescript
 // src/carbon/contracts/CarbonContributionSource.ts
 interface CarbonContributionSource {
+  metric: ContributionMetric;              // "networkCo2" | "cpuCo2"
   calculate(inputs: CarbonInput[]): number; // returns gCO₂e
 }
 ```
