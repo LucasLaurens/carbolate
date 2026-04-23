@@ -45,9 +45,6 @@ src/
 │   ├── store.ts                    # metricsStore — CRUD DailyRecord + in-memory cache
 │   └── aggregator.ts               # sumMetrics, sumCarbonEstimates
 │
-├── storage/
-│   └── ChromeStorage.ts            # chrome.storage.local abstraction (implements BrowsingDataStore)
-│
 ├── performance/
 │   ├── types.ts                    # ExtractedMetrics (resourceCount, totalTransferSize)
 │   ├── contracts/
@@ -60,8 +57,18 @@ src/
 │   ├── MetricsProcessorContext.ts  # Strategy context: holds extractor, delegates execution
 │   └── PageMetricsValidator.ts     # Validates that "resource" entries exist
 │
+├── i18n/
+│   ├── types.ts                    # Language, CarbonLevelKey, Translations, EquivalenceTranslations types
+│   ├── index.ts                    # getTranslations(lang) — language registry
+│   ├── en.ts                       # English translations
+│   └── fr.ts                       # French translations
+│
 ├── security/
 │   └── RateLimiter.ts              # Rate limiter for UI actions — quadratic throttle on excess calls
+│
+├── storage/
+│   ├── ChromeStorage.ts            # chrome.storage.local abstraction (implements BrowsingDataStore)
+│   └── types.ts                    # StorageData, BrowsingDataStore interface
 │
 └── utils/
     ├── date.ts                     # getDailyDate (timezone-safe), isToday, isThisWeek

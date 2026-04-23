@@ -11,6 +11,15 @@ Two keys are used:
 | `"sessions"` | `SessionsStore` | Session history by day |
 | `"preferences"` | `Preferences` | User configuration |
 
+Types defined in `src/storage/types.ts`:
+
+```typescript
+type StorageData = {
+  sessions: SessionsStore;
+  preferences: Preferences;
+};
+```
+
 ---
 
 ## TypeScript types
@@ -26,16 +35,18 @@ type Preferences = {
   resetPeriod:           ResetPeriod; // "daily" | "weekly"
   retentionDays:         number;       // 1 = today only | 7 = 1 week | -1 = keep all
   autoExportBeforeReset: boolean;      // Export CSV before cleanup
+  language:              Language;     // "en" | "fr"
 };
 
 const DEFAULT_PREFERENCES: Preferences = {
   resetPeriod: "daily",
   retentionDays: 1,
   autoExportBeforeReset: false,
+  language: "en",
 };
 ```
 
-> All modules (`ChromeStorage`, `Popup`, `PreferencesView`, `background`) import from `src/config/preferences.ts`. Never redefine this type locally.
+> All modules (`ChromeStorage`, `Popup`, `SettingsView`, `background`) import from `src/config/preferences.ts`. Never redefine this type locally.
 
 ---
 
@@ -138,7 +149,8 @@ type SessionsStore = Record<string, DailyRecord>;
   "preferences": {
     "resetPeriod": "daily",
     "retentionDays": 1,
-    "autoExportBeforeReset": false
+    "autoExportBeforeReset": false,
+    "language": "en"
   }
 }
 ```

@@ -26,6 +26,18 @@ The main view displays 4 indicators for the current day:
 
 A doughnut chart displays the **5 most CO₂-intensive domains** for the day.
 
+Each stat card is color-coded by carbon level and shows an eco-equivalence (emails, streaming minutes, flight km).
+
+| Level | Range | Color | Badge |
+|---|---|---|---|
+| Sober | < 50 gCO₂e | green | 🥇 |
+| Moderate | 50–250 gCO₂e | yellow | 🥈 |
+| Intensive | 250–600 gCO₂e | orange | 🥉 |
+| Excessive | ≥ 600 gCO₂e | red | ⛔ |
+
+### Internationalization
+The entire UI supports **English and French**. The active language is stored in `Preferences.language` and persisted in `chrome.storage.local`. Switching language is instant with no page reload.
+
 ### CSV export
 - "Export CSV" button in the popup
 - Generates a `carbolate-export-YYYY-MM-DD.csv` file downloaded via `chrome.downloads`
@@ -39,7 +51,19 @@ A doughnut chart displays the **5 most CO₂-intensive domains** for the day.
 - Configured from the Preferences view
 
 ### Preferences view
-Accessible via the "Settings" tab in the popup:
+Accessible via the "Settings" tab in the popup.
+
+#### Language (implemented)
+
+| Setting | Values | Default |
+|---|---|---|
+| Language | English / Français | English |
+
+The entire popup UI switches language instantly on selection — no save button required.
+
+#### Other preferences (type exists, UI not yet implemented)
+
+The `Preferences` type supports `resetPeriod` and `autoExportBeforeReset` but no UI is exposed for these yet:
 
 | Setting | Values | Default |
 |---|---|---|
@@ -48,8 +72,6 @@ Accessible via the "Settings" tab in the popup:
 
 **Daily**: alarm every 24h — `retentionDays = 1` → only today's data is retained.
 **Weekly**: alarm every 7 days — `retentionDays = 7` → the last 7 days are retained.
-
-When "Auto-export before reset" is enabled, a CSV is generated automatically before each cleanup *(to be implemented in the alarm handler)*.
 
 ---
 
@@ -101,15 +123,14 @@ User clicks "Export CSV"
   → chrome.downloads.download() → browser download
 ```
 
-### Preference change
+### Language change
 ```
 User clicks "Settings"
-  → Selects "Weekly"
-    → resetPeriod = "weekly", retentionDays = 7
-  → Enables "Auto-export before reset"
-  → Clicks "Save"
-    → ChromeStorage.setPreferences(prefs)
-    → The alarm will be recreated on next browser start with periodInMinutes = 7*24*60
+  → Clicks "English" or "Français"
+    → language = "en" | "fr"
+    → ChromeStorage.setPreferences(prefs) (immediate, no save button)
+    → Popup re-renders with new translations
+    → "Saved" feedback shown for 1.5s
 ```
 
 ### Nightly reset (automatic)
