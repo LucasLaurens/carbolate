@@ -10,12 +10,13 @@ type StatCardProps = {
   color: StatColor;
   badge?: { niveau: string; name: string };
   sub?: string;
+  className?: string;
 };
 
-function StatCard({ value, label, color, badge, sub }: StatCardProps) {
+function StatCard({ value, label, color, badge, sub, className = "" }: StatCardProps) {
   const cls = COLOR_CLASSES[color];
   return (
-    <div className={`${cls.bg} rounded-xl p-3.5 text-center shadow-sm`}>
+    <div className={`${cls.bg} rounded-xl px-3.5 pt-3.5 pb-2 text-center shadow-sm ${className}`}>
       {badge && (
         <div className="flex items-center justify-center gap-1.5 mb-1.5">
           <span className="text-base leading-none">{badge.niveau}</span>
@@ -42,7 +43,7 @@ export function StatsGrid({ totalCarbon, totalMetrics, tabCount, t }: StatsGridP
   const level = getCarbonLevel(totalCarbon.totalCo2);
   const equivalence = getCarbonEquivalence(totalCarbon.totalCo2, t.equivalences);
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="flex flex-col gap-2">
       <StatCard
         value={`${formatCo2(totalCarbon.totalCo2)}g`}
         label={t.stats.co2}
@@ -50,13 +51,21 @@ export function StatsGrid({ totalCarbon, totalMetrics, tabCount, t }: StatsGridP
         badge={{ niveau: level.niveau, name: t.carbonLevels[level.key] }}
         sub={equivalence}
       />
-      <StatCard
-        value={`${totalMetrics.totalResourceSize.toFixed(1)}MB`}
-        label={t.stats.data}
-        color="blue"
-      />
-      <StatCard value={String(totalMetrics.requestCount)} label={t.stats.requests} color="blue" />
-      <StatCard value={String(tabCount)} label={t.stats.tabs} color="blue" />
+      <div className="flex gap-2">
+        <StatCard value={String(tabCount)} label={t.stats.tabs} color="blue" className="flex-1" />
+        <StatCard
+          value={String(totalMetrics.requestCount)}
+          label={t.stats.requests}
+          color="blue"
+          className="flex-1"
+        />
+        <StatCard
+          value={`${totalMetrics.totalResourceSize.toFixed(1)}MB`}
+          label={t.stats.data}
+          color="blue"
+          className="flex-1"
+        />
+      </div>
     </div>
   );
 }
