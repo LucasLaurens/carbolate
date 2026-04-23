@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import type { DailyRecord } from "../../../session/types";
+import type { Translations } from "../../../i18n/types";
 import { CHART_COLORS, formatCo2, aggregateDomains } from "./utils";
 
 function useChart(canvasRef: React.RefObject<HTMLCanvasElement | null>, record: DailyRecord) {
@@ -47,15 +48,17 @@ function useChart(canvasRef: React.RefObject<HTMLCanvasElement | null>, record: 
   }, [canvasRef, record]);
 }
 
-type DomainChartProps = { record: DailyRecord };
+type DomainChartProps = { record: DailyRecord; t: Translations };
 
-export function DomainChart({ record }: DomainChartProps) {
+export function DomainChart({ record, t }: DomainChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   useChart(canvasRef, record);
 
   return (
-    <div>
-      <h3 className="text-sm font-semibold text-gray-700 mb-2">Top domains by CO₂</h3>
+    <div className="bg-gray-50 rounded-xl p-3">
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        {t.chart.title}
+      </h3>
       <div className="h-40 w-full">
         <canvas ref={canvasRef} className="h-full w-full" />
       </div>
