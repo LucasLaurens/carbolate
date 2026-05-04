@@ -26,7 +26,9 @@ The main view displays 4 indicators for the current day:
 
 A doughnut chart displays the **5 most CO₂-intensive domains** for the day.
 
-Each stat card is color-coded by carbon level and shows an eco-equivalence (emails, streaming minutes, flight km).
+Each stat card is color-coded by carbon level and shows:
+- an eco-equivalence (emails, streaming, car km, flight km)
+- a daily score vs. world average (e.g. `−73% vs. world avg`)
 
 | Level | Range | Color | Badge |
 |---|---|---|---|
@@ -34,6 +36,8 @@ Each stat card is color-coded by carbon level and shows an eco-equivalence (emai
 | Moderate | 50–250 gCO₂e | yellow | 🥈 |
 | Intensive | 250–600 gCO₂e | orange | 🥉 |
 | Excessive | ≥ 600 gCO₂e | red | ⛔ |
+
+World average reference: **120 gCO₂e/day** for web browsing (ADEME 2023).
 
 ### Internationalization
 The entire UI supports **English and French**. The active language is stored in `Preferences.language` and persisted in `chrome.storage.local`. Switching language is instant with no page reload.

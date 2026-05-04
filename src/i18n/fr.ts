@@ -21,7 +21,13 @@ export const fr: Translations = {
     emails: (n) => `≈ ${n} email${n > 1 ? "s" : ""}`,
     streamingMin: (n) => `≈ ${n} min streaming HD`,
     streamingH: (h) => `≈ ${h}h streaming HD`,
+    car: (km) => `≈ ${km} km en voiture`,
     flight: (km) => `≈ ${km} km en avion`,
+  },
+  worldAvg: {
+    below: (pct) => `−${pct}% vs. moy. mondiale`,
+    above: (pct) => `+${pct}% vs. moy. mondiale`,
+    equal: () => `= moy. mondiale`,
   },
   settings: {
     save: "Enregistrer",

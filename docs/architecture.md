@@ -32,13 +32,14 @@ src/
 │
 ├── carbon/
 │   ├── types.ts                    # CarbonInput, CarbonEstimate, FootprintCalculator
-│   ├── constants.ts                # CARBON_PER_GB (442), NETWORK_RATIO (0.75), CPU_FACTOR (0.012)
+│   ├── constants.ts                # CARBON_PER_GB (176.8), CPU_FACTOR (0.001), RENDERING_FACTOR (0.0004), WORLD_DAILY_BROWSING_G_CO2 (120)
 │   ├── CarbonCalculator.ts         # CO₂ calculation engine (accepts CarbonContributionSource[])
 │   └── contracts/
 │       └── CarbonContributionSource.ts  # OCP interface for emission sources
 │   └── sources/
-│       ├── NetworkCarbonSource.ts  # Network emissions (implements CarbonContributionSource)
-│       └── CpuCarbonSource.ts      # CPU emissions (implements CarbonContributionSource)
+│       ├── NetworkCarbonSource.ts  # Network + data center emissions
+│       ├── CpuCarbonSource.ts      # Device CPU energy during page load
+│       └── RenderingCarbonSource.ts # GPU/display rendering energy during page load
 │
 ├── session/
 │   ├── types.ts                    # Metrics, MetricTab, DailyRecord, SessionsStore, MetricsStore

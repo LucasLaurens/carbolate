@@ -6,6 +6,7 @@ export type CarbonInput = {
 export type CarbonEstimate = {
   networkCo2: number;
   cpuCo2: number;
+  renderingCo2: number;
   totalCo2: number;
 };
 
