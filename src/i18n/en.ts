@@ -21,7 +21,13 @@ export const en: Translations = {
     emails: (n) => `≈ ${n} email${n > 1 ? "s" : ""}`,
     streamingMin: (n) => `≈ ${n} min HD streaming`,
     streamingH: (h) => `≈ ${h}h HD streaming`,
+    car: (km) => `≈ ${km} km by car`,
     flight: (km) => `≈ ${km} km by plane`,
+  },
+  worldAvg: {
+    below: (pct) => `−${pct}% vs. world avg`,
+    above: (pct) => `+${pct}% vs. world avg`,
+    equal: () => `= world avg`,
   },
   settings: {
     save: "Save",

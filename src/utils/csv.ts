@@ -10,6 +10,7 @@ const CSV_HEADERS = [
   "cpuTimeToLoad_s",
   "networkCo2_g",
   "cpuCo2_g",
+  "renderingCo2_g",
   "totalCo2_g",
   "visitTimestamp",
 ].join(",");
@@ -34,6 +35,7 @@ export function exportToCSV(records: DailyRecord[]): void {
         escapeCSV(tab.metrics.cpuTimeToLoad.toFixed(4)),
         escapeCSV(tab.carbon.networkCo2),
         escapeCSV(tab.carbon.cpuCo2),
+        escapeCSV(tab.carbon.renderingCo2 ?? 0),
         escapeCSV(tab.carbon.totalCo2),
         escapeCSV(tab.meta.date),
       ].join(","),

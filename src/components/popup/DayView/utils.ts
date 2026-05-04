@@ -1,9 +1,12 @@
 import type { MetricTab } from "../../../session/types";
 import type { StatColor, DomainData } from "./types";
-import type { CarbonLevelKey, EquivalenceTranslations } from "../../../i18n/types";
+import type {
+  CarbonLevelKey,
+  EquivalenceTranslations,
+  WorldAvgTranslations,
+} from "../../../i18n/types";
+import { WORLD_DAILY_BROWSING_G_CO2 } from "../../../carbon/constants";
 
-// green, orange, red, blue, purple
-// export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"];
 // green, orange, red, blue, blue
 export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#3b82f6"];
 
@@ -62,10 +65,15 @@ export function formatCo2(value: number): string {
   return value.toFixed(3);
 }
 
-// ADEME / Carbon Trust reference values
+// Reference values
+// ADEME 2023: email without attachment ≈ 0.3 gCO₂e
 const EMAIL_G = 0.3;
-const STREAMING_G_PER_H = 36;
-const FLIGHT_G_PER_KM = 130; // short-haul, per passenger
+// IEA 2022 / BBC Carbon Trust: HD (1080p) streaming ≈ 55 gCO₂e/h
+const STREAMING_HD_G_PER_H = 55;
+// ADEME 2022: average European passenger car ≈ 120 gCO₂e/km
+const CAR_G_PER_KM = 120;
+// ADEME 2023: short-haul flight per passenger including radiative forcing ≈ 230 gCO₂e/km
+const FLIGHT_G_PER_KM = 230;
 
 export function getCarbonEquivalence(gCO2: number, eq: EquivalenceTranslations): string {
   if (gCO2 === 0) return "";
@@ -73,14 +81,26 @@ export function getCarbonEquivalence(gCO2: number, eq: EquivalenceTranslations):
     const n = Math.max(1, Math.round(gCO2 / EMAIL_G));
     return eq.emails(n);
   }
-  if (gCO2 < STREAMING_G_PER_H) {
-    const min = Math.round((gCO2 / STREAMING_G_PER_H) * 60);
+  if (gCO2 < STREAMING_HD_G_PER_H) {
+    const min = Math.round((gCO2 / STREAMING_HD_G_PER_H) * 60);
     return eq.streamingMin(min);
   }
-  if (gCO2 < 600) {
-    return eq.streamingH((gCO2 / STREAMING_G_PER_H).toFixed(1));
+  if (gCO2 < 10 * STREAMING_HD_G_PER_H) {
+    return eq.streamingH((gCO2 / STREAMING_HD_G_PER_H).toFixed(1));
+  }
+  if (gCO2 < 50 * CAR_G_PER_KM) {
+    return eq.car((gCO2 / CAR_G_PER_KM).toFixed(1));
   }
   return eq.flight((gCO2 / FLIGHT_G_PER_KM).toFixed(1));
+}
+
+export function getWorldAverageComparison(gCO2: number, t: WorldAvgTranslations): string {
+  if (gCO2 === 0) return "";
+  const diff = gCO2 - WORLD_DAILY_BROWSING_G_CO2;
+  const pct = Math.round((Math.abs(diff) / WORLD_DAILY_BROWSING_G_CO2) * 100);
+  if (diff < 0) return t.below(pct);
+  if (diff > 0) return t.above(pct);
+  return t.equal();
 }
 
 export function aggregateDomains(tabs: MetricTab[]): DomainData[] {

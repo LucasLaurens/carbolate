@@ -42,8 +42,9 @@ describe("addTab / getTabs", () => {
     const { carbon } = tabs[0];
     expect(carbon).toHaveProperty("networkCo2");
     expect(carbon).toHaveProperty("cpuCo2");
+    expect(carbon).toHaveProperty("renderingCo2");
     expect(carbon).toHaveProperty("totalCo2");
-    expect(carbon.totalCo2).toBe(carbon.networkCo2 + carbon.cpuCo2);
+    expect(carbon.totalCo2).toBeCloseTo(carbon.networkCo2 + carbon.cpuCo2 + carbon.renderingCo2, 10);
   });
 
   it("stores multiple tabs independently", async () => {

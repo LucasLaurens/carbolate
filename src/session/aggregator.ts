@@ -10,5 +10,6 @@ export const sumMetrics = (metricsArray: Metrics[]): Metrics => ({
 export const sumCarbonEstimates = (estimates: CarbonEstimate[]): CarbonEstimate => ({
   networkCo2: estimates.reduce((s, e) => s + e.networkCo2, 0),
   cpuCo2: estimates.reduce((s, e) => s + e.cpuCo2, 0),
+  renderingCo2: estimates.reduce((s, e) => s + (e.renderingCo2 ?? 0), 0),
   totalCo2: estimates.reduce((s, e) => s + e.totalCo2, 0),
 });

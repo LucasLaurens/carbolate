@@ -2,10 +2,12 @@ import type { FootprintCalculator, CarbonEstimate, CarbonInput, ContributionMetr
 import type { CarbonContributionSource } from "./contracts/CarbonContributionSource";
 import { NetworkCarbonSource } from "./sources/NetworkCarbonSource";
 import { CpuCarbonSource } from "./sources/CpuCarbonSource";
+import { RenderingCarbonSource } from "./sources/RenderingCarbonSource";
 
 const DEFAULT_SOURCES: CarbonContributionSource[] = [
   new NetworkCarbonSource(),
   new CpuCarbonSource(),
+  new RenderingCarbonSource(),
 ];
 
 export default class CarbonCalculator implements FootprintCalculator<CarbonInput, CarbonEstimate> {
@@ -21,13 +23,14 @@ export default class CarbonCalculator implements FootprintCalculator<CarbonInput
         acc[source.metric] += source.calculate(input);
         return acc;
       },
-      { networkCo2: 0, cpuCo2: 0 },
+      { networkCo2: 0, cpuCo2: 0, renderingCo2: 0 },
     );
 
     return {
       networkCo2: totals.networkCo2,
       cpuCo2: totals.cpuCo2,
-      totalCo2: totals.networkCo2 + totals.cpuCo2,
+      renderingCo2: totals.renderingCo2,
+      totalCo2: totals.networkCo2 + totals.cpuCo2 + totals.renderingCo2,
     };
   }
 }
