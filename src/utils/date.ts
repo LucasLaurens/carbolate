@@ -1,4 +1,6 @@
-export const getDailyDate = (): string => new Date().toLocaleDateString("sv"); // YYYY-MM-DD, timezone-safe
+import { clock } from "./clock";
+
+export const getDailyDate = (): string => clock.dailyDate();
 
 export const isToday = (dateStr: string): boolean => dateStr === getDailyDate();
 

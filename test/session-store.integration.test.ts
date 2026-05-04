@@ -1,8 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { metricsStore } from "../src/session/store";
 import { computeCarbon, withCarbon } from "./helpers";
+import { setTestClock, FixedClock } from "../src/utils/clock";
 
-vi.mock("../utils/date", () => ({ getDailyDate: () => "2026-02-23" }));
+beforeEach(() => {
+  setTestClock(new FixedClock("2026-02-23"));
+});
 
 const TAB_A = {
   id: 1,
@@ -178,7 +181,7 @@ describe("getTotalCarbon", () => {
 describe("getOrCreateDailyRecord", () => {
   it("creates an empty record for a new date", async () => {
     const record = await metricsStore.findOrCreateDailyRecord();
-    expect(record.date).toBe(new Date().toISOString().slice(0, 10));
+    expect(record.date).toBe("2026-02-23");
     expect(record.tabs).toHaveLength(0);
   });
 

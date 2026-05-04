@@ -1,16 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { RateLimiter } from "../src/security/RateLimiter";
+import { FixedClock } from "../src/utils/clock";
 
 describe("RateLimiter", () => {
   let limiter: RateLimiter;
+  let testClock: FixedClock;
 
   beforeEach(() => {
-    vi.useFakeTimers();
-    limiter = new RateLimiter();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
+    testClock = new FixedClock("2026-01-01", 0);
+    limiter = new RateLimiter(testClock);
   });
 
   describe("within limit", () => {
@@ -34,7 +32,7 @@ describe("RateLimiter", () => {
 
     it("restores access after the 60s window resets", () => {
       for (let i = 0; i < 10; i++) limiter.isAllowed("csv-export");
-      vi.advanceTimersByTime(60_001);
+      testClock.advance(60_001);
       for (let i = 0; i < 10; i++) {
         expect(limiter.isAllowed("csv-export")).toBe(true);
       }
@@ -47,7 +45,7 @@ describe("RateLimiter", () => {
       for (let i = 0; i < 10; i++) limiter.isAllowed("csv-export");
       limiter.isAllowed("csv-export"); // excess=1, throttleUntil = now+1000
 
-      vi.advanceTimersByTime(999);
+      testClock.advance(999);
       expect(limiter.isAllowed("csv-export")).toBe(false);
     });
 
@@ -56,7 +54,7 @@ describe("RateLimiter", () => {
       limiter.isAllowed("csv-export"); // excess=1, throttleUntil = now+1000
       limiter.isAllowed("csv-export"); // excess=2, throttleUntil = now+4000
 
-      vi.advanceTimersByTime(3999);
+      testClock.advance(3999);
       expect(limiter.isAllowed("csv-export")).toBe(false);
     });
 
@@ -66,7 +64,7 @@ describe("RateLimiter", () => {
       limiter.isAllowed("csv-export"); // excess=2, throttleUntil = now+4000
       limiter.isAllowed("csv-export"); // excess=3, throttleUntil = now+9000
 
-      vi.advanceTimersByTime(8999);
+      testClock.advance(8999);
       expect(limiter.isAllowed("csv-export")).toBe(false);
     });
   });

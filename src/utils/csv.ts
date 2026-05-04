@@ -1,4 +1,5 @@
 import type { DailyRecord } from "../session/types";
+import { clock } from "./clock";
 
 const CSV_HEADERS = [
   "date",
@@ -43,7 +44,7 @@ export function exportToCSV(records: DailyRecord[]): void {
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = clock.dailyDate();
   chrome.downloads.download({
     url,
     filename: `carbolate-export-${today}.csv`,

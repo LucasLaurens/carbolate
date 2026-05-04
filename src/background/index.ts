@@ -8,6 +8,7 @@ import NetworkMetricsExtractor from "../performance/NetworkMetricsExtractor";
 import CarbonCalculator from "../carbon/CarbonCalculator";
 import type { CarbonInput } from "../carbon/types";
 import type { Metrics } from "../session/types";
+import { clock } from "../utils/clock";
 
 const RESET_ALARM = "reset";
 const calculator = new CarbonCalculator();
@@ -18,8 +19,8 @@ const toCarbonInput = (m: Metrics): CarbonInput => ({
 });
 
 function scheduleReset(prefs: Preferences): void {
-  const now = new Date();
-  const midnight = new Date();
+  const now = clock.now();
+  const midnight = clock.now();
   midnight.setDate(midnight.getDate() + 1);
   midnight.setHours(0, 0, 0, 0);
   const delayInMinutes = (midnight.getTime() - now.getTime()) / 60000;
@@ -56,7 +57,7 @@ async function handlePageMetrics(
       domain: parsed.domain,
       metrics,
       carbon,
-      meta: { status: 200, date: Date.now() },
+      meta: { status: 200, date: clock.nowMs() },
     });
   } else {
     await metricsStore.updateTabMetrics(tabId, metrics, carbon, {
