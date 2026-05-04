@@ -3,6 +3,7 @@ import { ChromeStorage } from "../storage/ChromeStorage";
 import type { DailyRecord, MetricTab, Metrics, MetricsStore } from "./types";
 import type { CarbonEstimate } from "../carbon/types";
 import { getDailyDate } from "../utils/date";
+import { clock } from "../utils/clock";
 
 const emptyMetrics: Metrics = { requestCount: 0, totalResourceSize: 0, cpuTimeToLoad: 0 };
 const emptyCarbon: CarbonEstimate = { networkCo2: 0, cpuCo2: 0, totalCo2: 0 };
@@ -147,7 +148,7 @@ export const metricsStore: MetricsStore = {
     return enqueue(async () => {
       const sessions = await ChromeStorage.getSessions();
       const today = getDailyDate();
-      const cutoffDate = new Date();
+      const cutoffDate = clock.now();
       cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
       const cutoff = cutoffDate.toLocaleDateString("sv"); // "sv" locale gives YYYY-MM-DD
       const filtered = Object.fromEntries(

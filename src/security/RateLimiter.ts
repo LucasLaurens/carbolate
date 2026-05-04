@@ -1,3 +1,6 @@
+import type { Clock } from "../utils/clock";
+import { SystemClock } from "../utils/clock";
+
 const MAX_ATTEMPTS = 10;
 const BASE_THROTTLE_MS = 1_000;
 const WINDOW_MS = 60_000;
@@ -12,8 +15,10 @@ type ActionRecord = {
 export class RateLimiter {
   private readonly records = new Map<string, ActionRecord>();
 
+  constructor(private readonly clock: Clock = new SystemClock()) {}
+
   isAllowed(action: string): boolean {
-    const now = Date.now();
+    const now = this.clock.nowMs();
     const record = this.records.get(action);
 
     if (!record) {

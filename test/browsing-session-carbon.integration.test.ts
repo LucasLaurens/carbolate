@@ -9,14 +9,17 @@
  *     → metricsStore      (persist)
  *     → CarbonEstimate    (assert final footprint)
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { MetricsProcessorContext } from "../src/performance/MetricsProcessorContext";
 import NetworkMetricsExtractor from "../src/performance/NetworkMetricsExtractor";
 import { metricsStore } from "../src/session/store";
 import type { Metrics } from "../src/session/types";
 import { withCarbon, computeCarbon } from "./helpers";
+import { setTestClock, FixedClock } from "../src/utils/clock";
 
-vi.mock("../utils/date", () => ({ getDailyDate: () => "2026-02-23" }));
+beforeEach(() => {
+  setTestClock(new FixedClock("2026-02-23"));
+});
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
