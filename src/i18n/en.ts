@@ -25,9 +25,9 @@ export const en: Translations = {
     flight: (km) => `≈ ${km} km by plane`,
   },
   worldAvg: {
-    below: (pct) => `−${pct}% vs. world avg`,
-    above: (pct) => `+${pct}% vs. world avg`,
-    equal: () => `= world avg`,
+    below: (pct) => `−${pct}% vs. world avg (120 g/d)`,
+    above: (pct) => `+${pct}% vs. world avg (120 g/d)`,
+    equal: () => `= world avg (120 g/d)`,
   },
   settings: {
     save: "Save",
