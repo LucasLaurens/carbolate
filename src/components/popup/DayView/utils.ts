@@ -7,42 +7,46 @@ import type {
 } from "../../../i18n/types";
 import { WORLD_DAILY_BROWSING_G_CO2 } from "../../../carbon/constants";
 
-// green, orange, red, blue, blue
-export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#3b82f6"];
+export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4"];
 
 export const COLOR_CLASSES: Record<
   StatColor,
-  { bg: string; value: string; label: string; badge: string }
+  { bg: string; value: string; label: string; badge: string; border: string }
 > = {
   green: {
     bg: "bg-green-50",
     value: "text-green-700",
     label: "text-green-600",
     badge: "bg-green-100 text-green-700",
+    border: "border-green-200",
   },
   yellow: {
     bg: "bg-yellow-50",
     value: "text-yellow-700",
     label: "text-yellow-600",
     badge: "bg-yellow-100 text-yellow-700",
+    border: "border-yellow-200",
   },
   orange: {
     bg: "bg-orange-50",
     value: "text-orange-700",
     label: "text-orange-600",
     badge: "bg-orange-100 text-orange-700",
+    border: "border-orange-200",
   },
   red: {
     bg: "bg-red-50",
     value: "text-red-700",
     label: "text-red-600",
     badge: "bg-red-100 text-red-700",
+    border: "border-red-200",
   },
   blue: {
     bg: "bg-blue-50",
     value: "text-blue-700",
     label: "text-blue-600",
     badge: "bg-blue-100 text-blue-700",
+    border: "border-blue-200",
   },
 };
 

@@ -80,33 +80,41 @@ export default class Popup extends Component<Record<string, never>, State> {
     const t = getTranslations(preferences.language);
 
     return (
-      <div className="w-80 flex flex-col bg-white">
-        <div className="px-4 pt-3 border-b border-gray-100">
-          <div className="flex">
-            {(["day", "settings"] as View[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => this.setView(v)}
-                className={`flex-1 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
-                  view === v
-                    ? "border-green-500 text-green-700"
-                    : "border-transparent text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                {v === "day" ? `📊 ${t.nav.today}` : `⚙️ ${t.nav.settings}`}
-              </button>
-            ))}
+      <div className="w-80 flex flex-col bg-stone-50 text-stone-800">
+        <header className="bg-white border-b border-stone-200">
+          <div className="px-4 pt-4 pb-0">
+            <div className="flex items-center gap-1.5 mb-3">
+              <span className="text-base leading-none">🌿</span>
+              <span className="text-xs font-bold text-stone-600 uppercase tracking-widest">
+                Carbolate
+              </span>
+            </div>
+            <nav className="flex -mb-px">
+              {(["day", "settings"] as View[]).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => this.setView(v)}
+                  className={`flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-widest border-b-2 transition-colors cursor-pointer ${
+                    view === v
+                      ? "border-green-600 text-green-700"
+                      : "border-transparent text-stone-400 hover:text-stone-600"
+                  }`}
+                >
+                  {v === "day" ? t.nav.today : t.nav.settings}
+                </button>
+              ))}
+            </nav>
           </div>
-        </div>
+        </header>
 
-        <div className="p-4 flex flex-col gap-3">
+        <main className="p-4 flex flex-col gap-3">
           {view === "day" && (
             <DayView record={record} onRefresh={this.handleRefresh} isLoading={isLoading} t={t} />
           )}
           {view === "settings" && (
             <SettingsView preferences={preferences} onSave={this.savePreferences} t={t} />
           )}
-        </div>
+        </main>
       </div>
     );
   }
