@@ -24,6 +24,7 @@ function useChart(canvasRef: React.RefObject<HTMLCanvasElement | null>, record: 
           {
             data: chartData.map((d) => Math.max(d.totalCo2, 0.001)),
             backgroundColor: CHART_COLORS,
+            borderWidth: 0,
           },
         ],
       },
@@ -31,7 +32,10 @@ function useChart(canvasRef: React.RefObject<HTMLCanvasElement | null>, record: 
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 12 } },
+          legend: {
+            position: "bottom",
+            labels: { font: { size: 10 }, boxWidth: 10, padding: 8, color: "#78716c" },
+          },
           tooltip: {
             callbacks: {
               label: (ctx) => {
@@ -55,11 +59,11 @@ export function DomainChart({ record, t }: DomainChartProps) {
   useChart(canvasRef, record);
 
   return (
-    <div className="bg-gray-50 rounded-xl p-3">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+    <div className="bg-white border border-stone-200 rounded-xl p-4">
+      <h3 className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-3">
         {t.chart.title}
       </h3>
-      <div className="h-40 w-full">
+      <div className="h-36 w-full">
         <canvas ref={canvasRef} className="h-full w-full" />
       </div>
     </div>

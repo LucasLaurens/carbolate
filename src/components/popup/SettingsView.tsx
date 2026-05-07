@@ -29,8 +29,8 @@ export default class SettingsView extends Component<Props, State> {
     return (
       <div className="flex flex-col gap-5">
         <div>
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">
               {t.settings.language}
             </span>
             {saved && (
@@ -45,7 +45,7 @@ export default class SettingsView extends Component<Props, State> {
                 className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium border-2 cursor-pointer transition-all ${
                   prefs.language === lang
                     ? "bg-green-50 text-green-700 border-green-500"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                    : "bg-white text-stone-600 border-stone-200 hover:border-stone-300"
                 }`}
               >
                 {lang === "en" ? "🇬🇧 English" : "🇫🇷 Français"}
