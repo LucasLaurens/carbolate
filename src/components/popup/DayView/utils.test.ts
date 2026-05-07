@@ -108,21 +108,21 @@ describe("getWorldAverageComparison", () => {
 
   it("returns below message when under world average (120g)", () => {
     // 60g = 50% below 120g
-    expect(getWorldAverageComparison(60, wa)).toBe("−50% vs. world avg");
+    expect(getWorldAverageComparison(60, wa)).toBe("−50% vs. world avg (120 g/d)");
   });
 
   it("returns above message when over world average", () => {
     // 180g = 50% above 120g
-    expect(getWorldAverageComparison(180, wa)).toBe("+50% vs. world avg");
+    expect(getWorldAverageComparison(180, wa)).toBe("+50% vs. world avg (120 g/d)");
   });
 
   it("returns equal message when exactly at world average", () => {
-    expect(getWorldAverageComparison(120, wa)).toBe("= world avg");
+    expect(getWorldAverageComparison(120, wa)).toBe("= world avg (120 g/d)");
   });
 
   it("works in French", () => {
     const waFr = fr.worldAvg;
-    expect(getWorldAverageComparison(60, waFr)).toBe("−50% vs. moy. mondiale");
-    expect(getWorldAverageComparison(180, waFr)).toBe("+50% vs. moy. mondiale");
+    expect(getWorldAverageComparison(60, waFr)).toBe("−50% vs. moy. mondiale (120 g/j)");
+    expect(getWorldAverageComparison(180, waFr)).toBe("+50% vs. moy. mondiale (120 g/j)");
   });
 });
