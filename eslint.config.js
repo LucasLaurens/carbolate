@@ -34,6 +34,14 @@ export default tseslint.config(
     },
   },
 
+  // Scripts de build — exécutés par Node, pas par le navigateur
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: { console: "readonly", process: "readonly" },
+    },
+  },
+
   // Règles TypeScript personnalisées
   {
     files: ["**/*.{ts,tsx}"],

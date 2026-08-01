@@ -1,11 +1,16 @@
 {
   "name": "Carbolate",
   "description": "Calculate your carbon footprint on the web.",
-  "version": "1.0",
+  "version": "1.0.0",
   "manifest_version": 3,
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Carbolate",
+    "default_icon": {
+      "16": "assets/logo.png",
+      "48": "assets/logo.png",
+      "128": "assets/logo.png"
+    }
   },
   "content_scripts": [
     {
@@ -14,20 +19,10 @@
       ],
       "matches": [
         "<all_urls>"
-      ]
+      ],
+      "run_at": "document_idle"
     }
   ],
-  "action": {
-    "default_popup": "index.html",
-    "default_icon": {
-      "16": "assets/logo.png",
-      "48": "assets/logo.png",
-      "128": "assets/logo.png"
-    }
-  },
-  "side_panel": {
-    "default_path": "index.html"
-  },
   "icons": {
     "16": "assets/logo.png",
     "48": "assets/logo.png",
@@ -36,14 +31,16 @@
   "permissions": [
     "storage",
     "alarms",
-    "tabs",
-    "scripting",
-    "declarativeNetRequest",
-    "declarativeNetRequestFeedback",
-    "sidePanel",
-    "contextMenus"
+    "downloads",
+    "sidePanel"
   ],
   "host_permissions": [
     "<all_urls>"
-  ]
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  }
 }

@@ -11,6 +11,8 @@ import type { Metrics } from "../session/types";
 import { clock } from "../utils/clock";
 
 const RESET_ALARM = "reset";
+// Firefox silently reschedules any alarm asked to fire in under a minute.
+const MIN_ALARM_DELAY_MINUTES = 1;
 const calculator = new CarbonCalculator();
 
 const toCarbonInput = (m: Metrics): CarbonInput => ({
@@ -26,7 +28,10 @@ function scheduleReset(prefs: Preferences): void {
   const delayInMinutes = (midnight.getTime() - now.getTime()) / 60000;
   const periodInMinutes = prefs.resetPeriod === "weekly" ? 7 * 24 * 60 : 24 * 60;
 
-  chrome.alarms.create(RESET_ALARM, { delayInMinutes, periodInMinutes });
+  chrome.alarms.create(RESET_ALARM, {
+    delayInMinutes: Math.max(delayInMinutes, MIN_ALARM_DELAY_MINUTES),
+    periodInMinutes,
+  });
 }
 
 async function handlePageMetrics(
@@ -86,13 +91,18 @@ chrome.alarms.onAlarm.addListener(async (alarm: chrome.alarms.Alarm) => {
 
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type !== "page_metrics") return false;
-  if (!sender.tab?.id || !sender.tab?.url) return false;
+
+  // `sender.url` is the sending frame and needs no permission, unlike
+  // `sender.tab.url` which Firefox withholds until host access is granted.
+  const tabId = sender.tab?.id;
+  const url = sender.url ?? sender.tab?.url;
+  if (!tabId || !url) return false;
 
   const { resource, navigation } = message as {
     resource: { transferSize: number }[];
     navigation: { duration: number }[];
   };
 
-  handlePageMetrics(resource, navigation, sender.tab.id, sender.tab.url);
+  handlePageMetrics(resource, navigation, tabId, url);
   return false;
 });

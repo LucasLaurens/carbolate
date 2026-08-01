@@ -1,26 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from "@tailwindcss/vite";
 
+// Build options live in scripts/build.mjs: each browser target needs a different
+// manifest and the extension scripts must be emitted as standalone iife bundles.
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-  ],
-  build: {
-    rollupOptions: {
-      input: {
-        side_panel: "index.html",
-        background: "src/background/index.ts",
-        content: "src/content/index.ts",
-      },
-      output: {
-        entryFileNames: "[name].js",
-        // format: "iife",
-      }
-    },
-    outDir: "dist",
-    emptyOutDir: true,
-    target: "es2017",
-  }
+  plugins: [react(), tailwindcss()],
 });

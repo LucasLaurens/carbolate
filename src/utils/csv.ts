@@ -47,8 +47,9 @@ export function exportToCSV(records: DailyRecord[]): void {
   const url = URL.createObjectURL(blob);
 
   const today = clock.dailyDate();
-  chrome.downloads.download({
-    url,
-    filename: `carbolate-export-${today}.csv`,
-  });
+  // Firefox drops the blob as soon as the panel closes, so the URL is released
+  // only once the download has been handed over to the browser.
+  chrome.downloads.download({ url, filename: `carbolate-export-${today}.csv` }, () =>
+    URL.revokeObjectURL(url),
+  );
 }
