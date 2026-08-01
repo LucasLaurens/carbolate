@@ -2,7 +2,7 @@
 
 ## What is Carbolate?
 
-Carbolate is a Chrome extension that estimates the carbon footprint of your browsing in real time. It analyzes two sources: **network traffic** (downloaded data) and **CPU time** (page processing load), then converts them into grams of CO₂ equivalent.
+Carbolate is a browser extension — Chrome, Edge, Opera, Brave, Vivaldi and Firefox — that estimates the carbon footprint of your browsing in real time. It analyzes two sources: **network traffic** (downloaded data) and **CPU time** (page processing load), then converts them into grams of CO₂ equivalent.
 
 ---
 
@@ -155,5 +155,6 @@ Midnight (or end of week in weekly mode)
 - Collection only works on standard web pages — `chrome://`, `file://`, `about:blank` do not trigger the content script
 - Pages already open before the extension was installed will not have their content script injected — they must be reloaded
 - The CO₂ calculation is an **estimate** based on industry averages, not an exact measurement
-- **CSV export is currently broken**: `utils/csv.ts` uses `chrome.downloads.download` but the `"downloads"` permission is missing from the manifest — needs to be added
 - Changing the reset period (daily ↔ weekly) only takes effect on next browser restart
+- On Firefox the panel is a sidebar (`sidebar_action`), on Chromium a side panel — same UI, different browser chrome
+- Safari is not published: it needs an extra `xcrun safari-web-extension-converter` pass and an Apple developer account

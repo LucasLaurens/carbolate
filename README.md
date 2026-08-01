@@ -1,6 +1,8 @@
 # Carbolate
 
-Carbolate is a Chrome extension that measures and estimates the carbon footprint of your web browsing by analyzing network requests and CPU time of visited pages.
+Carbolate is a browser extension that measures and estimates the carbon footprint of your web browsing by analyzing network requests and CPU time of visited pages.
+
+Supported: **Chrome, Edge, Opera, Brave, Vivaldi** (Chromium MV3 build) and **Firefox** (Gecko MV3 build).
 
 ## Documentation index
 
@@ -14,12 +16,24 @@ Carbolate is a Chrome extension that measures and estimates the carbon footprint
 ## Quick overview
 
 ```
-Chrome Extension
-├── Popup (React)         → User interface (320px)
+Browser Extension (MV3)
+├── Panel (React)         → User interface (320px) — side panel / sidebar
 ├── Background script     → Daily reset via chrome.alarms
 ├── Content script        → Collects Performance Entries on each page
-└── Chrome Storage        → Local persistence for sessions and preferences
+└── Local storage         → chrome.storage.local for sessions and preferences
 ```
+
+## Build & package
+
+```bash
+npm run build             # Chromium build → dist/
+npm run build:firefox     # Firefox build → dist/
+npm run package:all       # Store-ready zips (Chromium, Firefox, sources)
+```
+
+`dist/manifest.json` is generated per target by `scripts/build.mjs` — see [architecture.md](./docs/architecture.md#cross-browser-build).
+
+Load unpacked: `chrome://extensions` → *Load unpacked* → `dist/`, or `about:debugging` → *Load Temporary Add-on* → `dist/manifest.json`.
 
 ## Tech stack
 

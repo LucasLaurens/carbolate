@@ -47,3 +47,19 @@ jobs:
 
       - name: Run tests
         run: npm run test
+
+      - name: Build every browser target
+        run: |
+          for target in chrome firefox; do
+            npm run "build:$target"
+            node -e "
+              const fs = require('fs');
+              JSON.parse(fs.readFileSync('dist/manifest.json', 'utf8'));
+              for (const file of ['dist/background.js', 'dist/content.js']) {
+                if (/\bimport[ {(]/.test(fs.readFileSync(file, 'utf8'))) {
+                  throw new Error(file + ' contains an ESM import — unloadable as a classic script');
+                }
+              }
+              console.log('$target bundle is self-contained');
+            "
+          done
