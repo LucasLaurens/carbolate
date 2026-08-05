@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { metricsStore } from "../src/session/store";
 import { computeCarbon, withCarbon } from "./helpers";
 import { setTestClock, FixedClock } from "../src/utils/clock";
+import { emptyCarbonEstimate } from "../src/session/aggregator";
 
 beforeEach(() => {
   setTestClock(new FixedClock("2026-02-23"));
@@ -165,7 +166,9 @@ describe("getTotalMetrics", () => {
 describe("getTotalCarbon", () => {
   it("returns zero carbon when no tabs exist", async () => {
     const carbon = await metricsStore.getTotalCarbon();
-    expect(carbon).toEqual({ networkCo2: 0, cpuCo2: 0, totalCo2: 0 });
+    // Compared to the neutral element, not to a re-typed literal — spelling the
+    // zeroed shape twice is exactly how renderingCo2 went missing.
+    expect(carbon).toEqual(emptyCarbonEstimate());
   });
 
   it("returns a non-zero total when tabs have resource data", async () => {

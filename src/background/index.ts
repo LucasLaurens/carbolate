@@ -6,19 +6,15 @@ import PageMetricsValidator from "../performance/PageMetricsValidator";
 import { MetricsProcessorContext } from "../performance/MetricsProcessorContext";
 import NetworkMetricsExtractor from "../performance/NetworkMetricsExtractor";
 import CarbonCalculator from "../carbon/CarbonCalculator";
-import type { CarbonInput } from "../carbon/types";
+import { toCarbonInput } from "../carbon/toCarbonInput";
 import type { Metrics } from "../session/types";
 import { clock } from "../utils/clock";
+import { bytesToMegabytes, millisecondsToSeconds } from "../utils/bytes";
 
 const RESET_ALARM = "reset";
 // Firefox silently reschedules any alarm asked to fire in under a minute.
 const MIN_ALARM_DELAY_MINUTES = 1;
 const calculator = new CarbonCalculator();
-
-const toCarbonInput = (m: Metrics): CarbonInput => ({
-  transferSize: m.totalResourceSize * 1024 * 1024, // MiB → bytes
-  cpuTime: m.cpuTimeToLoad * 1000, // s → ms
-});
 
 function scheduleReset(prefs: Preferences): void {
   const now = clock.now();
@@ -49,8 +45,8 @@ async function handlePageMetrics(
   const { resourceCount, totalTransferSize } = processor.execute(resource);
   const metrics: Metrics = {
     requestCount: resourceCount,
-    totalResourceSize: totalTransferSize / (1024 * 1024),
-    cpuTimeToLoad: navigation?.[0]?.duration ? navigation[0].duration / 1000 : 0,
+    totalResourceSize: bytesToMegabytes(totalTransferSize),
+    cpuTimeToLoad: millisecondsToSeconds(navigation?.[0]?.duration ?? 0),
   };
   const carbon = calculator.calculate([toCarbonInput(metrics)]);
 
@@ -67,7 +63,7 @@ async function handlePageMetrics(
   } else {
     await metricsStore.updateTabMetrics(tabId, metrics, carbon, {
       status: 200,
-      date: Date.now(),
+      date: clock.nowMs(),
     });
   }
 }

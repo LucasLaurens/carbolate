@@ -1,18 +1,15 @@
-import { sumMetrics, sumCarbonEstimates } from "./aggregator";
+import { sumMetrics, sumCarbonEstimates, emptyMetrics, emptyCarbonEstimate } from "./aggregator";
 import { ChromeStorage } from "../storage/ChromeStorage";
 import type { DailyRecord, MetricTab, Metrics, MetricsStore } from "./types";
 import type { CarbonEstimate } from "../carbon/types";
 import { getDailyDate } from "../utils/date";
 import { clock } from "../utils/clock";
 
-const emptyMetrics: Metrics = { requestCount: 0, totalResourceSize: 0, cpuTimeToLoad: 0 };
-const emptyCarbon: CarbonEstimate = { networkCo2: 0, cpuCo2: 0, totalCo2: 0 };
-
 const emptyDailyRecord = (date: string): DailyRecord => ({
   date,
   tabs: [],
-  totalMetrics: { ...emptyMetrics },
-  totalCarbon: { ...emptyCarbon },
+  totalMetrics: emptyMetrics(),
+  totalCarbon: emptyCarbonEstimate(),
 });
 
 // In-memory cache
@@ -135,12 +132,12 @@ export const metricsStore: MetricsStore = {
 
   getTotalMetrics: async (): Promise<Metrics> => {
     const record = await getCachedDailyRecord();
-    return record?.totalMetrics ?? { ...emptyMetrics };
+    return record?.totalMetrics ?? emptyMetrics();
   },
 
   getTotalCarbon: async (): Promise<CarbonEstimate> => {
     const record = await getCachedDailyRecord();
-    return record?.totalCarbon ?? { ...emptyCarbon };
+    return record?.totalCarbon ?? emptyCarbonEstimate();
   },
 
   clearPastDays: (retentionDays: number): Promise<void> => {

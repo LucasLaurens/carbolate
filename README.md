@@ -6,12 +6,14 @@ Supported: **Chrome, Edge, Opera, Brave, Vivaldi** (Chromium MV3 build) and **Fi
 
 ## Documentation index
 
-| File | Description |
-|---|---|
-| [architecture.md](./docs/architecture.md) | Project structure, data flow, design patterns |
-| [features.md](./docs/features.md) | Features, expected behavior, user flows |
-| [carbon-model.md](./docs/carbon-model.md) | CO₂ calculation model, constants, formulas |
-| [storage.md](./docs/storage.md) | Persisted data schema, TypeScript types |
+| File                                      | Description                                                       |
+| ----------------------------------------- | ----------------------------------------------------------------- |
+| [glossary.md](./docs/glossary.md)         | Shared vocabulary (EN/FR) — the single home for what a term means |
+| [architecture.md](./docs/architecture.md) | Project structure, data flow, design patterns                     |
+| [features.md](./docs/features.md)         | Features, expected behavior, user flows                           |
+| [carbon-model.md](./docs/carbon-model.md) | CO₂ calculation model, constants, formulas                        |
+| [storage.md](./docs/storage.md)           | Persisted data schema, TypeScript types                           |
+| [decisions/](./docs/decisions/)           | ADRs — one decision per file                                      |
 
 ## Quick overview
 
@@ -33,7 +35,7 @@ npm run package:all       # Store-ready zips (Chromium, Firefox, sources)
 
 `dist/manifest.json` is generated per target by `scripts/build.mjs` — see [architecture.md](./docs/architecture.md#cross-browser-build).
 
-Load unpacked: `chrome://extensions` → *Load unpacked* → `dist/`, or `about:debugging` → *Load Temporary Add-on* → `dist/manifest.json`.
+Load unpacked: `chrome://extensions` → _Load unpacked_ → `dist/`, or `about:debugging` → _Load Temporary Add-on_ → `dist/manifest.json`.
 
 ## Tech stack
 

@@ -10,6 +10,18 @@ export const sumMetrics = (metricsArray: Metrics[]): Metrics => ({
 export const sumCarbonEstimates = (estimates: CarbonEstimate[]): CarbonEstimate => ({
   networkCo2: estimates.reduce((s, e) => s + e.networkCo2, 0),
   cpuCo2: estimates.reduce((s, e) => s + e.cpuCo2, 0),
+  // Records persisted before renderingCo2 existed lack the field entirely;
+  // without the fallback every legacy day would total to NaN.
   renderingCo2: estimates.reduce((s, e) => s + (e.renderingCo2 ?? 0), 0),
   totalCo2: estimates.reduce((s, e) => s + e.totalCo2, 0),
 });
+
+/**
+ * Neutral elements, derived from the sums rather than written out again.
+ * Spelling the zeroed shape a second time is how `renderingCo2` came to be
+ * missing from two separate empty literals — adding a field to `Metrics` or
+ * `CarbonEstimate` now forces the sum to change, and both empties follow.
+ */
+export const emptyMetrics = (): Metrics => sumMetrics([]);
+
+export const emptyCarbonEstimate = (): CarbonEstimate => sumCarbonEstimates([]);
