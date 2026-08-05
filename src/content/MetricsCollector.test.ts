@@ -66,7 +66,10 @@ describe("MetricsCollector", () => {
   it("emits a payload the background can measure as-is", () => {
     // Arrange
     const sink = new RecordingSink();
-    const source = new ScriptedPerformanceSource([{ transferSize: 4_096 }], [{ duration: 1_200 }]);
+    const source = new ScriptedPerformanceSource(
+      [{ transferSize: 4_096, decodedBodySize: 9_000 }],
+      [{ duration: 1_200 }],
+    );
 
     // Act
     new MetricsCollector(source, sink).collect();
@@ -78,7 +81,25 @@ describe("MetricsCollector", () => {
       requests: 1,
       transferredBytes: 4_096,
       loadDurationMs: 1_200,
+      cachedBytes: 0,
     });
+  });
+
+  it("carries the decoded size the avoided figure is computed from", () => {
+    // Arrange
+    const sink = new RecordingSink();
+    const source = new ScriptedPerformanceSource(
+      [{ transferSize: 0, decodedBodySize: 50_000 }],
+      [{ duration: 100 }],
+    );
+
+    // Act
+    new MetricsCollector(source, sink).collect();
+
+    // Assert — dropping the field on the wire would silently zero avoided CO₂
+    expect(sink.sent[0][PerformanceEntryType.RESOURCE]).toEqual([
+      { transferSize: 0, decodedBodySize: 50_000 },
+    ]);
   });
 
   it("forwards a page that reported no navigation entry", () => {

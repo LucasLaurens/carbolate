@@ -117,7 +117,13 @@ export default class Popup extends Component<Props, State> {
 
         <main className="p-4 flex flex-col gap-3">
           {view === "day" && (
-            <DayView record={record} onRefresh={this.handleRefresh} isLoading={isLoading} t={t} />
+            <DayView
+              record={record}
+              onRefresh={this.handleRefresh}
+              onExport={this.handleExport}
+              isLoading={isLoading}
+              t={t}
+            />
           )}
           {view === "settings" && (
             <SettingsView preferences={preferences} onSave={this.savePreferences} t={t} />

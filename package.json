@@ -13,6 +13,7 @@
     "package:all": "npm run package:chrome && npm run package:firefox && npm run package:sources",
     "test": "vitest run",
     "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src scripts",
     "lint:fix": "eslint src scripts --fix",
     "format": "prettier --write src scripts",

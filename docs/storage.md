@@ -6,10 +6,10 @@ All data is persisted in **`chrome.storage.local`** via `src/storage/ChromeStora
 
 Two keys are used:
 
-| Key             | Type                 | Description                  |
-| --------------- | -------------------- | ---------------------------- |
-| `"sessions"`    | `DailyRecordsStore`  | Daily record history, by day  |
-| `"preferences"` | `Preferences`        | User configuration            |
+| Key             | Type                | Description                  |
+| --------------- | ------------------- | ---------------------------- |
+| `"sessions"`    | `DailyRecordsStore` | Daily record history, by day |
+| `"preferences"` | `Preferences`       | User configuration           |
 
 The key strings live in `src/storage/StorageKey.ts`. `"sessions"` holds **daily
 records**, not browsing sessions — the key keeps its historical name so an
@@ -34,17 +34,13 @@ type StorageData = {
 Defined in **`src/config/preferences.ts`** (single source of truth — do not redefine elsewhere).
 
 ```typescript
-type ResetPeriod = "daily" | "weekly";
-
 type Preferences = {
-  resetPeriod: ResetPeriod; // "daily" | "weekly"
-  retentionDays: number; // 1 = today only | 7 = 1 week | -1 = keep all
+  retentionDays: number; // 1 = today only | 7 = 1 week | 30, 60… | -1 = keep all
   autoExportBeforeReset: boolean; // Export CSV before cleanup
   language: Language; // "en" | "fr"
 };
 
 const DEFAULT_PREFERENCES: Preferences = {
-  resetPeriod: "daily",
   retentionDays: 1,
   autoExportBeforeReset: false,
   language: "en",
@@ -53,6 +49,15 @@ const DEFAULT_PREFERENCES: Preferences = {
 
 > All modules (`ChromeStorage`, `Popup`, `SettingsView`, `background`) import from `src/config/preferences.ts`. Never redefine this type locally.
 
+> `ResetPeriod` (`"daily" | "weekly"`) is **gone**. It duplicated `retentionDays`,
+> which made the pair `{ resetPeriod: "weekly", retentionDays: 1 }` representable and
+> meaningless, and left `-1` with no period at all. `retentionDays` is now the single
+> source of truth, and the reset alarm's period **derives** from it via
+> `resetPeriodMinutes()` in `src/config/retention.ts`. Any window — `1`, `7`, `30`,
+> `-1` — needs no new type. A residual `resetPeriod` left in storage is ignored:
+> `getPreferences()` merges over `DEFAULT_PREFERENCES`, so no migration is needed.
+> See [the units and retention ADR](decisions/2026-08-05-unites-et-retention.md).
+
 ---
 
 ### `Metrics` — raw metrics for a tab
@@ -60,10 +65,16 @@ const DEFAULT_PREFERENCES: Preferences = {
 ```typescript
 type Metrics = {
   requestCount: number; // Number of HTTP/HTTPS requests
-  totalResourceSize: number; // Total transferred size (MB, base 10 — 10⁶ bytes)
-  cpuTimeToLoad: number; // Navigation duration (seconds) — wall clock, not CPU
+  totalResourceSize: number; // Transferred data (MB, base 10 — 10⁶ bytes)
+  pageLoadDurationSec: number; // Navigation duration (seconds) — wall clock, not CPU
+  cachedPageWeight: number; // Uncompressed MB the cache served — feeds avoided CO₂ only
 };
 ```
+
+> `pageLoadDurationSec` was named `cpuTimeToLoad`, which promised a CPU measurement
+> it never made. `cachedPageWeight` is a **decoded** size while `totalResourceSize`
+> is a **transferred** one: the asymmetry is deliberate, since what the cache spared
+> is what the transfer would have weighed.
 
 > Unit conversions go through `src/utils/bytes.ts` — the single home for the
 > base-10 rule. `Metrics` is adapted to `CarbonInput` by
@@ -97,17 +108,23 @@ type MetricTab = {
 
 ```typescript
 type CarbonEstimate = {
-  networkCo2: number; // gCO₂e — transmission networks + data centers
-  cpuCo2: number; // gCO₂e — device energy during page load
-  renderingCo2: number; // gCO₂e — GPU/display during page load
-  totalCo2: number; // networkCo2 + cpuCo2 + renderingCo2
+  networkCo2: number; // gCO₂e — transmission networks + data centres
+  deviceCo2: number; // gCO₂e — the user's machine during page load
+  totalCo2: number; // networkCo2 + deviceCo2
+  avoidedCo2: number; // gCO₂e the cache spared — NEVER inside totalCo2
 };
 ```
 
-> Records persisted before `renderingCo2` existed lack the field. `sumCarbonEstimates`
-> reads it tolerantly (`?? 0`) so a legacy day does not total to `NaN`. The neutral
-> elements `emptyMetrics()` / `emptyCarbonEstimate()` are **derived from the sums**
-> rather than written out again — see `src/session/aggregator.ts` and its test.
+> `cpuCo2` and `renderingCo2` are merged into `deviceCo2`. They multiplied the same
+> duration by two coefficients, so their sum **is** the device figure and no stored
+> day changes value. `avoidedCo2` is summed like the others and stays out of
+> `totalCo2`: subtracting it would let a well-cached site report a negative
+> footprint.
+
+> The neutral elements `emptyMetrics()` / `emptyCarbonEstimate()` are **derived from
+> the sums** rather than written out again — see `src/session/aggregator.ts` and its
+> test. The sums themselves carry no `?? 0` fallback any more: normalisation happens
+> once, at the storage boundary (below).
 
 ### `DailyRecord` — all data for a day
 
@@ -144,38 +161,68 @@ type DailyRecordsStore = Record<string, DailyRecord>;
           "metrics": {
             "requestCount": 87,
             "totalResourceSize": 3.42,
-            "cpuTimeToLoad": 1.8
+            "pageLoadDurationSec": 1.8,
+            "cachedPageWeight": 1.2
           },
           "meta": {
             "date": 1741046400000
           },
           "carbon": {
-            "networkCo2": 1,
-            "cpuCo2": 0,
-            "totalCo2": 1
+            "networkCo2": 0.605,
+            "deviceCo2": 0.0025,
+            "totalCo2": 0.6075,
+            "avoidedCo2": 0.212
           }
         }
       ],
       "totalMetrics": {
         "requestCount": 87,
         "totalResourceSize": 3.42,
-        "cpuTimeToLoad": 1.8
+        "pageLoadDurationSec": 1.8,
+        "cachedPageWeight": 1.2
       },
       "totalCarbon": {
-        "networkCo2": 1,
-        "cpuCo2": 0,
-        "totalCo2": 1
+        "networkCo2": 0.605,
+        "deviceCo2": 0.0025,
+        "totalCo2": 0.6075,
+        "avoidedCo2": 0.212
       }
     }
   },
   "preferences": {
-    "resetPeriod": "daily",
     "retentionDays": 1,
     "autoExportBeforeReset": false,
     "language": "en"
   }
 }
 ```
+
+---
+
+## Reading records written by an older version
+
+`src/session/legacy.ts` is the **single door** stored bytes come through. Three
+carbon shapes have been persisted and all three are still out there on installed
+extensions:
+
+| Stored shape                         | Read as                                        |
+| ------------------------------------ | ---------------------------------------------- |
+| `cpuCo2` alone                       | `deviceCo2 = cpuCo2`                           |
+| `cpuCo2` + `renderingCo2`            | `deviceCo2 = cpuCo2 + renderingCo2` (lossless) |
+| `deviceCo2`                          | unchanged                                      |
+| `cpuTimeToLoad`                      | `pageLoadDurationSec`                          |
+| no `avoidedCo2` / `cachedPageWeight` | `0` — unrecoverable, and zero invents nothing  |
+
+`normalizeDailyRecords()` runs on every `getSessions()` read inside the metrics
+store, so **every** record above that line carries the current shape whichever
+version wrote it. Day totals are **rebuilt from the normalised tabs** rather than
+normalised on their own, so a stored total that disagrees with its parts — an update
+interrupted mid-write — is corrected instead of carried forward.
+
+Nothing is written back: storage keeps its old shape until the next real write. The
+`?? 0` fallbacks that used to sit in `sumCarbonEstimates` and in the CSV export are
+gone, because a fallback repeated in three modules is three chances to be one field
+behind.
 
 ---
 

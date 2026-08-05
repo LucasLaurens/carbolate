@@ -6,13 +6,14 @@ import { toCarbonInput } from "../carbon/toCarbonInput";
 import { createMetricsStore } from "../session/store";
 import type { MetricsStore } from "../session/types";
 import { PerformanceEntryType } from "../performance/enums/PerformanceEntryType";
+import type { NavigationTiming, ResourceTiming } from "../performance/PageMetrics";
 import { InMemoryDailyRecordsStorage } from "../../test/fakes/InMemoryDailyRecordsStorage";
 import { FixedClock } from "../../test/fakes/FixedClock";
 
 const observation = (
   overrides: Partial<PageObservation> & {
-    resource?: { transferSize: number }[];
-    navigation?: { duration: number }[];
+    resource?: ResourceTiming[];
+    navigation?: NavigationTiming[];
   } = {},
 ): PageObservation => ({
   tabId: overrides.tabId ?? 7,
@@ -56,7 +57,38 @@ describe("MetricsIntake — what reaches the daily record", () => {
     // Assert — base 10: 1 500 000 bytes = 1.5 MB, 2 400 ms = 2.4 s
     const [tab] = (await store.getDailyRecord()).tabs;
     expect(tab.metrics.totalResourceSize).toBeCloseTo(1.5, 10);
-    expect(tab.metrics.cpuTimeToLoad).toBeCloseTo(2.4, 10);
+    expect(tab.metrics.pageLoadDurationSec).toBeCloseTo(2.4, 10);
+  });
+
+  it("stores what the cache served, and credits it without touching the total", async () => {
+    // Act — one resource off the network, one served from cache
+    await intake.record(
+      observation({
+        resource: [
+          { transferSize: 1_000_000, decodedBodySize: 1_000_000 },
+          { transferSize: 0, decodedBodySize: 2_000_000 },
+        ],
+      }),
+    );
+
+    // Assert
+    const [tab] = (await store.getDailyRecord()).tabs;
+    expect(tab.metrics.cachedPageWeight).toBeCloseTo(2, 10);
+    expect(tab.carbon.avoidedCo2).toBeGreaterThan(0);
+    expect(tab.carbon.totalCo2).toBeCloseTo(tab.carbon.networkCo2 + tab.carbon.deviceCo2, 10);
+  });
+
+  it("credits nothing when a stale content script sends no decoded size", async () => {
+    // Arrange — the projection shipped before avoided CO₂ existed, still running
+    // in a tab that has not reloaded since the update
+    // Act
+    await intake.record(observation({ resource: [{ transferSize: 0 }] }));
+
+    // Assert — the observation survives; only the avoided figure is lost
+    const [tab] = (await store.getDailyRecord()).tabs;
+    expect(tab.metrics.requestCount).toBe(1);
+    expect(tab.metrics.cachedPageWeight).toBe(0);
+    expect(tab.carbon.avoidedCo2).toBe(0);
   });
 
   it("counts one request per resource entry", async () => {

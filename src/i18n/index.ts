@@ -9,4 +9,9 @@ export function getTranslations(lang: Language): Translations {
 }
 
 export { en, fr };
-export type { Language, Translations, CarbonLevelKey, EquivalenceTranslations } from "./types";
+export type {
+  Language,
+  Translations,
+  EquivalenceTranslations,
+  WorldComparisonTranslations,
+} from "./types";

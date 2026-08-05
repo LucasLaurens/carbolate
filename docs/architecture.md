@@ -10,8 +10,9 @@ src/
 ├── global.d.ts                     # Module declaration for *.css
 │
 ├── config/
-│   ├── types.ts                    # ResetPeriod, Preferences types
-│   └── preferences.ts              # Single source of truth: DEFAULT_PREFERENCES
+│   ├── types.ts                    # Preferences — retentionDays is the retention source of truth
+│   ├── preferences.ts              # Single source of truth: DEFAULT_PREFERENCES
+│   └── retention.ts                # KEEP_EVERYTHING + resetPeriodMinutes() — the alarm period, derived
 │
 ├── background/
 │   └── index.ts                    # Chrome adapter: alarms, badge, message listener → MetricsIntake
@@ -34,35 +35,38 @@ src/
 │       ├── DayView/
 │       │   ├── index.tsx           # Daily dashboard — stats grid + domain chart
 │       │   ├── types.ts            # StatColor, DomainData types
-│       │   ├── StatsGrid.tsx       # CO₂ card + metrics strip (tabs, requests, data)
+│       │   ├── StatsGrid.tsx       # CO₂ card + metrics strip + the avoided-CO₂ row
 │       │   ├── DomainChart.tsx     # Doughnut chart — top 5 domains by CO₂
-│       │   └── utils.ts            # formatCo2(), aggregateDomains(), COLOR_CLASSES
+│       │   └── utils.ts            # Presentation only: colours, badges, formatCo2(), aggregateDomains()
 │       └── SettingsView.tsx        # Preferences form
 │
 ├── carbon/
 │   ├── types.ts                    # CarbonInput, CarbonEstimate, FootprintCalculator
-│   ├── constants.ts                # CARBON_PER_GB (176.8), CPU_FACTOR (0.001), RENDERING_FACTOR (0.0004), WORLD_DAILY_BROWSING_G_CO2 (120)
+│   ├── constants.ts                # CARBON_PER_GB (176.8), DEVICE_FACTOR (0.0014), DAILY_BROWSING_REFERENCE_G_CO2 (120), the multipliers
 │   ├── CarbonCalculator.ts         # CO₂ calculation engine (accepts CarbonContributionSource[])
 │   ├── toCarbonInput.ts            # Adapter: stored Metrics (MB, s) → CarbonInput (bytes, ms)
+│   ├── avoidedCarbon.ts            # What the cache spared — never part of totalCo2
+│   ├── sobriety.ts                 # SobrietyLevel + thresholds derived from the daily reference
+│   ├── worldComparison.ts          # WorldComparison — a coarse position, deliberately not a ratio
 │   ├── contracts/
 │   │   └── CarbonContributionSource.ts  # OCP interface for emission sources
 │   └── sources/
-│       ├── NetworkCarbonSource.ts  # Network + data center emissions
-│       ├── CpuCarbonSource.ts      # Device CPU energy during page load
-│       └── RenderingCarbonSource.ts # GPU/display rendering energy during page load
+│       ├── NetworkCarbonSource.ts  # Network + data centre emissions
+│       └── DeviceCarbonSource.ts   # The user's machine during page load — one value, one factor
 │
 ├── session/
 │   ├── types.ts                    # Metrics, MetricTab, DailyRecord, DailyRecordsStore + the store's role interfaces
 │   ├── store.ts                    # createMetricsStore(storage, clock) — one write queue, one cache
+│   ├── legacy.ts                   # The storage read boundary — normalises records from older versions
 │   └── aggregator.ts               # sumMetrics, sumCarbonEstimates, the neutral elements
 │
 ├── performance/
-│   ├── PageMetrics.ts              # measurePage(payload) → PageMeasurementResult (requests, bytes, ms)
+│   ├── PageMetrics.ts              # measurePage(payload) → PageMeasurementResult (requests, bytes, ms, cached bytes)
 │   └── enums/
 │       └── PerformanceEntryType.ts # RESOURCE, NAVIGATION — the getEntriesByType() strings
 │
 ├── i18n/
-│   ├── types.ts                    # Language, CarbonLevelKey, Translations, EquivalenceTranslations types
+│   ├── types.ts                    # Language, Translations — keyed by SobrietyLevel / WorldComparison
 │   ├── index.ts                    # getTranslations(lang) — language registry
 │   ├── en.ts                       # English translations
 │   └── fr.ts                       # French translations
@@ -93,7 +97,8 @@ real implementations of the same interfaces, never configured stubs, and they sh
 ┌─────────────────────────────────────────────────────────────┐
 │                  Web page (load event fired)                │
 │  BrowserPerformanceSource — adapter over the Performance API │
-│    getEntriesByType("resource")   → [{ transferSize }]      │
+│    getEntriesByType("resource")   → [{ transferSize,         │
+│                                        decodedBodySize }]   │
 │    getEntriesByType("navigation") → [{ duration }]          │
 │  Host objects are projected onto plain objects: Chrome's     │
 │  structured clone refuses to serialize the entries as-is.    │
@@ -128,9 +133,9 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │  2. measurePage(payload)  → discard if no resource entry    │
 │     → { requests, transferredBytes, loadDurationMs }        │
 │  3. Metrics { requestCount, totalResourceSize (MB),         │
-│     cpuTimeToLoad (s) }                                      │
+│     pageLoadDurationSec (s), cachedPageWeight (MB) }         │
 │  4. toCarbonInput(metrics) → CarbonCalculator.calculate()    │
-│     → [Network, Cpu, Rendering] CarbonSource                │
+│     → [Network, Device] CarbonSource + avoidedCarbon()      │
 │  5. recorder.recordTabMetrics(tab)                           │
 │                                                             │
 │  Injected: TabMetricsRecorder, FootprintCalculator, Clock    │
@@ -141,6 +146,10 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │          metrics store (session/store.ts) — constructed      │
 │                                                             │
 │  createMetricsStore(storage, clock)                          │
+│                                                             │
+│  Every read goes through normalizeDailyRecords (legacy.ts),  │
+│    so a day written by an older version arrives in today's   │
+│    shape and no reader downstream needs a fallback.          │
 │                                                             │
 │  recordTabMetrics — upsert INSIDE the write queue:           │
 │    read day → decide add-or-replace → persist, serialised    │
@@ -178,61 +187,95 @@ real implementations of the same interfaces, never configured stubs, and they sh
 ## Architectural patterns
 
 ### Ports and adapters at the two browser edges
+
 The extension touches four browser globals: `performance`, `chrome.runtime`,
 `chrome.storage.local` and the clock. Each sits behind an interface with a real
 second implementation in `test/fakes/`, which is what makes the second one worth
 having — one adapter would only be a hypothetical seam.
 
-| Port | Production adapter | Test adapter |
-| --- | --- | --- |
-| `PerformanceSource` | `BrowserPerformanceSource` | scripted entries, in the tests |
-| `ObservationSink` | `RuntimeObservationSink` | recording sink, in the tests |
-| `DailyRecordsStorage` | `ChromeStorage` | `InMemoryDailyRecordsStorage` |
-| `Clock` | `SystemClock` | `FixedClock` |
+| Port                  | Production adapter         | Test adapter                   |
+| --------------------- | -------------------------- | ------------------------------ |
+| `PerformanceSource`   | `BrowserPerformanceSource` | scripted entries, in the tests |
+| `ObservationSink`     | `RuntimeObservationSink`   | recording sink, in the tests   |
+| `DailyRecordsStorage` | `ChromeStorage`            | `InMemoryDailyRecordsStorage`  |
+| `Clock`               | `SystemClock`              | `FixedClock`                   |
 
 Nothing reaches for an ambient singleton: the clock and the storage are
 constructor arguments, so a test constructs its own world and no module has to
 publish a reset hook for the test run.
 
 ### Discriminated results instead of nullable returns
+
 `measurePage()` and `parseDomain()` both return `{ valid: true, … } | { valid: false }`,
 and `getDailyRecord()` returns the neutral record rather than `null`. The compiler
 forces the invalid branch to be handled, and no reader carries a `?? empty` fallback.
 
 ### One command per decision
+
 `recordTabMetrics(tab)` replaced `hasExistingTabById()` + `addTab()` +
 `updateTabMetrics()`. The three-call version let the caller decide add-or-update
-*outside* the write queue that exists to serialise exactly that decision — two
+_outside_ the write queue that exists to serialise exactly that decision — two
 messages for one tab could both conclude "not there yet" and append twice.
 The upsert now happens inside the queue, so the sequence cannot be got wrong.
 
 ### Interface segregation on the store
+
 `MetricsStore` is the intersection of three roles, and each caller takes only its own:
 
-| Role | Methods | Taken by |
-| --- | --- | --- |
-| `DailyRecordReader` | `getDailyRecord`, `getAllDays` | the panel |
-| `TabMetricsRecorder` | `recordTabMetrics` | `MetricsIntake` |
-| `RetentionEnforcer` | `clearPastDays` | the reset alarm |
+| Role                 | Methods                        | Taken by        |
+| -------------------- | ------------------------------ | --------------- |
+| `DailyRecordReader`  | `getDailyRecord`, `getAllDays` | the panel       |
+| `TabMetricsRecorder` | `recordTabMetrics`             | `MetricsIntake` |
+| `RetentionEnforcer`  | `clearPastDays`                | the reset alarm |
 
 The intake cannot drop a day; the panel cannot write a measurement.
 
 ### Open/Closed — CarbonContributionSource
-`CarbonCalculator` accepts an array of emission sources. Adding a new source (e.g. GPU, streaming) does not require modifying `CarbonCalculator`:
+
+`CarbonCalculator` accepts an array of emission sources. Adding a channel does not
+require modifying the calculator, which sums `totalCo2` from whatever it was given:
 
 ```typescript
 // Adding a source without touching the calculator
-class GpuCarbonSource implements CarbonContributionSource {
-  calculate(inputs: CarbonInput[]): number { ... }
+class ScreenCarbonSource implements CarbonContributionSource {
+  readonly metric = "screenCo2" as const;
+  calculate(inputs: readonly CarbonInput[]): number { ... }
 }
-const calc = new CarbonCalculator([
+const calculator = new CarbonCalculator([
   new NetworkCarbonSource(),
-  new CpuCarbonSource(),
-  new GpuCarbonSource(), // ← added here only
+  new DeviceCarbonSource(),
+  new ScreenCarbonSource(), // ← added here only
 ]);
 ```
 
+`ContributionMetric` is `keyof Omit<CarbonEstimate, "totalCo2" | "avoidedCo2">`, so
+the type refuses a source that would write into the avoided figure and reach the
+total through it. Avoided CO₂ is a plain function instead — one implementation, so
+no seam is built for it.
+
+### The model decides the grade, the panel decides the paint
+
+`carbon/sobriety.ts` owns the sobriety thresholds and `carbon/worldComparison.ts`
+owns the comparison bands, both derived from the single
+`DAILY_BROWSING_REFERENCE_G_CO2` anchor. `DayView/utils.ts` maps a level to a colour
+and a badge and nothing more.
+
+The thresholds used to be the literals `50 / 250 / 600` sitting in that panel
+helper, unsourced and unrelated to the reference the same card compared against — so
+the badge and the comparison could contradict each other on screen.
+`carbon/sobriety.test.ts` asserts where the _grade_ flips rather than restating the
+derivation, so it fails if a literal is written back in.
+
+### One read boundary for stored shapes
+
+`session/legacy.ts` normalises every record on the way out of storage, inside the
+store's `loadRecords()`. Three carbon shapes have been persisted across releases and
+all three are still installed somewhere; above that one function, every reader sees
+today's shape. The `?? 0` fallbacks this replaced were spread across the aggregator
+and the CSV export, and each was one field behind.
+
 ### Store Pattern + in-memory cache
+
 `createMetricsStore(storage, clock)` returns a store that owns today's `DailyRecord`.
 Repeated reads while the panel is open hit an in-memory cache; a write **warms** it
 with the value just persisted rather than invalidating it, saving a storage
@@ -242,6 +285,7 @@ Each browser context builds its own store — the background and the panel are
 separate JavaScript realms and cannot share a cache.
 
 ### Security — RateLimiter
+
 `RateLimiter` (`src/security/RateLimiter.ts`) protects all side-effecting UI actions (export, refresh, storage writes) from abuse. Each action has its own counter, scoped by string key.
 
 - **Window**: 60 seconds, 10 calls max
@@ -259,8 +303,9 @@ a `FixedClock` instead of waiting sixty seconds.
 `page_metrics` messages from the content script are **not** rate-limited — every page load is a valid data point.
 
 ### Background / Popup / Content separation
+
 - The **Background script** (service worker on Chromium, event page on Gecko) wakes on demand → guards the incoming message, resolves the tab, hands it to `MetricsIntake`, and owns the alarms
-- The **Panel** mounts/unmounts on every open → holds a `DailyRecordReader`, so it reads measurements and writes only preferences
+- The **Panel** holds a `DailyRecordReader`, so it reads measurements and writes only preferences. It remounts on every open as a toolbar popup, but **stays mounted** as a Chromium side panel or a Gecko sidebar — which is why it renders a Refresh button rather than relying on mount alone
 - The **Content script** is injected on every page → builds a `MetricsCollector` over the real browser globals and fires it once the load event has passed
 
 ---
@@ -269,11 +314,11 @@ a `FixedClock` instead of waiting sixty seconds.
 
 One codebase, one manifest per browser engine. `dist/manifest.json` is **generated** at build time — there is no checked-in `manifest.json`.
 
-| File | Role |
-|---|---|
-| `scripts/manifest.mjs` | Shared manifest base + one builder per target (`chrome`, `firefox`) |
-| `scripts/build.mjs` | Runs the three Vite builds, then writes `dist/manifest.json` for the target |
-| `vite.config.ts` | Plugins only (React, Tailwind), used by `npm run dev` |
+| File                   | Role                                                                        |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `scripts/manifest.mjs` | Shared manifest base + one builder per target (`chrome`, `firefox`)         |
+| `scripts/build.mjs`    | Runs the three Vite builds, then writes `dist/manifest.json` for the target |
+| `vite.config.ts`       | Plugins only (React, Tailwind), used by `npm run dev`                       |
 
 ```
 npm run build            → dist/ for Chromium (default)
@@ -298,12 +343,12 @@ The `chrome` target also covers Edge, Opera, Brave and Vivaldi — same MV3 runt
 
 ### Manifest deltas
 
-| Chromium | Gecko | Why |
-|---|---|---|
-| `background.service_worker` | `background.scripts` | Firefox MV3 uses a non-persistent event page, not a service worker |
-| `side_panel.default_path` | `sidebar_action.default_panel` | `side_panel` does not exist in Gecko |
-| permission `sidePanel` | *(dropped)* | Invalid permission in Gecko |
-| — | `browser_specific_settings.gecko.id` | Mandatory to sign on AMO |
+| Chromium                    | Gecko                                | Why                                                                |
+| --------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| `background.service_worker` | `background.scripts`                 | Firefox MV3 uses a non-persistent event page, not a service worker |
+| `side_panel.default_path`   | `sidebar_action.default_panel`       | `side_panel` does not exist in Gecko                               |
+| permission `sidePanel`      | _(dropped)_                          | Invalid permission in Gecko                                        |
+| —                           | `browser_specific_settings.gecko.id` | Mandatory to sign on AMO                                           |
 
 ### Why background and content are iife bundles
 

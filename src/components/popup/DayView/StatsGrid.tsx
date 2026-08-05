@@ -3,7 +3,7 @@ import {
   formatCo2,
   getCarbonLevel,
   getCarbonEquivalence,
-  getWorldAverageComparison,
+  getWorldComparisonLabel,
 } from "./utils";
 import type { StatColor } from "./types";
 import type { CarbonEstimate } from "../../../carbon/types";
@@ -14,7 +14,7 @@ type StatCardProps = {
   value: string;
   label: string;
   color: StatColor;
-  badge?: { niveau: string; name: string };
+  badge?: { emoji: string; name: string };
   sub?: string;
   sub2?: string;
 };
@@ -25,7 +25,7 @@ function StatCard({ value, label, color, badge, sub, sub2 }: StatCardProps) {
     <div className={`${cls.bg} border ${cls.border} rounded-xl px-4 pt-4 pb-3.5 text-center`}>
       {badge && (
         <div className="flex items-center justify-center gap-1.5 mb-3">
-          <span className="text-sm leading-none">{badge.niveau}</span>
+          <span className="text-sm leading-none">{badge.emoji}</span>
           <span
             className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${cls.badge}`}
           >
@@ -73,6 +73,22 @@ function MetricsStrip({ tabCount, totalMetrics, t }: MetricsStripProps) {
   );
 }
 
+/**
+ * Shown only when the cache actually spared something. It is deliberately styled
+ * apart from the footprint: it is what browsing *would* have cost, never a
+ * deduction from what it did cost.
+ */
+function AvoidedRow({ avoidedCo2, t }: { avoidedCo2: number; t: Translations }) {
+  if (avoidedCo2 === 0) return null;
+
+  return (
+    <div className="flex items-baseline justify-center gap-1.5 bg-white border border-stone-200 rounded-xl py-2.5">
+      <span className="text-sm font-bold text-green-700">−{formatCo2(avoidedCo2)}g</span>
+      <span className="text-[10px] text-stone-400">{t.stats.avoided}</span>
+    </div>
+  );
+}
+
 type StatsGridProps = {
   totalCarbon: CarbonEstimate;
   totalMetrics: Metrics;
@@ -82,19 +98,19 @@ type StatsGridProps = {
 
 export function StatsGrid({ totalCarbon, totalMetrics, tabCount, t }: StatsGridProps) {
   const level = getCarbonLevel(totalCarbon.totalCo2);
-  const equivalence = getCarbonEquivalence(totalCarbon.totalCo2, t.equivalences);
-  const worldAvg = getWorldAverageComparison(totalCarbon.totalCo2, t.worldAvg);
+
   return (
     <div className="flex flex-col gap-2.5">
       <StatCard
         value={`${formatCo2(totalCarbon.totalCo2)}g`}
         label={t.stats.co2}
         color={level.color}
-        badge={{ niveau: level.niveau, name: t.carbonLevels[level.key] }}
-        sub={equivalence}
-        sub2={worldAvg}
+        badge={{ emoji: level.badge, name: t.sobrietyLevels[level.level] }}
+        sub={getCarbonEquivalence(totalCarbon.totalCo2, t.equivalences)}
+        sub2={getWorldComparisonLabel(totalCarbon.totalCo2, t.worldComparison)}
       />
       <MetricsStrip tabCount={tabCount} totalMetrics={totalMetrics} t={t} />
+      <AvoidedRow avoidedCo2={totalCarbon.avoidedCo2} t={t} />
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { measurePage } from "./PageMetrics";
-import type { PagePerformancePayload } from "./PageMetrics";
+import type { NavigationTiming, PagePerformancePayload, ResourceTiming } from "./PageMetrics";
 import { PerformanceEntryType } from "./enums/PerformanceEntryType";
 
 const payload = (
-  resource: { transferSize: number }[],
-  navigation: { duration: number }[] = [],
+  resource: ResourceTiming[],
+  navigation: NavigationTiming[] = [],
 ): PagePerformancePayload => ({
   [PerformanceEntryType.RESOURCE]: resource,
   [PerformanceEntryType.NAVIGATION]: navigation,
@@ -61,6 +61,51 @@ describe("measurePage", () => {
 
     // Assert
     expect(result).toMatchObject({ valid: true, loadDurationMs: 0 });
+  });
+
+  it("credits the decoded size of a resource the cache served", () => {
+    // Act
+    const result = measurePage(payload([{ transferSize: 0, decodedBodySize: 120_000 }]));
+
+    // Assert — nothing crossed the network, but 120 KB reached the page
+    expect(result).toMatchObject({ valid: true, transferredBytes: 0, cachedBytes: 120_000 });
+  });
+
+  it("credits nothing for a resource that did cross the network", () => {
+    // Act
+    const result = measurePage(payload([{ transferSize: 40_000, decodedBodySize: 120_000 }]));
+
+    // Assert — its decoded size is page weight, not a saving
+    expect(result).toMatchObject({ valid: true, cachedBytes: 0 });
+  });
+
+  it("adds up the cached bytes across a mostly cached page", () => {
+    // Act
+    const result = measurePage(
+      payload([
+        { transferSize: 0, decodedBodySize: 300_000 },
+        { transferSize: 0, decodedBodySize: 200_000 },
+        { transferSize: 5_000, decodedBodySize: 5_000 },
+      ]),
+    );
+
+    // Assert
+    expect(result).toMatchObject({ valid: true, transferredBytes: 5_000, cachedBytes: 500_000 });
+  });
+
+  it("credits nothing when a stale content script omitted the decoded size", () => {
+    // Arrange — the projection that shipped before avoided CO₂ existed, still
+    // running in a tab that has not reloaded since the update
+    // Act
+    const result = measurePage(payload([{ transferSize: 0 }, { transferSize: 1_000 }]));
+
+    // Assert — the observation must survive; only the avoided figure is lost
+    expect(result).toMatchObject({
+      valid: true,
+      requests: 2,
+      transferredBytes: 1_000,
+      cachedBytes: 0,
+    });
   });
 
   it("narrows to the measurement only once valid has been checked", () => {

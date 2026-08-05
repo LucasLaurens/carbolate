@@ -1,11 +1,9 @@
 import type { MetricTab } from "../../../session/types";
 import type { StatColor, DomainData } from "./types";
-import type {
-  CarbonLevelKey,
-  EquivalenceTranslations,
-  WorldAvgTranslations,
-} from "../../../i18n/types";
-import { WORLD_DAILY_BROWSING_G_CO2 } from "../../../carbon/constants";
+import type { EquivalenceTranslations, WorldComparisonTranslations } from "../../../i18n/types";
+import type { SobrietyLevel } from "../../../carbon/sobriety";
+import { sobrietyLevel } from "../../../carbon/sobriety";
+import { compareToDailyReference } from "../../../carbon/worldComparison";
 
 export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4"];
 
@@ -50,17 +48,23 @@ export const COLOR_CLASSES: Record<
   },
 };
 
-export type CarbonLevel = { color: StatColor; niveau: string; key: CarbonLevelKey };
+/**
+ * How each grade is painted. Only the paint lives here — where the grade's
+ * thresholds sit is a model decision, and it belongs to `carbon/sobriety.ts`
+ * beside the anchor they derive from.
+ */
+const LEVEL_STYLES: Record<SobrietyLevel, { color: StatColor; badge: string }> = {
+  sober: { color: "green", badge: "🥇" },
+  moderate: { color: "yellow", badge: "🥈" },
+  intensive: { color: "orange", badge: "🥉" },
+  excessive: { color: "red", badge: "⛔" },
+};
 
-const CARBON_LEVELS: Array<{ maxCo2: number } & CarbonLevel> = [
-  { maxCo2: 50, color: "green", niveau: "🥇", key: "sobre" },
-  { maxCo2: 250, color: "yellow", niveau: "🥈", key: "modere" },
-  { maxCo2: 600, color: "orange", niveau: "🥉", key: "intensif" },
-  { maxCo2: Infinity, color: "red", niveau: "⛔", key: "excessif" },
-];
+export type CarbonLevel = { color: StatColor; badge: string; level: SobrietyLevel };
 
 export function getCarbonLevel(totalCo2: number): CarbonLevel {
-  return CARBON_LEVELS.find(({ maxCo2 }) => totalCo2 < maxCo2)!;
+  const level = sobrietyLevel(totalCo2);
+  return { ...LEVEL_STYLES[level], level };
 }
 
 export function formatCo2(value: number): string {
@@ -98,19 +102,20 @@ export function getCarbonEquivalence(gCO2: number, eq: EquivalenceTranslations):
   return eq.flight((gCO2 / FLIGHT_G_PER_KM).toFixed(1));
 }
 
-export function getWorldAverageComparison(gCO2: number, t: WorldAvgTranslations): string {
+/**
+ * Empty on a day with nothing measured: "well below the average" would be a
+ * verdict on an absence of data.
+ */
+export function getWorldComparisonLabel(gCO2: number, labels: WorldComparisonTranslations): string {
   if (gCO2 === 0) return "";
-  const diff = gCO2 - WORLD_DAILY_BROWSING_G_CO2;
-  const pct = Math.round((Math.abs(diff) / WORLD_DAILY_BROWSING_G_CO2) * 100);
-  if (diff < 0) return t.below(pct);
-  if (diff > 0) return t.above(pct);
-  return t.equal();
+  return labels[compareToDailyReference(gCO2)];
 }
 
-export function aggregateDomains(tabs: MetricTab[]): DomainData[] {
-  const map = new Map<string, number>();
+/** O(n) time and space — n = tabs. One pass, indexed by domain. */
+export function aggregateDomains(tabs: readonly MetricTab[]): DomainData[] {
+  const perDomain = new Map<string, number>();
   for (const tab of tabs) {
-    map.set(tab.domain, (map.get(tab.domain) ?? 0) + tab.carbon.totalCo2);
+    perDomain.set(tab.domain, (perDomain.get(tab.domain) ?? 0) + tab.carbon.totalCo2);
   }
-  return Array.from(map.entries()).map(([domain, totalCo2]) => ({ domain, totalCo2 }));
+  return Array.from(perDomain.entries()).map(([domain, totalCo2]) => ({ domain, totalCo2 }));
 }

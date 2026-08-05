@@ -1,4 +1,5 @@
 import CarbonCalculator from "../carbon/CarbonCalculator";
+import { resetPeriodMinutes } from "../config/retention";
 import type { Preferences } from "../config/types";
 import { MetricsIntake } from "../intake/MetricsIntake";
 import { isPageMetricsMessage } from "../messaging/messages";
@@ -10,8 +11,6 @@ const RESET_ALARM = "reset";
 // Firefox silently reschedules any alarm asked to fire in under a minute.
 const MIN_ALARM_DELAY_MINUTES = 1;
 const MS_PER_MINUTE = 60_000;
-const MINUTES_PER_DAY = 24 * 60;
-const DAYS_PER_WEEK = 7;
 
 const clock = new SystemClock();
 const store = createMetricsStore(ChromeStorage, clock);
@@ -22,12 +21,10 @@ function scheduleReset(preferences: Preferences): void {
   nextMidnight.setDate(nextMidnight.getDate() + 1);
   nextMidnight.setHours(0, 0, 0, 0);
   const delayInMinutes = (nextMidnight.getTime() - clock.nowMs()) / MS_PER_MINUTE;
-  const periodInMinutes =
-    preferences.resetPeriod === "weekly" ? DAYS_PER_WEEK * MINUTES_PER_DAY : MINUTES_PER_DAY;
 
   chrome.alarms.create(RESET_ALARM, {
     delayInMinutes: Math.max(delayInMinutes, MIN_ALARM_DELAY_MINUTES),
-    periodInMinutes,
+    periodInMinutes: resetPeriodMinutes(preferences.retentionDays),
   });
 }
 

@@ -49,7 +49,8 @@ export class MetricsIntake {
     const metrics: Metrics = {
       requestCount: measurement.requests,
       totalResourceSize: bytesToMegabytes(measurement.transferredBytes),
-      cpuTimeToLoad: millisecondsToSeconds(measurement.loadDurationMs),
+      pageLoadDurationSec: millisecondsToSeconds(measurement.loadDurationMs),
+      cachedPageWeight: bytesToMegabytes(measurement.cachedBytes),
     };
 
     await this.recorder.recordTabMetrics({

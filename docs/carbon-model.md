@@ -2,12 +2,26 @@
 
 ## General principle
 
-Carbolate estimates the carbon footprint of a web visit from three components:
-1. **Network emissions**: related to transferred data (downloaded bytes)
-2. **CPU emissions**: device energy during page processing time
-3. **Rendering emissions**: GPU/display energy during active page render
+Carbolate estimates the carbon footprint of a web visit from two components:
+
+1. **Network CO₂** — transmission networks and data centres, from the bytes that crossed the network
+2. **Device CO₂** — the user's machine while the page loads
+
+Alongside them it reports one figure that is **not** part of the footprint:
+
+3. **Avoided CO₂** — what the cache spared, never subtracted from the total
 
 The result is expressed in **grams of CO₂ equivalent (gCO₂e)**.
+
+## Perimeter — usage only
+
+The model counts energy consumed **while browsing**. It excludes the manufacturing
+of servers, network gear and the user's device. The figure it produces is therefore
+a **floor**, not a total: roughly 20–25 % below a full-perimeter model such as
+Sustainable Web Design.
+
+Every factor below carries either a published source or the explicit label
+_house estimate_. See [the perimeter ADR](decisions/2026-08-05-perimetre-modele-carbone.md).
 
 ---
 
@@ -15,120 +29,205 @@ The result is expressed in **grams of CO₂ equivalent (gCO₂e)**.
 
 Defined in `src/carbon/constants.ts`:
 
-| Constant | Value | Description | Source |
-|---|---|---|---|
-| `GRID_INTENSITY_G_CO2_PER_KWH` | `442` gCO₂e/kWh | Global average grid carbon intensity | IEA 2023 |
-| `NETWORK_ENERGY_KWH_PER_GB` | `0.4` kWh/GB | Energy per GB for data centers + transmission | IEA 2023 / ADEME 2023 |
-| `CARBON_PER_GB` | `176.8` gCO₂e/GB | `NETWORK_ENERGY × GRID_INTENSITY` | derived |
-| `CPU_FACTOR` | `0.001` gCO₂e/s | Device energy per second of page load (15W laptop, 30% incremental load) | — |
-| `RENDERING_FACTOR` | `0.0004` gCO₂e/s | GPU/display rendering energy per second of page load (~3W integrated GPU) | — |
-| `WORLD_DAILY_BROWSING_G_CO2` | `120` gCO₂e | Global average daily web browsing footprint | ADEME 2023 / Shift Project 2022 |
+| Constant                         | Value                 | Description                                                | Source                          |
+| -------------------------------- | --------------------- | ---------------------------------------------------------- | ------------------------------- |
+| `GRID_INTENSITY_G_CO2_PER_KWH`   | `442` gCO₂e/kWh       | Global average grid carbon intensity                       | IEA 2023                        |
+| `NETWORK_ENERGY_KWH_PER_GB`      | `0.4` kWh/GB          | Energy per GB for data centres + transmission              | IEA 2023 / ADEME 2023           |
+| `CARBON_PER_GB`                  | `176.8` gCO₂e/GB      | `NETWORK_ENERGY × GRID_INTENSITY`                          | derived                         |
+| `DEVICE_FACTOR`                  | `0.0014` gCO₂e/s      | Machine energy per second of page load (≈ 11 W above idle) | **house estimate**              |
+| `DAILY_BROWSING_REFERENCE_G_CO2` | `120` gCO₂e           | Average daily web-browsing footprint of an internet user   | ADEME 2023 / Shift Project 2022 |
+| `SOBRIETY_MULTIPLIERS`           | `0.5 / 1.5 / 4`       | Applied to the reference → the sobriety thresholds         | **design choice, not a source** |
+| `WORLD_COMPARISON_MULTIPLIERS`   | `0.5 / 0.9 / 1.1 / 2` | Band edges of the world comparison                         | **design choice, not a source** |
 
-> **Methodology note**: `NETWORK_ENERGY_KWH_PER_GB = 0.4` is updated from the 2019 Shift Project estimate of 0.75 kWh/GB, reflecting efficiency gains in data centers and fixed-broadband networks documented by IEA 2022–2023.
+> **Methodology note**: `NETWORK_ENERGY_KWH_PER_GB = 0.4` is updated from the 2019
+> Shift Project estimate of 0.75 kWh/GB, reflecting efficiency gains in data centres
+> and fixed-broadband networks documented by IEA 2022–2023.
+
+> **Why `DEVICE_FACTOR` is one number.** It replaces a `CPU_FACTOR` (0.001) and
+> `RENDERING_FACTOR` (0.0004) pair that multiplied the **same** value — the
+> navigation duration — by two coefficients. That was never two measurements; it
+> was one measurement with a factor cut in half, and the cut implied a precision the
+> input cannot carry. `0.0014` is their sum, so what a stored day totals to does not
+> move.
 
 ---
 
-## OCP Architecture — CarbonContributionSource
+## OCP architecture — CarbonContributionSource
 
-The calculation is decomposed into **independent sources** via the `CarbonContributionSource` interface:
+The calculation is decomposed into **independent sources**:
 
 ```typescript
 // src/carbon/contracts/CarbonContributionSource.ts
 interface CarbonContributionSource {
-  metric: ContributionMetric;              // "networkCo2" | "cpuCo2" | "renderingCo2"
-  calculate(inputs: CarbonInput[]): number; // returns gCO₂e
+  readonly metric: ContributionMetric; // "networkCo2" | "deviceCo2"
+  calculate(inputs: readonly CarbonInput[]): number; // returns gCO₂e
 }
 ```
 
 `CarbonCalculator` accepts an array of sources in its constructor. By default:
 
 ```typescript
-new CarbonCalculator([
-  new NetworkCarbonSource(),
-  new CpuCarbonSource(),
-  new RenderingCarbonSource(),
-])
+new CarbonCalculator([new NetworkCarbonSource(), new DeviceCarbonSource()]);
 ```
 
-To add a new emission source, create a class implementing `CarbonContributionSource` and inject it — without modifying `CarbonCalculator`.
+To add a new emission channel, create a class implementing
+`CarbonContributionSource` and inject it — without modifying `CarbonCalculator`,
+which sums `totalCo2` from whatever channels it was given.
+
+`ContributionMetric` deliberately **excludes** `avoidedCo2`:
+
+```typescript
+type ContributionMetric = keyof Omit<CarbonEstimate, "totalCo2" | "avoidedCo2">;
+```
+
+so no source can write into the avoided figure and reach the total through it.
+Avoided CO₂ is computed by a plain function, `src/carbon/avoidedCarbon.ts` — one
+implementation, so no seam is built for it.
 
 ---
 
 ## Formulas
 
 **NetworkCarbonSource** (`src/carbon/sources/NetworkCarbonSource.ts`):
+
 ```
-totalGB    = Σ(transferSize) / 1_000_000_000   [bytes → GB]
-networkCo2 = totalGB × CARBON_PER_GB           [176.8 gCO₂e/GB]
+totalGB    = Σ(transferredBytes) / 1_000_000_000   [bytes → GB, base 10]
+networkCo2 = totalGB × CARBON_PER_GB               [176.8 gCO₂e/GB]
 ```
 
-**CpuCarbonSource** (`src/carbon/sources/CpuCarbonSource.ts`):
+**DeviceCarbonSource** (`src/carbon/sources/DeviceCarbonSource.ts`):
+
 ```
-totalSec = Σ(cpuTime) / 1000   [ms → seconds]
-cpuCo2   = totalSec × CPU_FACTOR   [0.001 gCO₂e/s]
+totalSec  = Σ(pageLoadDurationMs) / 1000   [ms → seconds]
+deviceCo2 = totalSec × DEVICE_FACTOR       [0.0014 gCO₂e/s]
 ```
 
-**RenderingCarbonSource** (`src/carbon/sources/RenderingCarbonSource.ts`):
+**avoidedCarbon** (`src/carbon/avoidedCarbon.ts`):
+
 ```
-totalSec    = Σ(cpuTime) / 1000         [ms → seconds; cpuTime = page load duration]
-renderingCo2 = totalSec × RENDERING_FACTOR   [0.0004 gCO₂e/s]
+cachedGB   = Σ(cachedBytes) / 1_000_000_000
+avoidedCo2 = cachedGB × CARBON_PER_GB      [the network transfer that did not happen]
 ```
 
 **CarbonCalculator** aggregates:
+
 ```
-totalCo2 = networkCo2 + cpuCo2 + renderingCo2
+totalCo2 = networkCo2 + deviceCo2          [avoidedCo2 is NOT in here]
 ```
 
 ### Concrete example
 
-For a tab loading **2 MB** of resources with **1.5s** of load time:
+A tab loading **2 MB** over the network with **1.5 s** of load time, plus **3 MB**
+served from cache:
 
 ```
-totalGB       = 2_000_000 / 1_000_000_000 = 0.002 GB
-totalSec      = 1500 / 1000 = 1.5 s
+totalGB    = 2_000_000 / 1_000_000_000 = 0.002 GB
+totalSec   = 1500 / 1000 = 1.5 s
+cachedGB   = 3_000_000 / 1_000_000_000 = 0.003 GB
 
-networkCo2    = 0.002 × 176.8 = 0.354g
-cpuCo2        = 1.5   × 0.001 = 0.0015g
-renderingCo2  = 1.5   × 0.0004 = 0.0006g
+networkCo2 = 0.002 × 176.8 = 0.3536 g
+deviceCo2  = 1.5   × 0.0014 = 0.0021 g
+totalCo2   ≈ 0.356 g
 
-totalCo2      ≈ 0.356g
+avoidedCo2 = 0.003 × 176.8 = 0.5304 g   ← reported beside the total, never inside it
 ```
+
+---
+
+## Why the cache gets no factor of its own
+
+A resource served from cache has `transferSize = 0`, so it emits no network CO₂.
+The intuition that it is not free is correct, but its residual cost is **time** —
+decoding, disk reads — which `deviceCo2` already charges through the load duration.
+Adding a per-byte factor would count the same energy twice, and no published source
+gives gCO₂e per byte read from a disk: it would have to be invented.
+
+So the cache is credited, not charged. `avoidedCo2` is a positive, pedagogical
+figure computed from `decodedBodySize` — data already present in
+`PerformanceResourceTiming`.
 
 ---
 
 ## Input data sources
 
-Data comes from the browser's native `Performance` API, collected by the content script:
+Data comes from the browser's native `Performance` API, collected by the content
+script:
 
-| CarbonInput field | Performance API source | Unit |
-|---|---|---|
-| `transferSize` | `PerformanceResourceTiming.transferSize` | bytes |
-| `cpuTime` | `PerformanceNavigationTiming.duration` | ms |
+| `CarbonInput` field  | Performance API source                                                               | Unit  |
+| -------------------- | ------------------------------------------------------------------------------------ | ----- |
+| `transferredBytes`   | `PerformanceResourceTiming.transferSize`                                             | bytes |
+| `pageLoadDurationMs` | `PerformanceNavigationTiming.duration`                                               | ms    |
+| `cachedBytes`        | `PerformanceResourceTiming.decodedBodySize`, for entries whose `transferSize` is `0` | bytes |
 
-`transferSize` represents the **compressed** size actually transferred over the network (0 if cached). `duration` is the total navigation time used as a proxy for device active time.
+`transferSize` is the **compressed** size actually transferred (0 if cached).
+`duration` is **wall-clock** navigation time, used as a proxy for device activity —
+it is not a CPU reading, which is why the field it feeds is named
+`pageLoadDurationSec` and no longer `cpuTimeToLoad`.
+
+`decodedBodySize` is absent from messages sent by a content script that has not
+reloaded since an extension update. Its absence costs the avoided figure only; the
+observation itself is still recorded.
 
 ---
 
 ## Eco-equivalences
 
-Displayed in the popup CO₂ card. Reference values (ADEME 2022–2023):
+Displayed in the panel's CO₂ card. Reference values (ADEME 2022–2023):
 
-| Range | Equivalence | Factor |
-|---|---|---|
-| < 1 gCO₂e | Emails (no attachment) | 0.3 gCO₂e/email |
-| 1–55 gCO₂e | HD streaming minutes | 55 gCO₂e/h (1080p, IEA 2022) |
-| 55–550 gCO₂e | HD streaming hours | 55 gCO₂e/h |
-| 550–6000 gCO₂e | km by car | 120 gCO₂e/km (avg. European gas car) |
-| ≥ 6000 gCO₂e | km by plane | 230 gCO₂e/km (short-haul, incl. radiative forcing) |
+| Range          | Equivalence            | Factor                                             |
+| -------------- | ---------------------- | -------------------------------------------------- |
+| < 1 gCO₂e      | Emails (no attachment) | 0.3 gCO₂e/email                                    |
+| 1–55 gCO₂e     | HD streaming minutes   | 55 gCO₂e/h (1080p, IEA 2022)                       |
+| 55–550 gCO₂e   | HD streaming hours     | 55 gCO₂e/h                                         |
+| 550–6000 gCO₂e | km by car              | 120 gCO₂e/km (avg. European gas car)               |
+| ≥ 6000 gCO₂e   | km by plane            | 230 gCO₂e/km (short-haul, incl. radiative forcing) |
+
+Each factor carries its own perimeter and they are **not additive**: this is a
+comprehension aid, never a measurement.
 
 ---
 
-## World average comparison
+## Sobriety levels
 
-The popup shows a daily score vs. global average:
+A **normative** grade on the day's total — "am I where I should be?", not "am I
+average?". Computed by `src/carbon/sobriety.ts`.
 
-- **World average**: 120 gCO₂e/day for web browsing (ADEME 2023 / Shift Project 2022)
-- Format: `−73% vs. world avg` (below) or `+25% vs. world avg` (above)
+The thresholds are **multiples of the single anchor**, never literals:
+
+```
+sober      < 0.5 × reference =  60 gCO₂e
+moderate   < 1.5 × reference = 180 gCO₂e
+intensive  < 4   × reference = 480 gCO₂e
+excessive  ≥ 4   × reference
+```
+
+The multipliers are a **design choice, not a source**: no study says at what point
+browsing becomes excessive. What is sourced is the anchor.
+
+Changing `DAILY_BROWSING_REFERENCE_G_CO2` moves all four bands mechanically. That
+is the point — one piece of knowledge, one home — and
+`src/carbon/sobriety.test.ts` fails if a literal is written back into the level
+table, which is the regression that removing them prevents.
+
+`src/components/popup/DayView/utils.ts` maps a level to a colour and a badge. Only
+the paint lives there; where the bands sit is a model decision.
+
+---
+
+## World comparison
+
+A **coarse position** against the same anchor: _well below / below / around /
+above / well above_. Computed by `src/carbon/worldComparison.ts`.
+
+Deliberately **not a percentage**. The reference is a full-perimeter estimate
+(device and network manufacturing amortised in) while Carbolate is usage-only, so
+the comparison carries a structural 20–25 % bias in the flattering direction. A
+figure like `−73 % vs. world average` would hide that behind a precision it does
+not have; a coarse word survives it.
+
+Both the levels and the comparison now derive from the same anchor, so they can no
+longer contradict each other on screen — which is what "🥈 moderate" beside
+"+25 % vs. world average" used to do.
 
 ---
 
@@ -136,8 +235,14 @@ The popup shows a daily score vs. global average:
 
 ```typescript
 // src/session/aggregator.ts
-sumMetrics(tabs)         → { requestCount, totalResourceSize, cpuTimeToLoad }
-sumCarbonEstimates(tabs) → { networkCo2, cpuCo2, renderingCo2, totalCo2 }
+sumMetrics(entries)         → { requestCount, totalResourceSize, pageLoadDurationSec, cachedPageWeight }
+sumCarbonEstimates(entries) → { networkCo2, deviceCo2, totalCo2, avoidedCo2 }
 ```
 
-Each `MetricTab` has its own `carbon`. The `DailyRecord.totalCarbon` is the **sum** of the carbon values of all tabs for the day. Visiting the same domain multiple times **accumulates** emissions.
+Each `MetricTab` carries its own `carbon`. `DailyRecord.totalCarbon` is the **sum**
+across all tabs for the day. `avoidedCo2` is summed like every other channel and
+still stays out of `totalCo2`.
+
+Every estimate reaching these functions has passed through
+`src/session/legacy.ts`, so no field can be absent and no `?? 0` fallback is needed
+downstream — see [Data schema and persistence](storage.md).

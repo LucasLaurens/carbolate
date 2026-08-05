@@ -45,6 +45,11 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      # ESLint is not type-aware here, so nothing else in this pipeline would
+      # notice a type error: the build transpiles without checking.
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Run tests
         run: npm run test
 

@@ -5,7 +5,17 @@ import { PerformanceEntryType } from "./enums/PerformanceEntryType";
  * that Chrome's structured clone algorithm refuses to serialize, so a content
  * script can only forward these plain projections of them.
  */
-export type ResourceTiming = { transferSize: number };
+export type ResourceTiming = {
+  transferSize: number;
+  /**
+   * Optional because a content script injected **before** an extension update
+   * keeps running the old projection until its tab reloads, and that projection
+   * did not carry this field. Its absence must cost the avoided figure, not the
+   * whole observation.
+   */
+  decodedBodySize?: number;
+};
+
 export type NavigationTiming = { duration: number };
 
 export type PagePerformancePayload = {
@@ -18,6 +28,8 @@ export type PageMeasurement = {
   requests: number;
   transferredBytes: number;
   loadDurationMs: number;
+  /** Uncompressed size of the resources the cache served — see avoided CO₂. */
+  cachedBytes: number;
 };
 
 export type PageMeasurementResult = ({ valid: true } & PageMeasurement) | { valid: false };
@@ -33,7 +45,16 @@ export function measurePage(payload: PagePerformancePayload): PageMeasurementRes
   if (resources.length === 0) return { valid: false };
 
   let transferredBytes = 0;
-  for (const resource of resources) transferredBytes += resource.transferSize;
+  let cachedBytes = 0;
+
+  for (const resource of resources) {
+    transferredBytes += resource.transferSize;
+    // A zero transfer with a non-empty decoded body is the cache's signature: the
+    // bytes reached the page, they just never crossed the network.
+    if (resource.transferSize === 0 && Number.isFinite(resource.decodedBodySize)) {
+      cachedBytes += resource.decodedBodySize ?? 0;
+    }
+  }
 
   const [navigation] = payload[PerformanceEntryType.NAVIGATION];
 
@@ -44,5 +65,6 @@ export function measurePage(payload: PagePerformancePayload): PageMeasurementRes
     // Prerendered and some SPA loads report no navigation entry at all: the
     // duration is then unknown, and zero is the only floor that invents nothing.
     loadDurationMs: navigation === undefined ? 0 : navigation.duration,
+    cachedBytes,
   };
 }
