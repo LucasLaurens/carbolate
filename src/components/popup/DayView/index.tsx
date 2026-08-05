@@ -1,5 +1,6 @@
 import type { DailyRecord } from "../../../session/types";
 import type { Translations } from "../../../i18n/types";
+import { emptyMetrics, emptyCarbonEstimate } from "../../../session/aggregator";
 import { StatsGrid } from "./StatsGrid";
 import { DomainChart } from "./DomainChart";
 
@@ -10,12 +11,9 @@ type Props = {
   t: Translations;
 };
 
-const EMPTY_CARBON = { networkCo2: 0, cpuCo2: 0, totalCo2: 0 };
-const EMPTY_METRICS = { requestCount: 0, totalResourceSize: 0, cpuTimeToLoad: 0 };
-
 export default function DayView({ record, isLoading = false, t }: Props) {
-  const totalCarbon = record?.totalCarbon ?? EMPTY_CARBON;
-  const totalMetrics = record?.totalMetrics ?? EMPTY_METRICS;
+  const totalCarbon = record?.totalCarbon ?? emptyCarbonEstimate();
+  const totalMetrics = record?.totalMetrics ?? emptyMetrics();
   const tabCount = record?.tabs.length ?? 0;
 
   return (

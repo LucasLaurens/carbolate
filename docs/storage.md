@@ -6,10 +6,10 @@ All data is persisted in **`chrome.storage.local`** via `src/storage/ChromeStora
 
 Two keys are used:
 
-| Key | Type | Description |
-|---|---|---|
-| `"sessions"` | `SessionsStore` | Session history by day |
-| `"preferences"` | `Preferences` | User configuration |
+| Key             | Type            | Description            |
+| --------------- | --------------- | ---------------------- |
+| `"sessions"`    | `SessionsStore` | Session history by day |
+| `"preferences"` | `Preferences`   | User configuration     |
 
 Types defined in `src/storage/types.ts`:
 
@@ -32,10 +32,10 @@ Defined in **`src/config/preferences.ts`** (single source of truth — do not re
 type ResetPeriod = "daily" | "weekly";
 
 type Preferences = {
-  resetPeriod:           ResetPeriod; // "daily" | "weekly"
-  retentionDays:         number;       // 1 = today only | 7 = 1 week | -1 = keep all
-  autoExportBeforeReset: boolean;      // Export CSV before cleanup
-  language:              Language;     // "en" | "fr"
+  resetPeriod: ResetPeriod; // "daily" | "weekly"
+  retentionDays: number; // 1 = today only | 7 = 1 week | -1 = keep all
+  autoExportBeforeReset: boolean; // Export CSV before cleanup
+  language: Language; // "en" | "fr"
 };
 
 const DEFAULT_PREFERENCES: Preferences = {
@@ -54,23 +54,28 @@ const DEFAULT_PREFERENCES: Preferences = {
 
 ```typescript
 type Metrics = {
-  requestCount:      number; // Number of HTTP/HTTPS requests
-  totalResourceSize: number; // Total transferred size (MB)
-  cpuTimeToLoad:     number; // Navigation duration (seconds)
+  requestCount: number; // Number of HTTP/HTTPS requests
+  totalResourceSize: number; // Total transferred size (MB, base 10 — 10⁶ bytes)
+  cpuTimeToLoad: number; // Navigation duration (seconds) — wall clock, not CPU
 };
 ```
+
+> Unit conversions go through `src/utils/bytes.ts` — the single home for the
+> base-10 rule. `Metrics` is adapted to `CarbonInput` by
+> `src/carbon/toCarbonInput.ts`, imported by both the background and the tests so
+> a unit change cannot land in one without the other.
 
 ### `MetricTab` — a tracked tab
 
 ```typescript
 type MetricTab = {
-  id:      number;  // chrome.tabs.Tab.id
-  url:     string;  // Full URL
-  domain:  string;  // hostname (e.g. "github.com"), "" if URL is invalid
+  id: number; // chrome.tabs.Tab.id
+  url: string; // Full URL
+  domain: string; // hostname (e.g. "github.com"), "" if URL is invalid
   metrics: Metrics;
   meta: {
     status: number; // HTTP status (e.g. 200)
-    date:   number; // Unix timestamp (ms) of the last collection
+    date: number; // Unix timestamp (ms) of the last collection
   };
   carbon: CarbonEstimate;
 };
@@ -80,20 +85,26 @@ type MetricTab = {
 
 ```typescript
 type CarbonEstimate = {
-  networkCo2: number; // gCO₂e emitted by the network
-  cpuCo2:     number; // gCO₂e emitted by the CPU
-  totalCo2:   number; // networkCo2 + cpuCo2
+  networkCo2: number; // gCO₂e — transmission networks + data centers
+  cpuCo2: number; // gCO₂e — device energy during page load
+  renderingCo2: number; // gCO₂e — GPU/display during page load
+  totalCo2: number; // networkCo2 + cpuCo2 + renderingCo2
 };
 ```
+
+> Records persisted before `renderingCo2` existed lack the field. `sumCarbonEstimates`
+> reads it tolerantly (`?? 0`) so a legacy day does not total to `NaN`. The neutral
+> elements `emptyMetrics()` / `emptyCarbonEstimate()` are **derived from the sums**
+> rather than written out again — see `src/session/aggregator.ts` and its test.
 
 ### `DailyRecord` — all data for a day
 
 ```typescript
 type DailyRecord = {
-  date:         string;        // "YYYY-MM-DD" in local time (via getDailyDate())
-  tabs:         MetricTab[];   // Tabs tracked during the day
-  totalMetrics: Metrics;       // Sum of metrics across all tabs
-  totalCarbon:  CarbonEstimate;// Sum of carbon across all tabs
+  date: string; // "YYYY-MM-DD" in local time (via getDailyDate())
+  tabs: MetricTab[]; // Tabs tracked during the day
+  totalMetrics: Metrics; // Sum of metrics across all tabs
+  totalCarbon: CarbonEstimate; // Sum of carbon across all tabs
 };
 ```
 
@@ -203,9 +214,9 @@ metricsStore.getTotalCarbon()          → CarbonEstimate        (today's CO₂)
 metricsStore.hasExistingTabById(id)    → boolean
 
 // Write (invalidates the cache)
-metricsStore.addTab(tab)                               → void  (new tab)
-metricsStore.updateTabMetrics(id, metrics, meta?)      → void  (update existing tab)
-metricsStore.clearPastDays(retentionDays)              → void  (cleanup)
+metricsStore.addTab(tab)                                    → void  (new tab)
+metricsStore.updateTabMetrics(id, metrics, carbon, meta?)   → void  (update existing tab)
+metricsStore.clearPastDays(retentionDays)                   → void  (cleanup)
 ```
 
 ### Cutoff calculation in `clearPastDays`

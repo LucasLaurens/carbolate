@@ -16,6 +16,7 @@ import { metricsStore } from "../src/session/store";
 import type { Metrics } from "../src/session/types";
 import { withCarbon, computeCarbon } from "./helpers";
 import { setTestClock, FixedClock } from "../src/utils/clock";
+import { bytesToMegabytes, millisecondsToSeconds } from "../src/utils/bytes";
 
 beforeEach(() => {
   setTestClock(new FixedClock("2026-02-23"));
@@ -40,8 +41,8 @@ function toMetrics(
   const { resourceCount, totalTransferSize } = ctx.execute(resourceEntries);
   return {
     requestCount: resourceCount,
-    totalResourceSize: totalTransferSize / (1024 * 1024), // bytes → MB
-    cpuTimeToLoad: navigationDurationMs / 1000, // ms   → s
+    totalResourceSize: bytesToMegabytes(totalTransferSize),
+    cpuTimeToLoad: millisecondsToSeconds(navigationDurationMs),
   };
 }
 
@@ -134,7 +135,7 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
     it("extracts the correct request count and resource size", () => {
       const metrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
       expect(metrics.requestCount).toBe(15);
-      expect(metrics.totalResourceSize).toBeCloseTo(0.57, 2); // 598 000 bytes / 1 048 576 ≈ 0.570 MB
+      expect(metrics.totalResourceSize).toBeCloseTo(0.598, 3); // 598 000 bytes / 10⁶ = 0.598 MB
     });
 
     it("stores the tab with its carbon estimate", async () => {
@@ -189,8 +190,8 @@ describe("Full pipeline: Performance API → carbon estimate", () => {
     it("only counts the bytes actually transferred over the network", () => {
       const metrics = toMetrics(SPA_NAVIGATION.entries, SPA_NAVIGATION.navigationDurationMs);
       expect(metrics.requestCount).toBe(5);
-      // 3 200 + 1 800 = 5 000 bytes = ~0.00476 MB
-      expect(metrics.totalResourceSize).toBeCloseTo(0.00476, 4);
+      // 3 200 + 1 800 = 5 000 bytes = 0.005 MB
+      expect(metrics.totalResourceSize).toBeCloseTo(0.005, 4);
     });
 
     it("has a very small footprint compared to a full-page load", async () => {
