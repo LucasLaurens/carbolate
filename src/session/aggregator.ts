@@ -1,19 +1,30 @@
 import type { CarbonEstimate } from "../carbon/types";
 import type { DailyRecord, Metrics } from "./types";
 
-export const sumMetrics = (metricsArray: Metrics[]): Metrics => ({
-  requestCount: metricsArray.reduce((sum, m) => sum + m.requestCount, 0),
-  totalResourceSize: metricsArray.reduce((sum, m) => sum + m.totalResourceSize, 0),
-  cpuTimeToLoad: metricsArray.reduce((sum, m) => sum + m.cpuTimeToLoad, 0),
+/** O(n) time, O(1) space — n = entries. */
+export const sumMetrics = (entries: readonly Metrics[]): Metrics => ({
+  requestCount: entries.reduce((sum, each) => sum + each.requestCount, 0),
+  totalResourceSize: entries.reduce((sum, each) => sum + each.totalResourceSize, 0),
+  pageLoadDurationSec: entries.reduce((sum, each) => sum + each.pageLoadDurationSec, 0),
+  cachedPageWeight: entries.reduce((sum, each) => sum + each.cachedPageWeight, 0),
 });
 
-export const sumCarbonEstimates = (estimates: CarbonEstimate[]): CarbonEstimate => ({
-  networkCo2: estimates.reduce((s, e) => s + e.networkCo2, 0),
-  cpuCo2: estimates.reduce((s, e) => s + e.cpuCo2, 0),
-  // Records persisted before renderingCo2 existed lack the field entirely;
-  // without the fallback every legacy day would total to NaN.
-  renderingCo2: estimates.reduce((s, e) => s + (e.renderingCo2 ?? 0), 0),
-  totalCo2: estimates.reduce((s, e) => s + e.totalCo2, 0),
+/**
+ * Adds every channel independently, `avoidedCo2` included — it is summed like the
+ * rest but stays out of `totalCo2`, which only adds up what browsing cost.
+ *
+ * Every estimate reaching this function has been through
+ * {@link normalizeDailyRecord}, so no field can be absent and no fallback is
+ * needed here. That guard used to live inline, which is why the same `?? 0` had
+ * to be repeated in the CSV export.
+ *
+ * O(n) time, O(1) space — n = estimates.
+ */
+export const sumCarbonEstimates = (estimates: readonly CarbonEstimate[]): CarbonEstimate => ({
+  networkCo2: estimates.reduce((sum, each) => sum + each.networkCo2, 0),
+  deviceCo2: estimates.reduce((sum, each) => sum + each.deviceCo2, 0),
+  totalCo2: estimates.reduce((sum, each) => sum + each.totalCo2, 0),
+  avoidedCo2: estimates.reduce((sum, each) => sum + each.avoidedCo2, 0),
 });
 
 /**

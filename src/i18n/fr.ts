@@ -9,13 +9,15 @@ export const fr: Translations = {
     data: "Données transférées",
     requests: "Requêtes",
     tabs: "Onglets visités",
+    avoided: "évités par le cache",
   },
   chart: { title: "Top domaines par CO₂" },
-  carbonLevels: {
-    sobre: "Sobre",
-    modere: "Modéré",
-    intensif: "Intensif",
-    excessif: "Excessif",
+  actions: { refresh: "Actualiser", export: "Export CSV" },
+  sobrietyLevels: {
+    sober: "Sobre",
+    moderate: "Modéré",
+    intensive: "Intensif",
+    excessive: "Excessif",
   },
   equivalences: {
     emails: (n) => `≈ ${n} email${n > 1 ? "s" : ""}`,
@@ -24,10 +26,12 @@ export const fr: Translations = {
     car: (km) => `≈ ${km} km en voiture`,
     flight: (km) => `≈ ${km} km en avion`,
   },
-  worldAvg: {
-    below: (pct) => `−${pct}% vs. moy. mondiale (120 g/j)`,
-    above: (pct) => `+${pct}% vs. moy. mondiale (120 g/j)`,
-    equal: () => `= moy. mondiale (120 g/j)`,
+  worldComparison: {
+    wellBelow: "bien en dessous de la moyenne journalière",
+    below: "en dessous de la moyenne journalière",
+    around: "autour de la moyenne journalière",
+    above: "au-dessus de la moyenne journalière",
+    wellAbove: "bien au-dessus de la moyenne journalière",
   },
   settings: {
     save: "Enregistrer",

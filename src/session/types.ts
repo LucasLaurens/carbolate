@@ -2,8 +2,21 @@ import type { CarbonEstimate } from "../carbon/types";
 
 export type Metrics = {
   requestCount: number;
+  /** Transferred data in base-10 megabytes — what crossed the network, compressed. */
   totalResourceSize: number;
-  cpuTimeToLoad: number;
+  /**
+   * Wall-clock seconds from navigation start to load end. Formerly named
+   * `cpuTimeToLoad`, which promised a CPU measurement it never made: this is a
+   * **proxy** for device activity, not a CPU reading.
+   */
+  pageLoadDurationSec: number;
+  /**
+   * Uncompressed megabytes the cache served, so none of it crossed the network.
+   * Unlike `totalResourceSize` this is a decoded size, because that is what the
+   * transfer would have weighed had the cache missed — it feeds avoided CO₂ only,
+   * never the footprint.
+   */
+  cachedPageWeight: number;
 };
 
 type MetaData = {

@@ -3,6 +3,7 @@
 ## Vue d'ensemble
 
 La V2 étend Carbolate sur deux axes :
+
 - **Configuration** — contrôle du cycle de rétention et de l'export
 - **Historique** — visualisation de la progression carbone dans le temps
 
@@ -10,39 +11,46 @@ La V2 étend Carbolate sur deux axes :
 
 ## 1. Paramétrage de la rétention des données
 
-**Objectif** : laisser l'utilisateur choisir si les données sont conservées jour par jour ou semaine par semaine.
+**Objectif** : laisser l'utilisateur choisir la fenêtre d'historique conservée.
 
 ### Comportement attendu
 
-| Mode | Rétention | Alarme de reset |
-|---|---|---|
-| **Quotidien** (défaut actuel) | 1 jour — seul aujourd'hui persiste | Toutes les 24h |
-| **Hebdomadaire** | 7 jours glissants | Tous les 7 jours |
+| Choix                           | `retentionDays` | Alarme de reset (dérivée)                             |
+| ------------------------------- | --------------- | ----------------------------------------------------- |
+| **Aujourd'hui** (défaut actuel) | `1`             | toutes les 24h                                        |
+| **Semaine glissante**           | `7`             | tous les 7 jours                                      |
+| **Mois glissant**               | `30`            | tous les 30 jours                                     |
+| **Tout conserver**              | `-1`            | toutes les 24h, mais `clearPastDays` ne supprime rien |
 
 ### Ce qui existe déjà
 
-- `Preferences.resetPeriod` (`"daily" \| "weekly"`) — type défini, valeur stockée
+- `Preferences.retentionDays` — **source de vérité unique** de la rétention
+- `resetPeriodMinutes(retentionDays)` dans `src/config/retention.ts` — la période de l'alarme s'en déduit, testée
 - Logique d'alarme dans `background/index.ts` — branchée mais non exposée en UI
-- `metricsStore.clearPastDays(retentionDays)` — fonctionnel
+- `store.clearPastDays(retentionDays)` — fonctionnel, ne supprime jamais le jour courant
 
 ### Ce qui manque
 
-- UI dans `SettingsView.tsx` : toggle ou select `Daily / Weekly`
+- UI dans `SettingsView.tsx` : select sur `retentionDays`
 - Sauvegarde immédiate via `ChromeStorage.setPreferences()`
-- Reconfiguration de l'alarme Chrome au changement (sans attendre le redémarrage du navigateur)
-- Traduction i18n : clé `settings.resetPeriod` + labels `daily` / `weekly`
+- Reconfiguration de l'alarme au changement (sans attendre le redémarrage du navigateur)
+- Traduction i18n : clé `settings.retention` + un libellé par valeur
 
 ### Contrat technique
 
-```ts
-// Aucun changement de type nécessaire — Preferences est déjà prêt
-type ResetPeriod = "daily" | "weekly";
+`ResetPeriod` a été supprimé : il doublonnait `retentionDays` et autorisait la paire
+incohérente `{ resetPeriod: "weekly", retentionDays: 1 }`. Aucun nouveau type n'est
+nécessaire — n'importe quelle fenêtre est déjà représentable.
+Voir [l'ADR unités et rétention](decisions/2026-08-05-unites-et-retention.md).
 
+```ts
 // À ajouter dans background/index.ts
-function reconfigureAlarm(period: ResetPeriod): void {
-  chrome.alarms.clear("reset");
-  chrome.alarms.create("reset", {
-    periodInMinutes: period === "weekly" ? 7 * 24 * 60 : 24 * 60,
+import { resetPeriodMinutes } from "../config/retention";
+
+function reconfigureAlarm(retentionDays: number): void {
+  chrome.alarms.clear(RESET_ALARM);
+  chrome.alarms.create(RESET_ALARM, {
+    periodInMinutes: resetPeriodMinutes(retentionDays),
   });
 }
 ```
@@ -57,19 +65,19 @@ function reconfigureAlarm(period: ResetPeriod): void {
 
 - Mode **quotidien** → exporte uniquement aujourd'hui (1 section, 1 date)
 - Mode **hebdomadaire** → exporte les 7 derniers jours (1 section par date)
-- Le bouton "Export CSV" n'est visible que si `getAllDays()` retourne au moins un enregistrement non vide
+- Le bouton "Export CSV" pourrait n'être actif que si `getAllDays()` retourne au moins un enregistrement non vide — aujourd'hui il est toujours actif et produit un fichier réduit à son en-tête, ce qui est une réponse honnête
 
 ### Structure CSV cible
 
 ```
-# Carbolate export — 2026-05-04 — mode: weekly
+# Carbolate export — 2026-05-04 — rétention: 7 jours
 
-date,domain,url,requestCount,totalResourceSize_MB,cpuTimeToLoad_s,networkCo2_g,cpuCo2_g,renderingCo2_g,totalCo2_g,visitTimestamp
+date,domain,url,requestCount,totalResourceSize_MB,pageLoadDuration_s,cachedPageWeight_MB,networkCo2_g,deviceCo2_g,totalCo2_g,avoidedCo2_g,visitTimestamp
 
 ## 2026-05-04
-2026-05-04,github.com,https://github.com/...,42,3.2,1.8,0.567,0.002,0.001,0.570,...
+2026-05-04,github.com,https://github.com/...,42,3.2,1.8,1.1,0.567,0.0025,0.570,0.194,...
 ...
-TOTAL,,,156,12.4,8.2,2.190,0.008,0.003,2.201,
+TOTAL,,,156,12.4,8.2,4.3,2.190,0.011,2.201,0.760,
 
 ## 2026-05-03
 ...
@@ -78,26 +86,26 @@ TOTAL,...
 
 ### Ce qui existe déjà
 
-- `exportToCSV(records: DailyRecord[])` dans `src/utils/csv.ts` — fonctionnel mais format plat
-- Bouton Export dans le popup — présent
+- `toCSV(records)` (pur) + `exportToCSV(records, clock)` dans `src/utils/csv.ts` — fonctionnels, format plat
+- Bouton **Export CSV** dans `DayView` — rendu et limité par `RateLimiter`
+- Permission `"downloads"` — présente dans le manifest généré
 
 ### Ce qui manque
 
-- Refactor `exportToCSV` : ajout d'un en-tête de métadonnées, sections par date, lignes `TOTAL` par jour
-- Passer le `resetPeriod` actif à `exportToCSV` pour filtrer correctement les records
+- Refactor `toCSV` : en-tête de métadonnées, sections par date, lignes `TOTAL` par jour
 - Tronquer les URLs longues à 120 caractères dans le CSV pour la lisibilité
-- Permission `"downloads"` manquante dans `manifest.json` — **bloquant actuel**
 
 ### Contrat technique
 
-```ts
-// src/utils/csv.ts
-export function exportToCSV(records: DailyRecord[], mode: ResetPeriod): void;
+Pas de paramètre de mode : `clearPastDays` garantit déjà que le storage ne contient
+que la fenêtre configurée, donc exporter `getAllDays()` exporte exactement cette
+fenêtre. La signature `exportToCSV(records, mode: ResetPeriod)` qu'une version
+précédente de cette roadmap proposait est caduque — le type n'existe plus.
 
-// Filtre selon le mode
-const toExport = mode === "daily"
-  ? records.filter((r) => isToday(r.date))
-  : records; // clearPastDays garantit déjà la fenêtre glissante
+```ts
+// src/utils/csv.ts — la signature actuelle suffit
+export function toCSV(records: readonly DailyRecord[]): string;
+export function exportToCSV(records: readonly DailyRecord[], clock: Clock): void;
 ```
 
 ---
@@ -150,7 +158,10 @@ export function computeMonthlyProgress(days: DailyRecord[]): MonthlyProgress;
 
 ### Rétention requise
 
-Pour la comparaison mensuelle, il faut conserver **au moins 60 jours** de données. Un troisième mode `"monthly"` dans `ResetPeriod` serait nécessaire, ou une rétention fixe de 60 jours indépendante du mode.
+Pour la comparaison mensuelle, il faut conserver **au moins 60 jours** de données —
+c'est-à-dire `retentionDays: 60`. Aucun changement de type n'est nécessaire : c'est
+précisément ce que la suppression de `ResetPeriod` a débloqué. Un troisième cas
+d'enum aurait été requis autrement.
 
 ---
 
@@ -171,7 +182,7 @@ g CO₂
       L   M    M    J    V    S    D
 ```
 
-- Barre colorée selon le niveau carbone du jour (vert/jaune/orange/rouge)
+- Barre colorée selon le niveau de sobriété du jour (vert/jaune/orange/rouge)
 - Barre du jour actuel mise en évidence (bordure ou opacité différente)
 - Tooltip au survol : `"Lundi 28 avril — 87g CO₂"`
 - Libellé du jour en court (`L M M J V S D` / `M T W T F S S`)
@@ -182,11 +193,11 @@ g CO₂
 // src/history/weeklyBarData.ts
 
 type DayBarData = {
-  label: string;       // "L" / "M" etc.
-  date: string;        // "2026-04-28"
-  co2: number;         // totalCo2 du jour, 0 si pas de données
+  label: string; // "L" / "M" etc.
+  date: string; // "2026-04-28"
+  co2: number; // totalCo2 du jour, 0 si pas de données
   isToday: boolean;
-  color: StatColor;    // réutilise getCarbonLevel()
+  color: StatColor; // réutilise getCarbonLevel() — donc sobrietyLevel()
 };
 
 export function buildWeeklyBarData(days: DailyRecord[], today: string): DayBarData[];
@@ -199,7 +210,7 @@ export function buildWeeklyBarData(days: DailyRecord[], today: string): DayBarDa
 ### Placement dans l'UI
 
 Option A — sous le graphique doughnut existant dans DayView (si popup assez haute)  
-Option B — nouvel onglet `"Historique"` dans la nav (`nav.history`)  
+Option B — nouvel onglet `"Historique"` dans la nav (`nav.history`)
 
 **Recommandation** : Option B — DayView reste focalisé sur aujourd'hui, l'historique a sa propre vue.
 

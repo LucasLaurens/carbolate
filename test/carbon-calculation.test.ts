@@ -1,54 +1,104 @@
 import { describe, it, expect } from "vitest";
 import CarbonCalculator from "../src/carbon/CarbonCalculator";
 import { NetworkCarbonSource } from "../src/carbon/sources/NetworkCarbonSource";
-import { CpuCarbonSource } from "../src/carbon/sources/CpuCarbonSource";
-import { RenderingCarbonSource } from "../src/carbon/sources/RenderingCarbonSource";
-import { CARBON_PER_GB, CPU_FACTOR, RENDERING_FACTOR } from "../src/carbon/constants";
+import { DeviceCarbonSource } from "../src/carbon/sources/DeviceCarbonSource";
+import { avoidedCarbon } from "../src/carbon/avoidedCarbon";
+import type { CarbonInput } from "../src/carbon/types";
+import { CARBON_PER_GB, DEVICE_FACTOR } from "../src/carbon/constants";
+
+const ONE_GB = 1_000_000_000;
+
+const input = (overrides: Partial<CarbonInput> = {}): CarbonInput => ({
+  transferredBytes: 0,
+  pageLoadDurationMs: 0,
+  cachedBytes: 0,
+  ...overrides,
+});
 
 describe("CarbonCalculator", () => {
-  const calc = new CarbonCalculator();
+  const calculator = new CarbonCalculator();
 
-  it("returns zero carbon for an empty input array", () => {
-    expect(calc.calculate([])).toEqual({ networkCo2: 0, cpuCo2: 0, renderingCo2: 0, totalCo2: 0 });
+  it("returns a zeroed estimate for an empty input array", () => {
+    // Act & Assert
+    expect(calculator.calculate([])).toEqual({
+      networkCo2: 0,
+      deviceCo2: 0,
+      totalCo2: 0,
+      avoidedCo2: 0,
+    });
   });
 
-  it("calculates network CO2 from transfer size (1 GB)", () => {
-    // networkCo2 = 1 GB * CARBON_PER_GB (176.8) = 176.8
-    const result = calc.calculate([{ transferSize: 1_000_000_000, cpuTime: 0 }]);
+  it("charges transferred bytes at the network factor", () => {
+    // Act
+    const result = calculator.calculate([input({ transferredBytes: ONE_GB })]);
+
+    // Assert
     expect(result.networkCo2).toBe(CARBON_PER_GB);
-    expect(result.cpuCo2).toBe(0);
-    expect(result.renderingCo2).toBe(0);
+    expect(result.deviceCo2).toBe(0);
     expect(result.totalCo2).toBe(CARBON_PER_GB);
   });
 
-  it("calculates CPU CO2 from cpu time (1 000 000 ms = 1 000 s)", () => {
-    // cpuCo2 = 1000 s * 0.001 = 1
-    const result = calc.calculate([{ transferSize: 0, cpuTime: 1_000_000 }]);
-    expect(result.cpuCo2).toBe((1_000_000 / 1000) * CPU_FACTOR);
+  it("charges the load duration at the device factor", () => {
+    // Act — 1 000 000 ms = 1 000 s
+    const result = calculator.calculate([input({ pageLoadDurationMs: 1_000_000 })]);
+
+    // Assert
+    expect(result.deviceCo2).toBeCloseTo(1_000 * DEVICE_FACTOR, 10);
     expect(result.networkCo2).toBe(0);
-    expect(result.totalCo2).toBeCloseTo(result.cpuCo2 + result.renderingCo2, 10);
   });
 
-  it("calculates rendering CO2 from cpu time (1 000 000 ms = 1 000 s)", () => {
-    // renderingCo2 = 1000 s * 0.0004 = 0.4
-    const result = calc.calculate([{ transferSize: 0, cpuTime: 1_000_000 }]);
-    expect(result.renderingCo2).toBe((1_000_000 / 1000) * RENDERING_FACTOR);
-  });
-
-  it("sums transfer sizes across multiple entries", () => {
-    const result = calc.calculate([
-      { transferSize: 500_000_000, cpuTime: 0 },
-      { transferSize: 500_000_000, cpuTime: 0 },
+  it("keeps the total equal to the sum of its channels", () => {
+    // Act
+    const result = calculator.calculate([
+      input({ transferredBytes: ONE_GB, pageLoadDurationMs: 1_000_000 }),
     ]);
-    expect(result.networkCo2).toBe(CARBON_PER_GB);
+
+    // Assert
+    expect(result.totalCo2).toBeCloseTo(result.networkCo2 + result.deviceCo2, 10);
   });
 
-  it("combines all sources in totalCo2", () => {
-    const result = calc.calculate([{ transferSize: 1_000_000_000, cpuTime: 1_000_000 }]);
-    expect(result.totalCo2).toBeCloseTo(
-      result.networkCo2 + result.cpuCo2 + result.renderingCo2,
-      10,
-    );
+  it("sums transferred bytes across several inputs", () => {
+    // Act
+    const result = calculator.calculate([
+      input({ transferredBytes: ONE_GB / 2 }),
+      input({ transferredBytes: ONE_GB / 2 }),
+    ]);
+
+    // Assert
+    expect(result.networkCo2).toBeCloseTo(CARBON_PER_GB, 10);
+  });
+
+  it("reports one device figure where two coefficients used to be split", () => {
+    // Act — the former CPU_FACTOR 0.001 plus RENDERING_FACTOR 0.0004
+    const result = calculator.calculate([input({ pageLoadDurationMs: 10_000 })]);
+
+    // Assert — merging them must not move what a day totals to
+    expect(result.deviceCo2).toBeCloseTo(10 * (0.001 + 0.0004), 10);
+    expect(DEVICE_FACTOR).toBeCloseTo(0.001 + 0.0004, 10);
+  });
+
+  it("never lets avoided CO₂ reach the total", () => {
+    // Act — nothing crossed the network, everything came from cache
+    const result = calculator.calculate([input({ cachedBytes: ONE_GB })]);
+
+    // Assert — a well-cached page must not report a negative or reduced footprint
+    expect(result.avoidedCo2).toBeCloseTo(CARBON_PER_GB, 10);
+    expect(result.totalCo2).toBe(0);
+  });
+
+  it("accepts a source list of its own, without editing the calculator", () => {
+    // Arrange
+    const networkOnly = new CarbonCalculator([new NetworkCarbonSource()]);
+
+    // Act
+    const result = networkOnly.calculate([
+      input({ transferredBytes: ONE_GB, pageLoadDurationMs: 1_000_000 }),
+    ]);
+
+    // Assert
+    expect(result.networkCo2).toBe(CARBON_PER_GB);
+    expect(result.deviceCo2).toBe(0);
+    expect(result.totalCo2).toBe(CARBON_PER_GB);
   });
 });
 
@@ -56,48 +106,78 @@ describe("NetworkCarbonSource", () => {
   const source = new NetworkCarbonSource();
 
   it("returns 0 for empty inputs", () => {
+    // Act & Assert
     expect(source.calculate([])).toBe(0);
   });
 
   it("applies CARBON_PER_GB to transferred bytes", () => {
-    // 2 GB → 2 * 176.8 = 353.6
-    const result = source.calculate([{ transferSize: 2_000_000_000, cpuTime: 0 }]);
+    // Act
+    const result = source.calculate([input({ transferredBytes: 2 * ONE_GB })]);
+
+    // Assert
     expect(result).toBeCloseTo(2 * CARBON_PER_GB, 10);
   });
-});
 
-describe("CpuCarbonSource", () => {
-  const source = new CpuCarbonSource();
+  it("ignores bytes the cache served — they never crossed the network", () => {
+    // Act
+    const result = source.calculate([input({ cachedBytes: ONE_GB })]);
 
-  it("returns 0 for empty inputs", () => {
-    expect(source.calculate([])).toBe(0);
-  });
-
-  it("applies CPU_FACTOR per second of load time", () => {
-    // 2000 ms = 2 s → 2 * 0.001 = 0.002
-    const result = source.calculate([{ transferSize: 0, cpuTime: 2000 }]);
-    expect(result).toBeCloseTo(2 * CPU_FACTOR, 10);
+    // Assert
+    expect(result).toBe(0);
   });
 });
 
-describe("RenderingCarbonSource", () => {
-  const source = new RenderingCarbonSource();
+describe("DeviceCarbonSource", () => {
+  const source = new DeviceCarbonSource();
 
   it("returns 0 for empty inputs", () => {
+    // Act & Assert
     expect(source.calculate([])).toBe(0);
   });
 
-  it("applies RENDERING_FACTOR per second of load time", () => {
-    // 5000 ms = 5 s → 5 * 0.0004 = 0.002
-    const result = source.calculate([{ transferSize: 0, cpuTime: 5000 }]);
-    expect(result).toBeCloseTo(5 * RENDERING_FACTOR, 10);
+  it("applies DEVICE_FACTOR per second of load time", () => {
+    // Act — 2 000 ms = 2 s
+    const result = source.calculate([input({ pageLoadDurationMs: 2_000 })]);
+
+    // Assert
+    expect(result).toBeCloseTo(2 * DEVICE_FACTOR, 10);
   });
 
-  it("sums cpuTime across multiple entries", () => {
+  it("sums the duration across several inputs", () => {
+    // Act
     const result = source.calculate([
-      { transferSize: 0, cpuTime: 2000 },
-      { transferSize: 0, cpuTime: 3000 },
+      input({ pageLoadDurationMs: 2_000 }),
+      input({ pageLoadDurationMs: 3_000 }),
     ]);
-    expect(result).toBeCloseTo(5 * RENDERING_FACTOR, 10);
+
+    // Assert
+    expect(result).toBeCloseTo(5 * DEVICE_FACTOR, 10);
+  });
+});
+
+describe("avoidedCarbon", () => {
+  it("returns 0 when the cache served nothing", () => {
+    // Act & Assert
+    expect(avoidedCarbon([input({ transferredBytes: ONE_GB })])).toBe(0);
+  });
+
+  it("prices cached bytes at the network factor they spared", () => {
+    // Act
+    const result = avoidedCarbon([input({ cachedBytes: ONE_GB })]);
+
+    // Assert
+    expect(result).toBeCloseTo(CARBON_PER_GB, 10);
+  });
+
+  it("adds up across inputs and stays positive", () => {
+    // Act
+    const result = avoidedCarbon([
+      input({ cachedBytes: ONE_GB / 2 }),
+      input({ cachedBytes: ONE_GB / 2 }),
+    ]);
+
+    // Assert
+    expect(result).toBeCloseTo(CARBON_PER_GB, 10);
+    expect(result).toBeGreaterThan(0);
   });
 });

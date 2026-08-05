@@ -1,11 +1,10 @@
 import { emptyDailyRecord, sumCarbonEstimates, sumMetrics } from "./aggregator";
-import type { DailyRecord, MetricTab, MetricsStore } from "./types";
+import { normalizeDailyRecords } from "./legacy";
+import type { DailyRecord, DailyRecordsStore, MetricTab, MetricsStore } from "./types";
 import type { DailyRecordsStorage } from "../storage/types";
+import { KEEP_EVERYTHING } from "../config/retention";
 import type { Clock } from "../utils/clock";
 import { toDailyDate } from "../utils/clock";
-
-/** `retentionDays` sentinel meaning "never drop a day". */
-const RETENTION_KEEP_EVERYTHING = -1;
 
 function rebuildTotals(record: DailyRecord): DailyRecord {
   return {
@@ -57,11 +56,19 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
     return result;
   }
 
+  /**
+   * The single door bytes come through. Every record above this line carries the
+   * current shape, whichever version wrote it.
+   */
+  async function loadRecords(): Promise<DailyRecordsStore> {
+    return normalizeDailyRecords(await storage.getSessions());
+  }
+
   async function readToday(): Promise<DailyRecord> {
     const date = clock.dailyDate();
     if (cached !== undefined && cached.date === date) return cached.record;
-    const sessions = await storage.getSessions();
-    const record = sessions[date] ?? emptyDailyRecord(date);
+    const records = await loadRecords();
+    const record = records[date] ?? emptyDailyRecord(date);
     cached = { date, record };
     return record;
   }
@@ -74,9 +81,9 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
   function mutateToday(change: (record: DailyRecord) => DailyRecord): Promise<void> {
     return enqueue(async () => {
       const date = clock.dailyDate();
-      const sessions = await storage.getSessions();
-      const updated = change(sessions[date] ?? emptyDailyRecord(date));
-      await storage.setSessions({ ...sessions, [date]: updated });
+      const records = await loadRecords();
+      const updated = change(records[date] ?? emptyDailyRecord(date));
+      await storage.setSessions({ ...records, [date]: updated });
       // Warm rather than invalidate — saves a storage round-trip on the next read
       cached = { date, record: updated };
     });
@@ -86,23 +93,23 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
     getDailyRecord: (): Promise<DailyRecord> => readToday(),
 
     getAllDays: async (): Promise<DailyRecord[]> => {
-      const sessions = await storage.getSessions();
-      return Object.values(sessions).sort((a, b) => a.date.localeCompare(b.date));
+      const records = await loadRecords();
+      return Object.values(records).sort((a, b) => a.date.localeCompare(b.date));
     },
 
     recordTabMetrics: (tab: MetricTab): Promise<void> =>
       mutateToday((record) => rebuildTotals({ ...record, tabs: upsertTab(record.tabs, tab) })),
 
     clearPastDays: (retentionDays: number): Promise<void> => {
-      if (retentionDays === RETENTION_KEEP_EVERYTHING) return Promise.resolve();
+      if (retentionDays === KEEP_EVERYTHING) return Promise.resolve();
       return enqueue(async () => {
-        const sessions = await storage.getSessions();
+        const records = await loadRecords();
         const today = clock.dailyDate();
         const cutoffDate = clock.now();
         cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
         const cutoff = toDailyDate(cutoffDate);
         const kept = Object.fromEntries(
-          Object.entries(sessions).filter(([date]) => date >= cutoff || date === today),
+          Object.entries(records).filter(([date]) => date >= cutoff || date === today),
         );
         await storage.setSessions(kept);
         cached = undefined;

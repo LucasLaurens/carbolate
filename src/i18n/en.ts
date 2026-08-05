@@ -9,13 +9,15 @@ export const en: Translations = {
     data: "Data transferred",
     requests: "Requests",
     tabs: "Tabs visited",
+    avoided: "avoided by the cache",
   },
   chart: { title: "Top domains by CO₂" },
-  carbonLevels: {
-    sobre: "Sober",
-    modere: "Moderate",
-    intensif: "Intensive",
-    excessif: "Excessive",
+  actions: { refresh: "Refresh", export: "Export CSV" },
+  sobrietyLevels: {
+    sober: "Sober",
+    moderate: "Moderate",
+    intensive: "Intensive",
+    excessive: "Excessive",
   },
   equivalences: {
     emails: (n) => `≈ ${n} email${n > 1 ? "s" : ""}`,
@@ -24,10 +26,12 @@ export const en: Translations = {
     car: (km) => `≈ ${km} km by car`,
     flight: (km) => `≈ ${km} km by plane`,
   },
-  worldAvg: {
-    below: (pct) => `−${pct}% vs. world avg (120 g/d)`,
-    above: (pct) => `+${pct}% vs. world avg (120 g/d)`,
-    equal: () => `= world avg (120 g/d)`,
+  worldComparison: {
+    wellBelow: "well below the daily average",
+    below: "below the daily average",
+    around: "around the daily average",
+    above: "above the daily average",
+    wellAbove: "well above the daily average",
   },
   settings: {
     save: "Save",

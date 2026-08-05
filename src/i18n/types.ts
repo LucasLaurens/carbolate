@@ -1,6 +1,7 @@
-export type Language = "en" | "fr";
+import type { SobrietyLevel } from "../carbon/sobriety";
+import type { WorldComparison } from "../carbon/worldComparison";
 
-export type CarbonLevelKey = "sobre" | "modere" | "intensif" | "excessif";
+export type Language = "en" | "fr";
 
 export type EquivalenceTranslations = {
   emails: (n: number) => string;
@@ -10,11 +11,12 @@ export type EquivalenceTranslations = {
   flight: (km: string) => string;
 };
 
-export type WorldAvgTranslations = {
-  below: (pct: number) => string;
-  above: (pct: number) => string;
-  equal: () => string;
-};
+/**
+ * One plain label per position — no parameter anywhere, because the comparison no
+ * longer produces a number. It used to take a percentage, which is the false
+ * precision the ADR removed.
+ */
+export type WorldComparisonTranslations = Record<WorldComparison, string>;
 
 export type Translations = {
   header: string;
@@ -25,11 +27,14 @@ export type Translations = {
     data: string;
     requests: string;
     tabs: string;
+    avoided: string;
   };
   chart: { title: string };
-  carbonLevels: Record<CarbonLevelKey, string>;
+  actions: { refresh: string; export: string };
+  /** Keyed by the domain's own level names, so no French key hides in an English type. */
+  sobrietyLevels: Record<SobrietyLevel, string>;
   equivalences: EquivalenceTranslations;
-  worldAvg: WorldAvgTranslations;
+  worldComparison: WorldComparisonTranslations;
   settings: {
     save: string;
     saved: string;

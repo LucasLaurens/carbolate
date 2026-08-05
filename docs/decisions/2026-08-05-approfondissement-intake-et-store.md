@@ -15,7 +15,7 @@ Trois autres symptômes du même défaut, tous sur le chemin le plus modifié du
 - `metricsStore` publiait dix méthodes dont **quatre sans aucun appelant en
   production** (`findOrCreateDailyRecord`, `getTabs`, `getTotalMetrics`,
   `getTotalCarbon`), plus un `globalThis.__carbolateCacheReset` livré dans le code
-  de production. L'interface avait été élargie pour être *inspectée* par les tests
+  de production. L'interface avait été élargie pour être _inspectée_ par les tests
   au lieu d'être leur surface.
 - Le neuf fichiers de `src/performance/` calculaient `resources.length` et une
   somme. `MetricsProcessorContext.execute()` était une ligne de délégation — une

@@ -15,7 +15,10 @@ export class BrowserPerformanceSource implements PerformanceSource {
     const entries = performance.getEntriesByType(
       PerformanceEntryType.RESOURCE,
     ) as PerformanceResourceTiming[];
-    return entries.map((entry) => ({ transferSize: entry.transferSize }));
+    return entries.map((entry) => ({
+      transferSize: entry.transferSize,
+      decodedBodySize: entry.decodedBodySize,
+    }));
   }
 
   navigations(): readonly NavigationTiming[] {

@@ -1,10 +1,12 @@
 import type { Language } from "../i18n/types";
 
-export type ResetPeriod = "daily" | "weekly";
-
 export type Preferences = {
-  resetPeriod: ResetPeriod;
-  retentionDays: number; // 1 | 7 | -1
+  /**
+   * Local days of history kept, and the **single source of truth** for retention:
+   * `1` = today only, `7` = a rolling week, `-1` = keep everything. The reset
+   * alarm's period derives from it — see `resetPeriodMinutes`.
+   */
+  retentionDays: number;
   autoExportBeforeReset: boolean;
   language: Language;
 };

@@ -64,7 +64,16 @@ class IntakeSink implements ObservationSink {
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
 
-const resource = (transferSize: number): ResourceTiming => ({ transferSize });
+const resource = (transferSize: number): ResourceTiming => ({
+  transferSize,
+  decodedBodySize: transferSize,
+});
+
+/** Served from cache: nothing crossed the network, the bytes still reached the page. */
+const cached = (decodedBodySize: number): ResourceTiming => ({
+  transferSize: 0,
+  decodedBodySize,
+});
 
 type Page = {
   tabId: number;
@@ -121,9 +130,9 @@ const CACHED_NAVIGATION: Page = {
   tabId: 30,
   url: "https://app.example.com/dashboard",
   entries: [
-    resource(0), // main bundle — cached
-    resource(0), // vendor bundle — cached
-    resource(0), // CSS — cached
+    cached(400_000), // main bundle
+    cached(300_000), // vendor bundle
+    cached(50_000), // CSS
     resource(3_200), // /api/dashboard
     resource(1_800), // /api/user
   ],
@@ -181,7 +190,7 @@ describe("A light page load", () => {
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(visited(record, BLOG_PAGE.tabId).metrics.cpuTimeToLoad).toBeCloseTo(0.8, 10);
+    expect(visited(record, BLOG_PAGE.tabId).metrics.pageLoadDurationSec).toBeCloseTo(0.8, 10);
   });
 
   it("attributes the visit to the page's own domain", async () => {
@@ -239,6 +248,40 @@ describe("A mostly cached page load", () => {
     expect(visited(record, CACHED_NAVIGATION.tabId).carbon.networkCo2).toBeLessThan(
       visited(record, BLOG_PAGE.tabId).carbon.networkCo2,
     );
+  });
+
+  it("credits what the cache spared, in megabytes of page weight", async () => {
+    // Act
+    await visit(CACHED_NAVIGATION);
+
+    // Assert — 400 000 + 300 000 + 50 000 bytes never crossed the network
+    const record = await store.getDailyRecord();
+    expect(visited(record, CACHED_NAVIGATION.tabId).metrics.cachedPageWeight).toBeCloseTo(0.75, 10);
+  });
+
+  it("reports the saving without deducting it from the footprint", async () => {
+    // Act
+    await visit(CACHED_NAVIGATION);
+
+    // Assert — the total stays the sum of what was actually emitted
+    const visit_ = visited(await store.getDailyRecord(), CACHED_NAVIGATION.tabId);
+    expect(visit_.carbon.avoidedCo2).toBeGreaterThan(0);
+    expect(visit_.carbon.totalCo2).toBeCloseTo(
+      visit_.carbon.networkCo2 + visit_.carbon.deviceCo2,
+      10,
+    );
+  });
+
+  it("carries the saving into the day's totals", async () => {
+    // Act
+    await visit(CACHED_NAVIGATION);
+    await visit(BLOG_PAGE);
+
+    // Assert
+    const record = await store.getDailyRecord();
+    const perPage = record.tabs.reduce((sum, tab) => sum + tab.carbon.avoidedCo2, 0);
+    expect(record.totalCarbon.avoidedCo2).toBeCloseTo(perPage, 10);
+    expect(record.totalCarbon.avoidedCo2).toBeGreaterThan(0);
   });
 });
 

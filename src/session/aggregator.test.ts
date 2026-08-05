@@ -18,14 +18,15 @@ import type { CarbonEstimate } from "../carbon/types";
 const POPULATED_METRICS: Metrics = {
   requestCount: 7,
   totalResourceSize: 1.5,
-  cpuTimeToLoad: 2.25,
+  pageLoadDurationSec: 2.25,
+  cachedPageWeight: 0.75,
 };
 
 const POPULATED_ESTIMATE: CarbonEstimate = {
   networkCo2: 0.5,
-  cpuCo2: 0.02,
-  renderingCo2: 0.008,
+  deviceCo2: 0.028,
   totalCo2: 0.528,
+  avoidedCo2: 0.13,
 };
 
 describe("neutral elements cover every field of their type", () => {
@@ -83,10 +84,15 @@ describe("sums add across entries", () => {
     // Act & Assert
     expect(
       sumMetrics([
-        { requestCount: 5, totalResourceSize: 1, cpuTimeToLoad: 0.5 },
-        { requestCount: 3, totalResourceSize: 2, cpuTimeToLoad: 1.5 },
+        { requestCount: 5, totalResourceSize: 1, pageLoadDurationSec: 0.5, cachedPageWeight: 2 },
+        { requestCount: 3, totalResourceSize: 2, pageLoadDurationSec: 1.5, cachedPageWeight: 3 },
       ]),
-    ).toEqual({ requestCount: 8, totalResourceSize: 3, cpuTimeToLoad: 2 });
+    ).toEqual({
+      requestCount: 8,
+      totalResourceSize: 3,
+      pageLoadDurationSec: 2,
+      cachedPageWeight: 5,
+    });
   });
 
   it("adds every field of two CarbonEstimates", () => {
@@ -95,7 +101,17 @@ describe("sums add across entries", () => {
 
     // Assert
     expect(summed.networkCo2).toBeCloseTo(POPULATED_ESTIMATE.networkCo2 * 2, 10);
+    expect(summed.deviceCo2).toBeCloseTo(POPULATED_ESTIMATE.deviceCo2 * 2, 10);
     expect(summed.totalCo2).toBeCloseTo(POPULATED_ESTIMATE.totalCo2 * 2, 10);
+  });
+
+  it("adds avoided CO₂ across entries without letting it reach the total", () => {
+    // Act
+    const summed = sumCarbonEstimates([POPULATED_ESTIMATE, POPULATED_ESTIMATE]);
+
+    // Assert — it accumulates like the rest, and stays out of what browsing cost
+    expect(summed.avoidedCo2).toBeCloseTo(POPULATED_ESTIMATE.avoidedCo2 * 2, 10);
+    expect(summed.totalCo2).toBeCloseTo(summed.networkCo2 + summed.deviceCo2, 10);
   });
 });
 
@@ -113,19 +129,5 @@ describe("the neutral daily record", () => {
     expect(record.tabs).toEqual([]);
     expect(record.totalMetrics).toEqual(emptyMetrics());
     expect(record.totalCarbon).toEqual(emptyCarbonEstimate());
-  });
-});
-
-describe("legacy records missing renderingCo2", () => {
-  it("totals to a number instead of NaN", () => {
-    // Arrange — shape persisted before renderingCo2 existed
-    const legacy = { networkCo2: 1, cpuCo2: 0.01, totalCo2: 1.01 } as CarbonEstimate;
-
-    // Act
-    const summed = sumCarbonEstimates([legacy]);
-
-    // Assert
-    expect(summed.renderingCo2).toBe(0);
-    expect(Number.isNaN(summed.totalCo2)).toBe(false);
   });
 });

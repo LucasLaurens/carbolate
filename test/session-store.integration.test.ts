@@ -19,9 +19,14 @@ const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
   id: 1,
   url: "https://example.com/page",
   domain: "example.com",
-  metrics: { requestCount: 10, totalResourceSize: 5, cpuTimeToLoad: 1.2 },
+  metrics: {
+    requestCount: 10,
+    totalResourceSize: 5,
+    pageLoadDurationSec: 1.2,
+    cachedPageWeight: 0.4,
+  },
   meta: { date: 0 },
-  carbon: { networkCo2: 0.8, cpuCo2: 0.01, renderingCo2: 0.004, totalCo2: 0.814 },
+  carbon: { networkCo2: 0.8, deviceCo2: 0.014, totalCo2: 0.814, avoidedCo2: 0.07 },
   ...overrides,
 });
 
@@ -30,8 +35,13 @@ const TAB_B = tab({
   id: 2,
   url: "https://other.com",
   domain: "other.com",
-  metrics: { requestCount: 4, totalResourceSize: 2, cpuTimeToLoad: 0.5 },
-  carbon: { networkCo2: 0.3, cpuCo2: 0.005, renderingCo2: 0.002, totalCo2: 0.307 },
+  metrics: {
+    requestCount: 4,
+    totalResourceSize: 2,
+    pageLoadDurationSec: 0.5,
+    cachedPageWeight: 0.1,
+  },
+  carbon: { networkCo2: 0.3, deviceCo2: 0.007, totalCo2: 0.307, avoidedCo2: 0.02 },
 });
 
 let storage: InMemoryDailyRecordsStorage;
@@ -111,7 +121,15 @@ describe("recording tab metrics", () => {
 
     // Act
     await store.recordTabMetrics(
-      tab({ id: 1, metrics: { requestCount: 20, totalResourceSize: 50, cpuTimeToLoad: 3 } }),
+      tab({
+        id: 1,
+        metrics: {
+          requestCount: 20,
+          totalResourceSize: 50,
+          pageLoadDurationSec: 3,
+          cachedPageWeight: 0,
+        },
+      }),
     );
 
     // Assert
@@ -128,7 +146,15 @@ describe("recording tab metrics", () => {
 
     // Act
     await store.recordTabMetrics(
-      tab({ id: 1, metrics: { requestCount: 99, totalResourceSize: 99, cpuTimeToLoad: 99 } }),
+      tab({
+        id: 1,
+        metrics: {
+          requestCount: 99,
+          totalResourceSize: 99,
+          pageLoadDurationSec: 99,
+          cachedPageWeight: 99,
+        },
+      }),
     );
 
     // Assert
@@ -169,7 +195,15 @@ describe("concurrent writes", () => {
     // queue let both calls conclude "not there yet" and append twice.
     const writes = [10, 20, 30].map((requestCount) =>
       store.recordTabMetrics(
-        tab({ id: 1, metrics: { requestCount, totalResourceSize: 1, cpuTimeToLoad: 1 } }),
+        tab({
+          id: 1,
+          metrics: {
+            requestCount,
+            totalResourceSize: 1,
+            pageLoadDurationSec: 1,
+            cachedPageWeight: 0,
+          },
+        }),
       ),
     );
 
