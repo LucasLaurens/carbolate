@@ -1,10 +1,11 @@
 import { Component } from "react";
-import { metricsStore } from "../../session/store";
-import { ChromeStorage } from "../../storage/ChromeStorage";
 import { DEFAULT_PREFERENCES } from "../../config/preferences";
 import { getTranslations } from "../../i18n";
 import type { Preferences } from "../../config/types";
-import type { DailyRecord } from "../../session/types";
+import { emptyDailyRecord } from "../../session/aggregator";
+import type { DailyRecord, DailyRecordReader } from "../../session/types";
+import type { PreferencesStorage } from "../../storage/types";
+import type { Clock } from "../../utils/clock";
 import { exportToCSV } from "../../utils/csv";
 import { RateLimiter } from "../../security/RateLimiter";
 import DayView from "./DayView";
@@ -12,19 +13,26 @@ import SettingsView from "./SettingsView";
 
 type View = "day" | "settings";
 
+type Props = {
+  /** Read-only on measurements: the panel never writes a metric. */
+  store: DailyRecordReader;
+  storage: PreferencesStorage;
+  clock: Clock;
+};
+
 type State = {
   view: View;
-  record: DailyRecord | null;
+  record: DailyRecord;
   preferences: Preferences;
   isLoading: boolean;
 };
 
-export default class Popup extends Component<Record<string, never>, State> {
-  private rateLimiter = new RateLimiter();
+export default class Popup extends Component<Props, State> {
+  private readonly rateLimiter = new RateLimiter(this.props.clock);
 
   state: State = {
     view: "day",
-    record: null,
+    record: emptyDailyRecord(this.props.clock.dailyDate()),
     preferences: { ...DEFAULT_PREFERENCES },
     isLoading: false,
   };
@@ -36,18 +44,18 @@ export default class Popup extends Component<Record<string, never>, State> {
 
   loadPreferences = async () => {
     try {
-      const prefs = await ChromeStorage.getPreferences();
-      this.setState({ preferences: prefs });
+      const preferences = await this.props.storage.getPreferences();
+      this.setState({ preferences });
     } catch (e) {
       console.error("Failed to load preferences", e);
     }
   };
 
-  savePreferences = async (prefs: Preferences) => {
+  savePreferences = async (preferences: Preferences) => {
     if (!this.rateLimiter.isAllowed("save-preferences")) return;
     try {
-      await ChromeStorage.setPreferences(prefs);
-      this.setState({ preferences: prefs });
+      await this.props.storage.setPreferences(preferences);
+      this.setState({ preferences });
     } catch (e) {
       console.error("Failed to save preferences", e);
     }
@@ -58,7 +66,7 @@ export default class Popup extends Component<Record<string, never>, State> {
     if (this.state.isLoading) return;
     this.setState({ isLoading: true });
     try {
-      const record = await metricsStore.findDailyRecord();
+      const record = await this.props.store.getDailyRecord();
       this.setState({ record });
     } catch (e) {
       console.error("Failed to load record", e);
@@ -69,8 +77,8 @@ export default class Popup extends Component<Record<string, never>, State> {
 
   handleExport = async () => {
     if (!this.rateLimiter.isAllowed("csv-export")) return;
-    const records = await metricsStore.getAllDays();
-    exportToCSV(records);
+    const records = await this.props.store.getAllDays();
+    exportToCSV(records, this.props.clock);
   };
 
   setView = (view: View) => this.setState({ view });

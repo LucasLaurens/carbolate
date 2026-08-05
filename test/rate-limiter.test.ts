@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { RateLimiter } from "../src/security/RateLimiter";
-import { FixedClock } from "../src/utils/clock";
+import { FixedClock } from "./fakes/FixedClock";
 
 describe("RateLimiter", () => {
   let limiter: RateLimiter;

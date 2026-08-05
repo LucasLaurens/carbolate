@@ -5,7 +5,7 @@
 ```
 src/
 ├── main.tsx                        # React entry point
-├── App.tsx                         # Root component → <Popup />
+├── App.tsx                         # Panel composition root — builds the store and clock, renders <Popup />
 ├── App.css                         # Global styles
 ├── global.d.ts                     # Module declaration for *.css
 │
@@ -14,18 +14,27 @@ src/
 │   └── preferences.ts              # Single source of truth: DEFAULT_PREFERENCES
 │
 ├── background/
-│   └── index.ts                    # Background service worker / event page — reset alarm + metrics reception
+│   └── index.ts                    # Chrome adapter: alarms, badge, message listener → MetricsIntake
+│
+├── intake/
+│   └── MetricsIntake.ts            # The one path from an observed page load to a stored, costed record
 │
 ├── content/
-│   └── index.ts                    # Content script (injected on every page) — pushes metrics to background
+│   ├── index.ts                    # Content script wiring — builds the collector, fires it on load
+│   ├── MetricsCollector.ts         # Collection rules + the PerformanceSource / ObservationSink ports
+│   ├── BrowserPerformanceSource.ts # Adapter: the real Performance API, projected onto plain objects
+│   └── RuntimeObservationSink.ts   # Adapter: chrome.runtime.sendMessage
+│
+├── messaging/
+│   └── messages.ts                 # MessageType, PageMetricsMessage, isPageMetricsMessage guard
 │
 ├── components/
 │   └── popup/
-│       ├── Popup.tsx               # Main component, storage reads, global state management
+│       ├── Popup.tsx               # Panel shell — receives store, storage and clock as props
 │       ├── DayView/
 │       │   ├── index.tsx           # Daily dashboard — stats grid + domain chart
 │       │   ├── types.ts            # StatColor, DomainData types
-│       │   ├── StatsGrid.tsx       # 2×2 card grid (CO₂, data, requests, tabs)
+│       │   ├── StatsGrid.tsx       # CO₂ card + metrics strip (tabs, requests, data)
 │       │   ├── DomainChart.tsx     # Doughnut chart — top 5 domains by CO₂
 │       │   └── utils.ts            # formatCo2(), aggregateDomains(), COLOR_CLASSES
 │       └── SettingsView.tsx        # Preferences form
@@ -34,29 +43,23 @@ src/
 │   ├── types.ts                    # CarbonInput, CarbonEstimate, FootprintCalculator
 │   ├── constants.ts                # CARBON_PER_GB (176.8), CPU_FACTOR (0.001), RENDERING_FACTOR (0.0004), WORLD_DAILY_BROWSING_G_CO2 (120)
 │   ├── CarbonCalculator.ts         # CO₂ calculation engine (accepts CarbonContributionSource[])
-│   └── contracts/
-│       └── CarbonContributionSource.ts  # OCP interface for emission sources
+│   ├── toCarbonInput.ts            # Adapter: stored Metrics (MB, s) → CarbonInput (bytes, ms)
+│   ├── contracts/
+│   │   └── CarbonContributionSource.ts  # OCP interface for emission sources
 │   └── sources/
 │       ├── NetworkCarbonSource.ts  # Network + data center emissions
 │       ├── CpuCarbonSource.ts      # Device CPU energy during page load
 │       └── RenderingCarbonSource.ts # GPU/display rendering energy during page load
 │
 ├── session/
-│   ├── types.ts                    # Metrics, MetricTab, DailyRecord, SessionsStore, MetricsStore
-│   ├── store.ts                    # metricsStore — CRUD DailyRecord + in-memory cache
-│   └── aggregator.ts               # sumMetrics, sumCarbonEstimates
+│   ├── types.ts                    # Metrics, MetricTab, DailyRecord, DailyRecordsStore + the store's role interfaces
+│   ├── store.ts                    # createMetricsStore(storage, clock) — one write queue, one cache
+│   └── aggregator.ts               # sumMetrics, sumCarbonEstimates, the neutral elements
 │
 ├── performance/
-│   ├── types.ts                    # ExtractedMetrics (resourceCount, totalTransferSize)
-│   ├── contracts/
-│   │   ├── MetricsExtractor.ts     # Interface: handle(input[]) → Output
-│   │   └── NetworkResource.ts      # Interface: { transferSize }
-│   ├── enums/
-│   │   ├── PerformanceEntryType.ts      # RESOURCE, NAVIGATION, PAINT, LONGTASK
-│   │   └── ResourceInitiatorType.ts     # BEACON, BODY, FETCH, FRAME, etc.
-│   ├── NetworkMetricsExtractor.ts  # Sums resource counts & transfer sizes
-│   ├── MetricsProcessorContext.ts  # Strategy context: holds extractor, delegates execution
-│   └── PageMetricsValidator.ts     # Validates that "resource" entries exist
+│   ├── PageMetrics.ts              # measurePage(payload) → PageMeasurementResult (requests, bytes, ms)
+│   └── enums/
+│       └── PerformanceEntryType.ts # RESOURCE, NAVIGATION — the getEntriesByType() strings
 │
 ├── i18n/
 │   ├── types.ts                    # Language, CarbonLevelKey, Translations, EquivalenceTranslations types
@@ -69,13 +72,18 @@ src/
 │
 ├── storage/
 │   ├── ChromeStorage.ts            # chrome.storage.local abstraction (implements BrowsingDataStore)
-│   └── types.ts                    # StorageData, BrowsingDataStore interface
+│   ├── StorageKey.ts               # SESSIONS, PREFERENCES — the storage key strings
+│   └── types.ts                    # StorageData + DailyRecordsStorage / PreferencesStorage roles
 │
 └── utils/
-    ├── date.ts                     # getDailyDate (timezone-safe), isToday, isThisWeek
+    ├── bytes.ts                    # Byte and duration conversions — base 10 only
+    ├── clock.ts                    # Clock interface, SystemClock, toDailyDate()
     ├── url.ts                      # parseDomain — safe wrapper around new URL()
-    └── csv.ts                      # exportToCSV
+    └── csv.ts                      # toCSV (pure) + exportToCSV (download)
 ```
+
+Test doubles live in `test/fakes/` — `FixedClock`, `InMemoryDailyRecordsStorage`. They are
+real implementations of the same interfaces, never configured stubs, and they ship in no bundle.
 
 ---
 
@@ -83,68 +91,85 @@ src/
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                  Web page (new tab loaded)                  │
-│  performance.getEntriesByType("resource")   → network       │
-│  performance.getEntriesByType("navigation") → CPU/timing    │
+│                  Web page (load event fired)                │
+│  BrowserPerformanceSource — adapter over the Performance API │
+│    getEntriesByType("resource")   → [{ transferSize }]      │
+│    getEntriesByType("navigation") → [{ duration }]          │
+│  Host objects are projected onto plain objects: Chrome's     │
+│  structured clone refuses to serialize the entries as-is.    │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ serialized as plain objects
-                       │ chrome.runtime.sendMessage({ type: "page_metrics", ... })
+                       │ PerformanceSource port
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Content Script (content/index.ts)        │
-│  Triggered on window.load (or document.readyState=complete) │
-│  Converts PerformanceEntry → serializable plain objects     │
-│    resource   : [{ transferSize }]                          │
-│    navigation : [{ duration }]                              │
-│  Sends chrome.runtime.sendMessage → Background              │
+│              MetricsCollector (content/MetricsCollector.ts)  │
+│  Holds the collection rules. Both globals sit behind ports,  │
+│  so the rules are assertable without a DOM or a browser.     │
+│  collect() → ObservationSink.send(PagePerformancePayload)    │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ "page_metrics" message + sender.tab.{id, url}
+                       │ RuntimeObservationSink adapter
+                       │ PageMetricsMessage { type, payload }
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Background (background/index.ts)         │
+│         Background (background/index.ts) — Chrome adapter    │
 │                                                             │
-│  1. PageMetricsValidator → validates "resource" not empty   │
-│  2. MetricsProcessorContext(NetworkMetricsExtractor)        │
-│     → { resourceCount, totalTransferSize }                  │
-│  3. Builds Metrics { requestCount, totalResourceSize,       │
-│     cpuTimeToLoad }                                         │
-│  4. parseDomain(sender.tab.url) → safe hostname             │
-│  5. hasExistingTabById?                                     │
-│    ├─ No  → metricsStore.addTab(...)                        │
-│    └─ Yes → metricsStore.updateTabMetrics(...)              │
+│  isPageMetricsMessage(message)  ← guards the message shape   │
+│  tabId  = sender.tab?.id                                     │
+│  url    = sender.url ?? sender.tab?.url                      │
+│  → MetricsIntake.record({ tabId, url, payload })              │
+│                                                             │
+│  Also owns: reset alarm, BETA badge. Nothing else.            │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    metricsStore (session/store.ts)          │
+│                MetricsIntake (intake/MetricsIntake.ts)       │
 │                                                             │
-│  In-memory cache (DailyRecord + date):                      │
-│    → Read : returns cache if date = today                   │
-│    → Write: invalidates the cache                           │
+│  1. parseDomain(url)      → discard if not http(s)          │
+│  2. measurePage(payload)  → discard if no resource entry    │
+│     → { requests, transferredBytes, loadDurationMs }        │
+│  3. Metrics { requestCount, totalResourceSize (MB),         │
+│     cpuTimeToLoad (s) }                                      │
+│  4. toCarbonInput(metrics) → CarbonCalculator.calculate()    │
+│     → [Network, Cpu, Rendering] CarbonSource                │
+│  5. recorder.recordTabMetrics(tab)                           │
 │                                                             │
-│  addTab / updateTabMetrics                                  │
-│    → CarbonCalculator.calculate([CarbonInput])              │
-│      → [NetworkCarbonSource, CpuCarbonSource]               │
-│    → { networkCo2, cpuCo2, totalCo2 }                       │
-│    → sumMetrics(tabs) + sumCarbonEstimates(tabs)            │
-│    → DailyRecord { date, tabs[], totalMetrics, totalCarbon }│
+│  Injected: TabMetricsRecorder, FootprintCalculator, Clock    │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│               ChromeStorage (chrome.storage.local)         │
+│          metrics store (session/store.ts) — constructed      │
 │                                                             │
-│  Key "sessions"     → SessionsStore (Record<date, DailyRecord>)│
-│  Key "preferences"  → Preferences (source: config/preferences.ts)│
+│  createMetricsStore(storage, clock)                          │
+│                                                             │
+│  recordTabMetrics — upsert INSIDE the write queue:           │
+│    read day → decide add-or-replace → persist, serialised    │
+│    → sumMetrics(tabs) + sumCarbonEstimates(tabs)             │
+│    → DailyRecord { date, tabs[], totalMetrics, totalCarbon } │
+│                                                             │
+│  getDailyRecord — never null: an unmeasured day is the        │
+│    neutral record from emptyDailyRecord(date)                 │
+│                                                             │
+│  In-memory cache, warmed on write, dropped by clearPastDays  │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ read-only
+                       │
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Popup (Popup.tsx)                        │
+│               ChromeStorage (chrome.storage.local)          │
 │                                                             │
-│  componentDidMount → metricsStore.findDailyRecord()         │
-│  "Refresh" button  → metricsStore.findDailyRecord()         │
-│  Displays DayView with today's DailyRecord                  │
+│  StorageKey.SESSIONS    → DailyRecordsStore (by local day)  │
+│  StorageKey.PREFERENCES → Preferences (config/preferences.ts)│
+└──────────────────────┬──────────────────────────────────────┘
+                       │ read-only on measurements
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Panel (App.tsx → Popup.tsx)              │
+│                                                             │
+│  App.tsx is the composition root: builds the clock and the  │
+│  store, passes them in as props.                            │
+│  Popup receives a DailyRecordReader — it cannot write a     │
+│  measurement even by accident.                              │
+│  componentDidMount → store.getDailyRecord() → DayView       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -152,15 +177,45 @@ src/
 
 ## Architectural patterns
 
-### Strategy Pattern
-`MetricsProcessorContext<Input, Output>` allows plugging in different performance analysis strategies. Currently: `NetworkMetricsExtractor` which computes `resourceCount` and `totalTransferSize`.
+### Ports and adapters at the two browser edges
+The extension touches four browser globals: `performance`, `chrome.runtime`,
+`chrome.storage.local` and the clock. Each sits behind an interface with a real
+second implementation in `test/fakes/`, which is what makes the second one worth
+having — one adapter would only be a hypothetical seam.
 
-```typescript
-const ctx = new MetricsProcessorContext(new NetworkMetricsExtractor());
-const result = ctx.execute(resourceEntries); // { resourceCount, totalTransferSize }
-```
+| Port | Production adapter | Test adapter |
+| --- | --- | --- |
+| `PerformanceSource` | `BrowserPerformanceSource` | scripted entries, in the tests |
+| `ObservationSink` | `RuntimeObservationSink` | recording sink, in the tests |
+| `DailyRecordsStorage` | `ChromeStorage` | `InMemoryDailyRecordsStorage` |
+| `Clock` | `SystemClock` | `FixedClock` |
 
-Extensible: additional extractors can be added for PAINT, LONGTASK analysis without modifying the background.
+Nothing reaches for an ambient singleton: the clock and the storage are
+constructor arguments, so a test constructs its own world and no module has to
+publish a reset hook for the test run.
+
+### Discriminated results instead of nullable returns
+`measurePage()` and `parseDomain()` both return `{ valid: true, … } | { valid: false }`,
+and `getDailyRecord()` returns the neutral record rather than `null`. The compiler
+forces the invalid branch to be handled, and no reader carries a `?? empty` fallback.
+
+### One command per decision
+`recordTabMetrics(tab)` replaced `hasExistingTabById()` + `addTab()` +
+`updateTabMetrics()`. The three-call version let the caller decide add-or-update
+*outside* the write queue that exists to serialise exactly that decision — two
+messages for one tab could both conclude "not there yet" and append twice.
+The upsert now happens inside the queue, so the sequence cannot be got wrong.
+
+### Interface segregation on the store
+`MetricsStore` is the intersection of three roles, and each caller takes only its own:
+
+| Role | Methods | Taken by |
+| --- | --- | --- |
+| `DailyRecordReader` | `getDailyRecord`, `getAllDays` | the panel |
+| `TabMetricsRecorder` | `recordTabMetrics` | `MetricsIntake` |
+| `RetentionEnforcer` | `clearPastDays` | the reset alarm |
+
+The intake cannot drop a day; the panel cannot write a measurement.
 
 ### Open/Closed — CarbonContributionSource
 `CarbonCalculator` accepts an array of emission sources. Adding a new source (e.g. GPU, streaming) does not require modifying `CarbonCalculator`:
@@ -178,7 +233,13 @@ const calc = new CarbonCalculator([
 ```
 
 ### Store Pattern + in-memory cache
-`metricsStore` exposes a high-level API for managing `DailyRecord` objects. Repeated reads within the same session (popup open) use an in-memory cache invalidated on every write — avoids redundant I/O to `chrome.storage.local`.
+`createMetricsStore(storage, clock)` returns a store that owns today's `DailyRecord`.
+Repeated reads while the panel is open hit an in-memory cache; a write **warms** it
+with the value just persisted rather than invalidating it, saving a storage
+round-trip. `clearPastDays` drops it, since it can remove days wholesale.
+
+Each browser context builds its own store — the background and the panel are
+separate JavaScript realms and cannot share a cache.
 
 ### Security — RateLimiter
 `RateLimiter` (`src/security/RateLimiter.ts`) protects all side-effecting UI actions (export, refresh, storage writes) from abuse. Each action has its own counter, scoped by string key.
@@ -188,16 +249,19 @@ const calc = new CarbonCalculator([
 - **Usage**: one `RateLimiter` instance per UI context (popup, side panel), passed to action handlers
 
 ```typescript
-const limiter = new RateLimiter();
+const limiter = new RateLimiter(clock);
 if (!limiter.isAllowed("csv-export")) return;
 ```
+
+The `Clock` is a constructor argument, so the throttle can be tested by advancing
+a `FixedClock` instead of waiting sixty seconds.
 
 `page_metrics` messages from the content script are **not** rate-limited — every page load is a valid data point.
 
 ### Background / Popup / Content separation
-- The **Background script** (service worker on Chromium, event page on Gecko) wakes on demand → collects metrics sent by content scripts, manages alarms and periodic resets
-- The **Popup** mounts/unmounts on every open → reads storage only (pure read)
-- The **Content script** is injected on every page → collects Performance API data on load and pushes it to the background
+- The **Background script** (service worker on Chromium, event page on Gecko) wakes on demand → guards the incoming message, resolves the tab, hands it to `MetricsIntake`, and owns the alarms
+- The **Panel** mounts/unmounts on every open → holds a `DailyRecordReader`, so it reads measurements and writes only preferences
+- The **Content script** is injected on every page → builds a `MetricsCollector` over the real browser globals and fires it once the load event has passed
 
 ---
 

@@ -1,158 +1,112 @@
-import { sumMetrics, sumCarbonEstimates, emptyMetrics, emptyCarbonEstimate } from "./aggregator";
-import { ChromeStorage } from "../storage/ChromeStorage";
-import type { DailyRecord, MetricTab, Metrics, MetricsStore } from "./types";
-import type { CarbonEstimate } from "../carbon/types";
-import { getDailyDate } from "../utils/date";
-import { clock } from "../utils/clock";
+import { emptyDailyRecord, sumCarbonEstimates, sumMetrics } from "./aggregator";
+import type { DailyRecord, MetricTab, MetricsStore } from "./types";
+import type { DailyRecordsStorage } from "../storage/types";
+import type { Clock } from "../utils/clock";
+import { toDailyDate } from "../utils/clock";
 
-const emptyDailyRecord = (date: string): DailyRecord => ({
-  date,
-  tabs: [],
-  totalMetrics: emptyMetrics(),
-  totalCarbon: emptyCarbonEstimate(),
-});
-
-// In-memory cache
-let cache: DailyRecord | null = null;
-let cacheDate: string = "";
-
-// Serializes all mutations to prevent concurrent read-modify-write races
-let writeQueue: Promise<void> = Promise.resolve();
-
-export function invalidateCache(): void {
-  cache = null;
-  cacheDate = "";
-}
-
-// Register reset hook for test environments (also resets the write queue)
-(globalThis as Record<string, unknown>).__carbolateCacheReset = () => {
-  cache = null;
-  cacheDate = "";
-  writeQueue = Promise.resolve();
-};
-
-function enqueue<T>(task: () => Promise<T>): Promise<T> {
-  const result = writeQueue.then(task);
-  // Prevent a rejected task from stalling subsequent enqueued operations
-  writeQueue = result.then(
-    () => {},
-    () => {},
-  );
-  return result;
-}
-
-async function getCachedDailyRecord(): Promise<DailyRecord | null> {
-  const today = getDailyDate();
-  if (cache && cacheDate === today) return cache;
-  const sessions = await ChromeStorage.getSessions();
-  cache = sessions[today] ?? null;
-  cacheDate = today;
-  return cache;
-}
-
-// Single read-modify-write helper — all mutations go through here via enqueue()
-async function mutateToday(fn: (record: DailyRecord) => DailyRecord): Promise<void> {
-  const date = getDailyDate();
-  const sessions = await ChromeStorage.getSessions();
-  const current = sessions[date] ?? emptyDailyRecord(date);
-  const updated = fn(current);
-  await ChromeStorage.setSessions({ ...sessions, [date]: updated });
-  // Warm cache instead of just invalidating — avoids an extra storage round-trip on next read
-  cache = updated;
-  cacheDate = date;
-}
+/** `retentionDays` sentinel meaning "never drop a day". */
+const RETENTION_KEEP_EVERYTHING = -1;
 
 function rebuildTotals(record: DailyRecord): DailyRecord {
   return {
     ...record,
-    totalMetrics: sumMetrics(record.tabs.map((t) => t.metrics)),
-    totalCarbon: sumCarbonEstimates(record.tabs.map((t) => t.carbon)),
+    totalMetrics: sumMetrics(record.tabs.map((tab) => tab.metrics)),
+    totalCarbon: sumCarbonEstimates(record.tabs.map((tab) => tab.carbon)),
   };
 }
 
-export const metricsStore: MetricsStore = {
-  findDailyRecord: (): Promise<DailyRecord | null> => getCachedDailyRecord(),
+/**
+ * Replaces the measurements of a tab already recorded today, or appends it.
+ *
+ * The identity fields (`url`, `domain`) deliberately stay as first observed:
+ * today's unit of measurement is the browser tab, not the navigation. Moving to
+ * one entry per navigation means keying this function on `(id, url)` — that
+ * single comparison, and nothing else in the module.
+ * See docs/decisions/2026-08-05-page-visit-unite-de-mesure.md
+ *
+ * O(n) time, O(n) space — n = tabs recorded today.
+ */
+function upsertTab(tabs: MetricTab[], incoming: MetricTab): MetricTab[] {
+  let replaced = false;
+  const merged = tabs.map((tab) => {
+    if (tab.id !== incoming.id) return tab;
+    replaced = true;
+    return { ...tab, metrics: incoming.metrics, carbon: incoming.carbon, meta: incoming.meta };
+  });
+  return replaced ? merged : [...merged, incoming];
+}
 
-  findOrCreateDailyRecord: (): Promise<DailyRecord> =>
-    enqueue(async () => {
-      const date = getDailyDate();
-      const sessions = await ChromeStorage.getSessions();
-      if (sessions[date]) {
-        cache = sessions[date];
-        cacheDate = date;
-        return sessions[date];
-      }
-      const record = emptyDailyRecord(date);
-      await ChromeStorage.setSessions({ ...sessions, [date]: record });
-      cache = record;
-      cacheDate = date;
-      return record;
-    }),
+/**
+ * Owns today's daily record: one read-modify-write critical section, one
+ * in-memory cache. Constructed rather than ambient, so every test gets its own
+ * instance and no reset hook has to be published.
+ */
+export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): MetricsStore {
+  let cached: { date: string; record: DailyRecord } | undefined;
 
-  getAllDays: async (): Promise<DailyRecord[]> => {
-    const sessions = await ChromeStorage.getSessions();
-    return Object.values(sessions).sort((a, b) => a.date.localeCompare(b.date));
-  },
+  // Serializes all mutations to prevent concurrent read-modify-write races
+  let writeQueue: Promise<void> = Promise.resolve();
 
-  hasExistingTabById: async (tabId: number): Promise<boolean> => {
-    const record = await getCachedDailyRecord();
-    return record?.tabs.some((tab) => tab.id === tabId) ?? false;
-  },
+  function enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const result = writeQueue.then(task);
+    // Prevent a rejected task from stalling subsequent enqueued operations
+    writeQueue = result.then(
+      () => {},
+      () => {},
+    );
+    return result;
+  }
 
-  addTab: (tab: MetricTab): Promise<void> =>
-    enqueue(() =>
-      mutateToday((record) => rebuildTotals({ ...record, tabs: [...record.tabs, tab] })),
-    ),
+  async function readToday(): Promise<DailyRecord> {
+    const date = clock.dailyDate();
+    if (cached !== undefined && cached.date === date) return cached.record;
+    const sessions = await storage.getSessions();
+    const record = sessions[date] ?? emptyDailyRecord(date);
+    cached = { date, record };
+    return record;
+  }
 
-  updateTabMetrics: (
-    tabId: number,
-    newMetrics: Metrics,
-    carbon: CarbonEstimate,
-    meta?: Partial<{ status: number; date: number }>,
-  ): Promise<void> =>
-    enqueue(() =>
-      mutateToday((record) => {
-        const tabs = record.tabs.map((tab) => {
-          if (tab.id !== tabId) return tab;
-          return {
-            ...tab,
-            metrics: newMetrics,
-            carbon,
-            meta: meta ? { ...tab.meta, ...meta } : tab.meta,
-          };
-        });
-        return rebuildTotals({ ...record, tabs });
-      }),
-    ),
-
-  getTabs: async (): Promise<MetricTab[]> => {
-    const record = await getCachedDailyRecord();
-    return record?.tabs ?? [];
-  },
-
-  getTotalMetrics: async (): Promise<Metrics> => {
-    const record = await getCachedDailyRecord();
-    return record?.totalMetrics ?? emptyMetrics();
-  },
-
-  getTotalCarbon: async (): Promise<CarbonEstimate> => {
-    const record = await getCachedDailyRecord();
-    return record?.totalCarbon ?? emptyCarbonEstimate();
-  },
-
-  clearPastDays: (retentionDays: number): Promise<void> => {
-    if (retentionDays === -1) return Promise.resolve();
+  /**
+   * The only path that writes. Reading the day, deciding and persisting all
+   * happen inside one `enqueue()` turn — a decision taken outside it could be
+   * stale by the time the write lands.
+   */
+  function mutateToday(change: (record: DailyRecord) => DailyRecord): Promise<void> {
     return enqueue(async () => {
-      const sessions = await ChromeStorage.getSessions();
-      const today = getDailyDate();
-      const cutoffDate = clock.now();
-      cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
-      const cutoff = cutoffDate.toLocaleDateString("sv"); // "sv" locale gives YYYY-MM-DD
-      const filtered = Object.fromEntries(
-        Object.entries(sessions).filter(([date]) => date >= cutoff || date === today),
-      );
-      await ChromeStorage.setSessions(filtered);
-      invalidateCache();
+      const date = clock.dailyDate();
+      const sessions = await storage.getSessions();
+      const updated = change(sessions[date] ?? emptyDailyRecord(date));
+      await storage.setSessions({ ...sessions, [date]: updated });
+      // Warm rather than invalidate — saves a storage round-trip on the next read
+      cached = { date, record: updated };
     });
-  },
-};
+  }
+
+  return {
+    getDailyRecord: (): Promise<DailyRecord> => readToday(),
+
+    getAllDays: async (): Promise<DailyRecord[]> => {
+      const sessions = await storage.getSessions();
+      return Object.values(sessions).sort((a, b) => a.date.localeCompare(b.date));
+    },
+
+    recordTabMetrics: (tab: MetricTab): Promise<void> =>
+      mutateToday((record) => rebuildTotals({ ...record, tabs: upsertTab(record.tabs, tab) })),
+
+    clearPastDays: (retentionDays: number): Promise<void> => {
+      if (retentionDays === RETENTION_KEEP_EVERYTHING) return Promise.resolve();
+      return enqueue(async () => {
+        const sessions = await storage.getSessions();
+        const today = clock.dailyDate();
+        const cutoffDate = clock.now();
+        cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+        const cutoff = toDailyDate(cutoffDate);
+        const kept = Object.fromEntries(
+          Object.entries(sessions).filter(([date]) => date >= cutoff || date === today),
+        );
+        await storage.setSessions(kept);
+        cached = undefined;
+      });
+    },
+  };
+}

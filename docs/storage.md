@@ -6,17 +6,22 @@ All data is persisted in **`chrome.storage.local`** via `src/storage/ChromeStora
 
 Two keys are used:
 
-| Key             | Type            | Description            |
-| --------------- | --------------- | ---------------------- |
-| `"sessions"`    | `SessionsStore` | Session history by day |
-| `"preferences"` | `Preferences`   | User configuration     |
+| Key             | Type                 | Description                  |
+| --------------- | -------------------- | ---------------------------- |
+| `"sessions"`    | `DailyRecordsStore`  | Daily record history, by day  |
+| `"preferences"` | `Preferences`        | User configuration            |
+
+The key strings live in `src/storage/StorageKey.ts`. `"sessions"` holds **daily
+records**, not browsing sessions — the key keeps its historical name so an
+installed extension does not lose its data, and the mismatch is carried by
+`docs/glossary.md` instead of being rediscovered from the code.
 
 Types defined in `src/storage/types.ts`:
 
 ```typescript
 type StorageData = {
-  sessions: SessionsStore;
-  preferences: Preferences;
+  [StorageKey.SESSIONS]: DailyRecordsStore;
+  [StorageKey.PREFERENCES]: Preferences;
 };
 ```
 
@@ -62,24 +67,31 @@ type Metrics = {
 
 > Unit conversions go through `src/utils/bytes.ts` — the single home for the
 > base-10 rule. `Metrics` is adapted to `CarbonInput` by
-> `src/carbon/toCarbonInput.ts`, imported by both the background and the tests so
-> a unit change cannot land in one without the other.
+> `src/carbon/toCarbonInput.ts`, and `MetricsIntake` is its only production
+> caller: the figure shown and the figure costed therefore come from the same
+> stored value and cannot drift apart by a rounding step.
 
 ### `MetricTab` — a tracked tab
 
 ```typescript
 type MetricTab = {
   id: number; // chrome.tabs.Tab.id
-  url: string; // Full URL
-  domain: string; // hostname (e.g. "github.com"), "" if URL is invalid
+  url: string; // Full URL, as first observed for this tab
+  domain: string; // hostname (e.g. "github.com") — a visit with no valid host is discarded
   metrics: Metrics;
   meta: {
-    status: number; // HTTP status (e.g. 200)
     date: number; // Unix timestamp (ms) of the last collection
   };
   carbon: CarbonEstimate;
 };
 ```
+
+> `meta.status` is gone. It was hardcoded to `200`, never read and never anything
+> else — a field claiming to describe a state while describing none. The real
+> lifecycle it stood in for is specified in
+> [the page-visit ADR](decisions/2026-08-05-page-visit-unite-de-mesure.md) and is
+> not implemented yet. Stored records that still carry the field are simply
+> ignored on read; no migration is needed.
 
 ### `CarbonEstimate` — CO₂ calculation result
 
@@ -108,10 +120,10 @@ type DailyRecord = {
 };
 ```
 
-### `SessionsStore` — dictionary of days
+### `DailyRecordsStore` — dictionary of days
 
 ```typescript
-type SessionsStore = Record<string, DailyRecord>;
+type DailyRecordsStore = Record<string, DailyRecord>;
 // Example: { "2026-03-04": DailyRecord, "2026-03-03": DailyRecord }
 ```
 
@@ -135,7 +147,6 @@ type SessionsStore = Record<string, DailyRecord>;
             "cpuTimeToLoad": 1.8
           },
           "meta": {
-            "status": 200,
             "date": 1741046400000
           },
           "carbon": {
@@ -170,55 +181,77 @@ type SessionsStore = Record<string, DailyRecord>;
 
 ## ChromeStorage API
 
-`ChromeStorage` implements the `BrowsingDataStore` interface (mockable for tests).
+`ChromeStorage` implements `BrowsingDataStore`, itself the intersection of two
+role interfaces so each caller depends only on the half it needs.
 
 ```typescript
-interface BrowsingDataStore {
-  getSessions(): Promise<SessionsStore>;
-  setSessions(sessions: SessionsStore): Promise<void>;
+interface DailyRecordsStorage {
+  getSessions(): Promise<DailyRecordsStore>;
+  setSessions(sessions: DailyRecordsStore): Promise<void>;
+}
+
+interface PreferencesStorage {
   getPreferences(): Promise<Preferences>;
   setPreferences(preferences: Preferences): Promise<void>;
 }
+
+interface BrowsingDataStore extends DailyRecordsStorage, PreferencesStorage {}
 ```
 
-```typescript
-// Read sessions
-ChromeStorage.getSessions(): Promise<SessionsStore>
+The metrics store takes `DailyRecordsStorage`; the panel takes `PreferencesStorage`.
+`InMemoryDailyRecordsStorage` (`test/fakes/`) is the second real implementation of
+the first — a concrete storage that keeps its bytes in a variable, never a
+configured stub.
 
-// Full write (full replace)
-ChromeStorage.setSessions(sessions: SessionsStore): Promise<void>
-
-// Read preferences (merged with defaults from config/preferences.ts)
-ChromeStorage.getPreferences(): Promise<Preferences>
-
-// Write preferences
-ChromeStorage.setPreferences(preferences: Preferences): Promise<void>
-```
-
-> **Important**: `setSessions` performs a **full replacement** — always read before writing to avoid losing other days.
+> **Important**: `setSessions` performs a **full replacement** — always read before writing to avoid losing other days. Inside the store, every write goes through the single `mutateToday` critical section, which does exactly that.
 
 ---
 
-## metricsStore API
+## Metrics store API
 
-`metricsStore` maintains an **in-memory cache** of the current `DailyRecord`. The cache is invalidated automatically on every write. Repeated reads (during a popup session) result in only one I/O call.
+The store is **constructed**, not imported as a singleton:
 
 ```typescript
-// Read (in-memory cache for the current day)
-metricsStore.findDailyRecord()         → DailyRecord | null   (current day)
-metricsStore.findOrCreateDailyRecord() → DailyRecord          (creates if missing)
-metricsStore.getAllDays()              → DailyRecord[]         (all days, sorted)
-metricsStore.getTabs()                 → MetricTab[]           (today's tabs)
-metricsStore.getTotalMetrics()         → Metrics               (today's totals)
-metricsStore.getTotalCarbon()          → CarbonEstimate        (today's CO₂)
-metricsStore.hasExistingTabById(id)    → boolean
-
-// Write (invalidates the cache)
-metricsStore.addTab(tab)                                    → void  (new tab)
-metricsStore.updateTabMetrics(id, metrics, carbon, meta?)   → void  (update existing tab)
-metricsStore.clearPastDays(retentionDays)                   → void  (cleanup)
+const store = createMetricsStore(ChromeStorage, new SystemClock());
 ```
+
+It keeps an **in-memory cache** of the current `DailyRecord`. A write warms the
+cache with the value just persisted; `clearPastDays` drops it. Repeated reads
+while the panel is open cost one I/O call.
+
+```typescript
+// DailyRecordReader — the panel's half
+store.getDailyRecord()  → DailyRecord     (today; the neutral record if nothing was measured)
+store.getAllDays()      → DailyRecord[]   (every stored day, chronological)
+
+// TabMetricsRecorder — the intake's half
+store.recordTabMetrics(tab) → void        (upsert on tab id, inside the write queue)
+
+// RetentionEnforcer — the reset alarm's half
+store.clearPastDays(retentionDays) → void
+```
+
+`getDailyRecord()` never returns `null`: a day nothing was measured on is
+`emptyDailyRecord(date)`, so no caller carries a "no record" branch. Reading a day
+does **not** create it — a query never writes.
+
+### Why one write method, not three
+
+`recordTabMetrics` replaced `hasExistingTabById()` + `addTab()` +
+`updateTabMetrics()`. The caller used to ask whether the tab existed **outside**
+the write queue and then enqueue one of two writes, so two messages for the same
+tab could both read `false` and both append — one page visit stored twice, day
+total inflated. Read, decide and write now happen in a single queued turn.
+
+The four remaining readers of that old interface (`findOrCreateDailyRecord`,
+`getTabs`, `getTotalMetrics`, `getTotalCarbon`) had no production caller at all;
+they existed so tests could look inside the store, alongside a
+`globalThis.__carbolateCacheReset` hook shipped in production code. Both are gone:
+a constructed store is fresh per test by definition.
 
 ### Cutoff calculation in `clearPastDays`
 
-The cutoff date is computed in **local time** via `toLocaleDateString("sv")` (locale "sv" = `YYYY-MM-DD` format), avoiding UTC offsets that could incorrectly delete or retain days.
+The cutoff date is computed in **local time** via `toDailyDate()`
+(`toLocaleDateString("sv")`, the only locale whose short date is ISO `YYYY-MM-DD`),
+avoiding UTC offsets that could incorrectly delete or retain days. Today is never
+dropped, however short the window.

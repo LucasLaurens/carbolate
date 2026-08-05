@@ -24,7 +24,7 @@ describe("CarbonCalculator", () => {
   it("calculates CPU CO2 from cpu time (1 000 000 ms = 1 000 s)", () => {
     // cpuCo2 = 1000 s * 0.001 = 1
     const result = calc.calculate([{ transferSize: 0, cpuTime: 1_000_000 }]);
-    expect(result.cpuCo2).toBe(1_000_000 / 1000 * CPU_FACTOR);
+    expect(result.cpuCo2).toBe((1_000_000 / 1000) * CPU_FACTOR);
     expect(result.networkCo2).toBe(0);
     expect(result.totalCo2).toBeCloseTo(result.cpuCo2 + result.renderingCo2, 10);
   });
@@ -32,7 +32,7 @@ describe("CarbonCalculator", () => {
   it("calculates rendering CO2 from cpu time (1 000 000 ms = 1 000 s)", () => {
     // renderingCo2 = 1000 s * 0.0004 = 0.4
     const result = calc.calculate([{ transferSize: 0, cpuTime: 1_000_000 }]);
-    expect(result.renderingCo2).toBe(1_000_000 / 1000 * RENDERING_FACTOR);
+    expect(result.renderingCo2).toBe((1_000_000 / 1000) * RENDERING_FACTOR);
   });
 
   it("sums transfer sizes across multiple entries", () => {
@@ -45,7 +45,10 @@ describe("CarbonCalculator", () => {
 
   it("combines all sources in totalCo2", () => {
     const result = calc.calculate([{ transferSize: 1_000_000_000, cpuTime: 1_000_000 }]);
-    expect(result.totalCo2).toBeCloseTo(result.networkCo2 + result.cpuCo2 + result.renderingCo2, 10);
+    expect(result.totalCo2).toBeCloseTo(
+      result.networkCo2 + result.cpuCo2 + result.renderingCo2,
+      10,
+    );
   });
 });
 
