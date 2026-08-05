@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { sumMetrics, sumCarbonEstimates, emptyMetrics, emptyCarbonEstimate } from "./aggregator";
+import {
+  sumMetrics,
+  sumCarbonEstimates,
+  emptyMetrics,
+  emptyCarbonEstimate,
+  emptyDailyRecord,
+} from "./aggregator";
 import type { Metrics } from "./types";
 import type { CarbonEstimate } from "../carbon/types";
 
@@ -69,6 +75,44 @@ describe("sums are identity-preserving", () => {
     expect(sumCarbonEstimates([POPULATED_ESTIMATE, emptyCarbonEstimate()])).toEqual(
       POPULATED_ESTIMATE,
     );
+  });
+});
+
+describe("sums add across entries", () => {
+  it("adds every field of two Metrics", () => {
+    // Act & Assert
+    expect(
+      sumMetrics([
+        { requestCount: 5, totalResourceSize: 1, cpuTimeToLoad: 0.5 },
+        { requestCount: 3, totalResourceSize: 2, cpuTimeToLoad: 1.5 },
+      ]),
+    ).toEqual({ requestCount: 8, totalResourceSize: 3, cpuTimeToLoad: 2 });
+  });
+
+  it("adds every field of two CarbonEstimates", () => {
+    // Act
+    const summed = sumCarbonEstimates([POPULATED_ESTIMATE, POPULATED_ESTIMATE]);
+
+    // Assert
+    expect(summed.networkCo2).toBeCloseTo(POPULATED_ESTIMATE.networkCo2 * 2, 10);
+    expect(summed.totalCo2).toBeCloseTo(POPULATED_ESTIMATE.totalCo2 * 2, 10);
+  });
+});
+
+describe("the neutral daily record", () => {
+  it("carries the day it was asked for", () => {
+    // Act & Assert
+    expect(emptyDailyRecord("2026-02-23").date).toBe("2026-02-23");
+  });
+
+  it("holds no tab and zeroed totals, so no reader needs a null branch", () => {
+    // Act
+    const record = emptyDailyRecord("2026-02-23");
+
+    // Assert
+    expect(record.tabs).toEqual([]);
+    expect(record.totalMetrics).toEqual(emptyMetrics());
+    expect(record.totalCarbon).toEqual(emptyCarbonEstimate());
   });
 });
 

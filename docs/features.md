@@ -10,9 +10,10 @@ Carbolate is a browser extension — Chrome, Edge, Opera, Brave, Vivaldi and Fir
 
 ### Automatic collection
 - On every new page load, metrics are collected **automatically** by the content script and sent to the background
-- If the tab has already been tracked during the day, its metrics **and** metadata (date, status) are updated
-- The "Refresh" button re-reads storage to display the most recent data
-- Non-collectable URLs (`chrome://`, `about:blank`, `file://`) are silently ignored
+- If the tab has already been tracked during the day, its measurements and collection timestamp are replaced; the domain recorded stays that of the tab's first load
+- Concurrent reports for the same tab — a reload storm, for instance — produce a single entry, not one per report
+- Non-collectable URLs (`chrome://`, `about:blank`, `file://`) are silently ignored, and so is a page that reported no resource at all
+- The panel re-reads storage when it opens
 
 ### Current day dashboard
 The main view displays 4 indicators for the current day:
@@ -43,10 +44,15 @@ World average reference: **120 gCO₂e/day** for web browsing (ADEME 2023).
 The entire UI supports **English and French**. The active language is stored in `Preferences.language` and persisted in `chrome.storage.local`. Switching language is instant with no page reload.
 
 ### CSV export
-- "Export CSV" button in the popup
 - Generates a `carbolate-export-YYYY-MM-DD.csv` file downloaded via `chrome.downloads`
 - Contains all historical data: one row per tracked tab
-- Columns: `date, domain, url, requestCount, totalResourceSize_MB, cpuTimeToLoad_s, networkCo2_g, cpuCo2_g, totalCo2_g, visitTimestamp`
+- Columns: `date, domain, url, requestCount, totalResourceSize_MB, cpuTimeToLoad_s, networkCo2_g, cpuCo2_g, renderingCo2_g, totalCo2_g, visitTimestamp`
+- Fields containing a comma or a quote are quoted and escaped, so the column count survives any url
+
+> **Not reachable from the UI yet.** `Popup.handleExport` exists and is rate-limited,
+> but no control renders it. Same for refresh: `Popup.handleRefresh` runs on mount,
+> and `DayView` receives an `onRefresh` prop it does not render a button for. The
+> handlers are wired; the two controls are not.
 
 ### Automatic reset
 - A Chrome alarm fires automatically at midnight
@@ -84,46 +90,42 @@ The `Preferences` type supports `resetPeriod` and `autoExportBeforeReset` but no
 ### Page load (automatic collection)
 ```
 User navigates to a new URL
-  → Content script triggered on window.load
-  → performance.getEntriesByType("resource") → list of network resources
-  → performance.getEntriesByType("navigation") → load timing
-  → Converted to plain objects { transferSize }, { duration }
-  → chrome.runtime.sendMessage({ type: "page_metrics", ... })
-    → Background receives the message + sender.tab.{id, url}
-    → EntriesValidator → validates that "resource" is not empty
-    → ResourceStrategy → { resourceCount, totalTransferSize }
-    → Metrics computed + carbon estimated
-    → hasExistingTabById?
-      ├─ No  → metricsStore.addTab(...)
-      └─ Yes → metricsStore.updateTabMetrics(...)
+  → Content script builds a MetricsCollector and fires it once the load event has passed
+  → BrowserPerformanceSource reads the Performance API
+      getEntriesByType("resource")   → [{ transferSize }]
+      getEntriesByType("navigation") → [{ duration }]
+    (projected onto plain objects — the entries themselves are not serializable)
+  → RuntimeObservationSink sends { type: "page_metrics", payload }
+    → Background guards the message shape with isPageMetricsMessage()
+    → tabId + url resolved from sender
+    → MetricsIntake.record({ tabId, url, payload })
+        → parseDomain(url)      — discard if not http(s)
+        → measurePage(payload)  — discard if no resource entry
+        → Metrics { requestCount, totalResourceSize (MB), cpuTimeToLoad (s) }
+        → toCarbonInput + CarbonCalculator → CarbonEstimate
+        → store.recordTabMetrics(tab) — upsert inside the write queue
     → Data persisted in ChromeStorage
 ```
 
-### Popup opened
+### Panel opened
 ```
 User clicks the Carbolate icon
+  → App.tsx builds the clock and the store, passes them to Popup as props
   → Popup mounted (componentDidMount)
-  → Preferences loaded from ChromeStorage.getPreferences()
-  → handleRefresh() triggered automatically
-    → metricsStore.findDailyRecord() → reads ChromeStorage
+  → Preferences loaded from PreferencesStorage.getPreferences()
+  → handleRefresh()
+    → store.getDailyRecord() → reads ChromeStorage
+      (the neutral record if nothing was measured today — never null)
     → setState({ record })
   → DayView displayed with today's data
 ```
 
-### Refresh button
+### Manual export (handler only — no control rendered)
 ```
-User clicks "Refresh"
-  → isLoading = true (button disabled)
-  → metricsStore.findDailyRecord() → re-reads ChromeStorage
-  → setState({ record })
-  → isLoading = false
-```
-
-### Manual export
-```
-User clicks "Export CSV"
-  → getAllDays() → retrieves the full history
-  → CSV generated in memory
+Popup.handleExport()
+  → rate limiter check ("csv-export")
+  → store.getAllDays() → retrieves the full history
+  → toCSV(records) → escaped CSV text
   → chrome.downloads.download() → browser download
 ```
 

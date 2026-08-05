@@ -1,0 +1,39 @@
+import { PerformanceEntryType } from "../performance/enums/PerformanceEntryType";
+import type {
+  NavigationTiming,
+  PagePerformancePayload,
+  ResourceTiming,
+} from "../performance/PageMetrics";
+
+/** Where the timings come from. Injected, so the rules below can be exercised. */
+export interface PerformanceSource {
+  resources(): readonly ResourceTiming[];
+  navigations(): readonly NavigationTiming[];
+}
+
+/** Where the observation goes. Injected, for the same reason. */
+export interface ObservationSink {
+  send(payload: PagePerformancePayload): void;
+}
+
+/**
+ * Reads what the page reported and hands it over, once.
+ *
+ * Keeping the two globals — `performance` and `chrome.runtime` — behind ports is
+ * what makes the collection rules assertable without a DOM or a browser: the
+ * living-record work lands here, and it is all conditional logic.
+ * See docs/decisions/2026-08-05-page-visit-unite-de-mesure.md
+ */
+export class MetricsCollector {
+  constructor(
+    private readonly source: PerformanceSource,
+    private readonly sink: ObservationSink,
+  ) {}
+
+  collect(): void {
+    this.sink.send({
+      [PerformanceEntryType.RESOURCE]: this.source.resources(),
+      [PerformanceEntryType.NAVIGATION]: this.source.navigations(),
+    });
+  }
+}

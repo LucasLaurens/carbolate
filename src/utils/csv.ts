@@ -1,5 +1,5 @@
 import type { DailyRecord } from "../session/types";
-import { clock } from "./clock";
+import type { Clock } from "./clock";
 
 const CSV_HEADERS = [
   "date",
@@ -15,6 +15,8 @@ const CSV_HEADERS = [
   "visitTimestamp",
 ].join(",");
 
+const DECIMALS = 4;
+
 function escapeCSV(value: string | number): string {
   const str = String(value);
   if (str.includes(",") || str.includes('"') || str.includes("\n")) {
@@ -23,7 +25,10 @@ function escapeCSV(value: string | number): string {
   return str;
 }
 
-export function exportToCSV(records: DailyRecord[]): void {
+/**
+ * O(n) time and space — n = total tabs across every exported day.
+ */
+export function toCSV(records: DailyRecord[]): string {
   const rows = records.flatMap((record) =>
     record.tabs.map((tab) =>
       [
@@ -31,10 +36,11 @@ export function exportToCSV(records: DailyRecord[]): void {
         escapeCSV(tab.domain),
         escapeCSV(tab.url),
         escapeCSV(tab.metrics.requestCount),
-        escapeCSV(tab.metrics.totalResourceSize.toFixed(4)),
-        escapeCSV(tab.metrics.cpuTimeToLoad.toFixed(4)),
+        escapeCSV(tab.metrics.totalResourceSize.toFixed(DECIMALS)),
+        escapeCSV(tab.metrics.cpuTimeToLoad.toFixed(DECIMALS)),
         escapeCSV(tab.carbon.networkCo2),
         escapeCSV(tab.carbon.cpuCo2),
+        // Days recorded before renderingCo2 existed have no such field.
         escapeCSV(tab.carbon.renderingCo2 ?? 0),
         escapeCSV(tab.carbon.totalCo2),
         escapeCSV(tab.meta.date),
@@ -42,14 +48,16 @@ export function exportToCSV(records: DailyRecord[]): void {
     ),
   );
 
-  const csvContent = [CSV_HEADERS, ...rows].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  return [CSV_HEADERS, ...rows].join("\n");
+}
+
+export function exportToCSV(records: DailyRecord[], clock: Clock): void {
+  const blob = new Blob([toCSV(records)], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
 
-  const today = clock.dailyDate();
   // Firefox drops the blob as soon as the panel closes, so the URL is released
   // only once the download has been handed over to the browser.
-  chrome.downloads.download({ url, filename: `carbolate-export-${today}.csv` }, () =>
+  chrome.downloads.download({ url, filename: `carbolate-export-${clock.dailyDate()}.csv` }, () =>
     URL.revokeObjectURL(url),
   );
 }

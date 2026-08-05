@@ -1,6 +1,6 @@
 # Octets en base 10, rétention à source unique
 
-**État** : la partie **unités** est implémentée — conversions centralisées dans `src/utils/bytes.ts`, adaptateur unique `src/carbon/toCarbonInput.ts`, règle encodée par `src/utils/bytes.test.ts`. La partie **rétention** est décidée mais non implémentée : `ResetPeriod` existe encore.
+**État** : la partie **unités** est implémentée — conversions centralisées dans `src/utils/bytes.ts`, adaptateur unique `src/carbon/toCarbonInput.ts`, règle encodée par `src/utils/bytes.test.ts`. Le renommage `SessionsStore` → `DailyRecordsStore` est fait, la clé de storage reste `"sessions"` derrière `StorageKey.SESSIONS`. La partie **rétention** reste décidée mais non implémentée : `ResetPeriod` existe encore, et la période d'alarme est toujours configurée à côté de `retentionDays` au lieu de s'en déduire.
 
 **Contexte** : deux doublons de connaissance, sans lien entre eux sinon qu'ils portent tous deux sur des contrats de données.
 

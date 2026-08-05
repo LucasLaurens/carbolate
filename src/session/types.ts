@@ -7,7 +7,6 @@ export type Metrics = {
 };
 
 type MetaData = {
-  status: number;
   date: number; // timestamp
 };
 
@@ -27,24 +26,27 @@ export type DailyRecord = {
   totalCarbon: CarbonEstimate;
 };
 
-export type SessionsStore = Record<string, DailyRecord>;
+/**
+ * Keyed by local day. The storage key stays `"sessions"` for backward
+ * compatibility with installed extensions, but its content has always been
+ * daily records — see docs/glossary.md.
+ */
+export type DailyRecordsStore = Record<string, DailyRecord>;
 
-export type MetricsStore = {
-  // Daily record operations
-  findDailyRecord: () => Promise<DailyRecord | null>;
-  findOrCreateDailyRecord: () => Promise<DailyRecord>;
+/** What the panel needs: reads only, never a write. */
+export type DailyRecordReader = {
+  getDailyRecord: () => Promise<DailyRecord>;
   getAllDays: () => Promise<DailyRecord[]>;
-  // Today convenience methods
-  addTab: (tab: MetricTab) => Promise<void>;
-  updateTabMetrics: (
-    tabId: number,
-    newMetrics: Metrics,
-    carbon: CarbonEstimate,
-    meta?: Partial<{ status: number; date: number }>,
-  ) => Promise<void>;
-  getTabs: () => Promise<MetricTab[]>;
-  getTotalMetrics: () => Promise<Metrics>;
-  getTotalCarbon: () => Promise<CarbonEstimate>;
-  hasExistingTabById: (tabId: number) => Promise<boolean>;
+};
+
+/** What the intake needs — and nothing more, so it cannot drop a day. */
+export type TabMetricsRecorder = {
+  recordTabMetrics: (tab: MetricTab) => Promise<void>;
+};
+
+/** What the reset alarm needs. */
+export type RetentionEnforcer = {
   clearPastDays: (retentionDays: number) => Promise<void>;
 };
+
+export type MetricsStore = DailyRecordReader & TabMetricsRecorder & RetentionEnforcer;

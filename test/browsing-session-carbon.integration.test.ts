@@ -1,75 +1,95 @@
 /**
- * Pipeline tests — end-to-end simulation of a real browsing session.
+ * End-to-end: what a content script observes → what lands in browser storage.
  *
- * Each test mimics what happens when a user opens a tab:
- *   Performance API entries (content script)
- *     → ResourceStrategy  (extract count + bytes)
- *     → Metrics           (same transform as background/index.ts)
- *     → CarbonCalculator  (compute carbon estimate)
- *     → metricsStore      (persist)
- *     → CarbonEstimate    (assert final footprint)
+ * The chain is the real one — MetricsCollector, MetricsIntake, the metrics store
+ * and the real ChromeStorage adapter. Only the browser is replaced: the
+ * Performance API by scripted entries, `chrome.storage.local` by the in-memory
+ * backing in test/setup.ts.
+ *
+ * This file used to re-implement the background's transform in a local helper,
+ * so a wiring mistake could not fail it. It now goes through the wiring.
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { MetricsProcessorContext } from "../src/performance/MetricsProcessorContext";
-import NetworkMetricsExtractor from "../src/performance/NetworkMetricsExtractor";
-import { metricsStore } from "../src/session/store";
-import type { Metrics } from "../src/session/types";
-import { withCarbon, computeCarbon } from "./helpers";
-import { setTestClock, FixedClock } from "../src/utils/clock";
-import { bytesToMegabytes, millisecondsToSeconds } from "../src/utils/bytes";
+import CarbonCalculator from "../src/carbon/CarbonCalculator";
+import { MetricsCollector } from "../src/content/MetricsCollector";
+import type { ObservationSink, PerformanceSource } from "../src/content/MetricsCollector";
+import type {
+  NavigationTiming,
+  PagePerformancePayload,
+  ResourceTiming,
+} from "../src/performance/PageMetrics";
+import { MetricsIntake } from "../src/intake/MetricsIntake";
+import { createMetricsStore } from "../src/session/store";
+import type { DailyRecord, MetricsStore } from "../src/session/types";
+import { ChromeStorage } from "../src/storage/ChromeStorage";
+import { FixedClock } from "./fakes/FixedClock";
 
-beforeEach(() => {
-  setTestClock(new FixedClock("2026-02-23"));
-});
+const TODAY = "2026-02-23";
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+// ─── the browser's two halves, scripted ──────────────────────────────────────
 
-/** Minimal PerformanceResourceTiming-like object (only the fields we use). */
-function resource(transferSize: number) {
-  return { transferSize };
+class ScriptedPerformanceSource implements PerformanceSource {
+  constructor(
+    private readonly resourceEntries: ResourceTiming[],
+    private readonly navigationEntries: NavigationTiming[],
+  ) {}
+
+  resources(): readonly ResourceTiming[] {
+    return this.resourceEntries;
+  }
+
+  navigations(): readonly NavigationTiming[] {
+    return this.navigationEntries;
+  }
 }
 
-/**
- * Replicates the exact transform from background/index.ts:
- *   raw entries + navigation → Metrics stored in metricsStore
- */
-function toMetrics(
-  resourceEntries: { transferSize: number }[],
-  navigationDurationMs: number,
-): Metrics {
-  const ctx = new MetricsProcessorContext(new NetworkMetricsExtractor());
-  const { resourceCount, totalTransferSize } = ctx.execute(resourceEntries);
-  return {
-    requestCount: resourceCount,
-    totalResourceSize: bytesToMegabytes(totalTransferSize),
-    cpuTimeToLoad: millisecondsToSeconds(navigationDurationMs),
-  };
+/** Stands in for `chrome.runtime` messaging, keeping the async boundary honest. */
+class IntakeSink implements ObservationSink {
+  private readonly pending: Promise<void>[] = [];
+
+  constructor(
+    private readonly intake: MetricsIntake,
+    private readonly tabId: number,
+    private readonly url: string,
+  ) {}
+
+  send(payload: PagePerformancePayload): void {
+    this.pending.push(this.intake.record({ tabId: this.tabId, url: this.url, payload }));
+  }
+
+  delivered(): Promise<void[]> {
+    return Promise.all(this.pending);
+  }
 }
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
 
-/**
- * Light blog article: ~15 resources, ~590 KB total, 800 ms load.
- * Expect low CO2, modest request count.
- */
-const BLOG_PAGE = {
-  id: 10,
+const resource = (transferSize: number): ResourceTiming => ({ transferSize });
+
+type Page = {
+  tabId: number;
+  url: string;
+  entries: ResourceTiming[];
+  navigationDurationMs: number;
+};
+
+/** Light blog article: 15 resources, 598 000 bytes, 800 ms load. */
+const BLOG_PAGE: Page = {
+  tabId: 10,
   url: "https://blog.example.com/article/42",
-  domain: "blog.example.com",
-  meta: { status: 200, date: 0 },
   entries: [
     resource(30_000), // main CSS
     resource(120_000), // main JS bundle
     resource(40_000), // hero image
-    resource(38_000), // inline image 1
-    resource(42_000), // inline image 2
-    resource(35_000), // inline image 3
-    resource(41_000), // inline image 4
-    resource(39_000), // inline image 5
-    resource(44_000), // inline image 6
-    resource(37_000), // inline image 7
-    resource(50_000), // font 1
-    resource(50_000), // font 2
+    resource(38_000),
+    resource(42_000),
+    resource(35_000),
+    resource(41_000),
+    resource(39_000),
+    resource(44_000),
+    resource(37_000), // inline images
+    resource(50_000),
+    resource(50_000), // fonts
     resource(20_000), // analytics script
     resource(8_000), // favicon
     resource(4_000), // robots / misc
@@ -77,174 +97,212 @@ const BLOG_PAGE = {
   navigationDurationMs: 800,
 };
 
-/**
- * Heavy e-commerce page: ~80 resources, ~12 MB total, 4 500 ms load.
- * Expect significantly higher CO2 and request count.
- */
-const ECOMMERCE_PAGE = {
-  id: 20,
+/** Heavy e-commerce page: 68 resources, ~12 MB, 4 500 ms load. */
+const ECOMMERCE_PAGE: Page = {
+  tabId: 20,
   url: "https://shop.example.com/products",
-  domain: "shop.example.com",
-  meta: { status: 200, date: 0 },
   entries: [
-    // Large JS bundles
     resource(500_000),
     resource(300_000),
     resource(200_000),
     resource(150_000),
-    resource(120_000),
-    // Product images (×30 avg 150 KB)
-    ...Array.from({ length: 30 }, () => resource(150_000)),
-    // Thumbnails (×20 avg 30 KB)
-    ...Array.from({ length: 20 }, () => resource(30_000)),
-    // CSS + fonts
-    resource(60_000),
-    resource(80_000),
-    resource(80_000),
-    resource(80_000),
-    resource(80_000),
-    // Misc (tracking, APIs, config)
-    ...Array.from({ length: 8 }, () => resource(5_000)),
+    resource(120_000), // JS bundles
+    ...Array.from({ length: 30 }, () => resource(150_000)), // product images
+    ...Array.from({ length: 20 }, () => resource(30_000)), // thumbnails
+    resource(60_000), // CSS
+    ...Array.from({ length: 4 }, () => resource(80_000)), // fonts
+    ...Array.from({ length: 8 }, () => resource(5_000)), // tracking, APIs, config
   ],
   navigationDurationMs: 4_500,
 };
 
-/**
- * SPA soft-navigation: most assets are cached (transferSize = 0),
- * only a small JSON response is fetched. Near-zero footprint.
- */
-const SPA_NAVIGATION = {
-  id: 30,
+/** Mostly cached: only two small JSON responses actually cross the network. */
+const CACHED_NAVIGATION: Page = {
+  tabId: 30,
   url: "https://app.example.com/dashboard",
-  domain: "app.example.com",
-  meta: { status: 200, date: 0 },
   entries: [
     resource(0), // main bundle — cached
     resource(0), // vendor bundle — cached
     resource(0), // CSS — cached
-    resource(3_200), // /api/dashboard JSON
-    resource(1_800), // /api/user JSON
+    resource(3_200), // /api/dashboard
+    resource(1_800), // /api/user
   ],
   navigationDurationMs: 180,
 };
 
+// ─── harness ─────────────────────────────────────────────────────────────────
+
+let store: MetricsStore;
+let intake: MetricsIntake;
+
+beforeEach(() => {
+  const clock = new FixedClock(TODAY);
+  store = createMetricsStore(ChromeStorage, clock);
+  intake = new MetricsIntake(store, new CarbonCalculator(), clock);
+});
+
+/** Loads a page the way the extension does, and waits for it to be persisted. */
+async function visit(page: Page): Promise<void> {
+  const sink = new IntakeSink(intake, page.tabId, page.url);
+  const source = new ScriptedPerformanceSource(page.entries, [
+    { duration: page.navigationDurationMs },
+  ]);
+  new MetricsCollector(source, sink).collect();
+  await sink.delivered();
+}
+
+const visited = (record: DailyRecord, tabId: number) =>
+  record.tabs.find((tab) => tab.id === tabId)!;
+
 // ─── tests ───────────────────────────────────────────────────────────────────
 
-describe("Full pipeline: Performance API → carbon estimate", () => {
-  describe("Blog article (light page)", () => {
-    it("extracts the correct request count and resource size", () => {
-      const metrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-      expect(metrics.requestCount).toBe(15);
-      expect(metrics.totalResourceSize).toBeCloseTo(0.598, 3); // 598 000 bytes / 10⁶ = 0.598 MB
-    });
+describe("A light page load", () => {
+  it("records one request per resource the page fetched", async () => {
+    // Act
+    await visit(BLOG_PAGE);
 
-    it("stores the tab with its carbon estimate", async () => {
-      const metrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, metrics }));
-
-      const [tab] = await metricsStore.getTabs();
-      expect(tab.carbon).toBeDefined();
-      expect(tab.carbon.totalCo2).toBeGreaterThanOrEqual(0);
-    });
-
-    it("produces lower CO2 than the heavy e-commerce page", async () => {
-      const lightMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-      const heavyMetrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
-
-      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, id: 10, metrics: lightMetrics }));
-      await metricsStore.addTab(withCarbon({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics }));
-
-      const tabs = await metricsStore.getTabs();
-      const light = tabs.find((t) => t.id === 10)!;
-      const heavy = tabs.find((t) => t.id === 20)!;
-
-      expect(heavy.carbon.totalCo2).toBeGreaterThanOrEqual(light.carbon.totalCo2);
-    });
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(visited(record, BLOG_PAGE.tabId).metrics.requestCount).toBe(15);
   });
 
-  describe("E-commerce page (heavy page)", () => {
-    it("counts all resources including repetitive ones", () => {
-      const metrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
-      // 5 bundles + 30 product images + 20 thumbnails + 5 CSS/fonts + 8 misc = 68
-      expect(metrics.requestCount).toBe(68);
-    });
+  it("records transferred data in base-10 megabytes", async () => {
+    // Act
+    await visit(BLOG_PAGE);
 
-    it("has higher totalResourceSize than the blog page", () => {
-      const blog = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-      const heavy = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
-      expect(heavy.totalResourceSize).toBeGreaterThan(blog.totalResourceSize);
-    });
-
-    it("produces a cpu CO2 contribution from its long load time", async () => {
-      const metrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
-      await metricsStore.addTab(withCarbon({ ...ECOMMERCE_PAGE, metrics }));
-
-      const [tab] = await metricsStore.getTabs();
-      // cpuTimeToLoad = 4.5 s → cpuCo2 = 4.5 * 0.012 = 0.054 → rounded to 0
-      // still verifying the field is computed
-      expect(tab.carbon.cpuCo2).toBeGreaterThanOrEqual(0);
-    });
+    // Assert — 598 000 bytes / 10⁶
+    const record = await store.getDailyRecord();
+    expect(visited(record, BLOG_PAGE.tabId).metrics.totalResourceSize).toBeCloseTo(0.598, 3);
   });
 
-  describe("SPA soft-navigation (cached assets)", () => {
-    it("only counts the bytes actually transferred over the network", () => {
-      const metrics = toMetrics(SPA_NAVIGATION.entries, SPA_NAVIGATION.navigationDurationMs);
-      expect(metrics.requestCount).toBe(5);
-      // 3 200 + 1 800 = 5 000 bytes = 0.005 MB
-      expect(metrics.totalResourceSize).toBeCloseTo(0.005, 4);
-    });
+  it("records the load duration in seconds", async () => {
+    // Act
+    await visit(BLOG_PAGE);
 
-    it("has a very small footprint compared to a full-page load", async () => {
-      const spaMetrics = toMetrics(SPA_NAVIGATION.entries, SPA_NAVIGATION.navigationDurationMs);
-      const blogMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-
-      expect(spaMetrics.totalResourceSize).toBeLessThan(blogMetrics.totalResourceSize);
-      expect(spaMetrics.cpuTimeToLoad).toBeLessThan(blogMetrics.cpuTimeToLoad);
-    });
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(visited(record, BLOG_PAGE.tabId).metrics.cpuTimeToLoad).toBeCloseTo(0.8, 10);
   });
 
-  describe("Daily session: multiple tabs accumulated", () => {
-    it("totalMetrics sums request counts across all open tabs", async () => {
-      const blogMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-      const heavyMetrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
-      const spaMetrics = toMetrics(SPA_NAVIGATION.entries, SPA_NAVIGATION.navigationDurationMs);
+  it("attributes the visit to the page's own domain", async () => {
+    // Act
+    await visit(BLOG_PAGE);
 
-      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, id: 10, metrics: blogMetrics }));
-      await metricsStore.addTab(withCarbon({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics }));
-      await metricsStore.addTab(withCarbon({ ...SPA_NAVIGATION, id: 30, metrics: spaMetrics }));
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(visited(record, BLOG_PAGE.tabId).domain).toBe("blog.example.com");
+  });
+});
 
-      const total = await metricsStore.getTotalMetrics();
-      const expected =
-        blogMetrics.requestCount + heavyMetrics.requestCount + spaMetrics.requestCount;
-      expect(total.requestCount).toBe(expected);
+describe("A heavy page load", () => {
+  it("counts every resource, repetitive ones included", async () => {
+    // Act
+    await visit(ECOMMERCE_PAGE);
+
+    // Assert — 5 bundles + 30 images + 20 thumbnails + 5 CSS/fonts + 8 misc
+    const record = await store.getDailyRecord();
+    expect(visited(record, ECOMMERCE_PAGE.tabId).metrics.requestCount).toBe(68);
+  });
+
+  it("costs more carbon than a light page", async () => {
+    // Act
+    await visit(BLOG_PAGE);
+    await visit(ECOMMERCE_PAGE);
+
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(visited(record, ECOMMERCE_PAGE.tabId).carbon.totalCo2).toBeGreaterThan(
+      visited(record, BLOG_PAGE.tabId).carbon.totalCo2,
+    );
+  });
+});
+
+describe("A mostly cached page load", () => {
+  it("counts cached resources as requests carrying no bytes", async () => {
+    // Act
+    await visit(CACHED_NAVIGATION);
+
+    // Assert — 5 requests, only 5 000 bytes over the network
+    const record = await store.getDailyRecord();
+    const cached = visited(record, CACHED_NAVIGATION.tabId);
+    expect(cached.metrics.requestCount).toBe(5);
+    expect(cached.metrics.totalResourceSize).toBeCloseTo(0.005, 4);
+  });
+
+  it("emits less network carbon than a full page load", async () => {
+    // Act
+    await visit(CACHED_NAVIGATION);
+    await visit(BLOG_PAGE);
+
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(visited(record, CACHED_NAVIGATION.tabId).carbon.networkCo2).toBeLessThan(
+      visited(record, BLOG_PAGE.tabId).carbon.networkCo2,
+    );
+  });
+});
+
+describe("A day of browsing", () => {
+  it("sums requests across every page visited", async () => {
+    // Act
+    await visit(BLOG_PAGE);
+    await visit(ECOMMERCE_PAGE);
+    await visit(CACHED_NAVIGATION);
+
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(record.totalMetrics.requestCount).toBe(15 + 68 + 5);
+  });
+
+  it("keeps the day's carbon equal to the sum of its pages", async () => {
+    // Act
+    await visit(BLOG_PAGE);
+    await visit(ECOMMERCE_PAGE);
+
+    // Assert
+    const record = await store.getDailyRecord();
+    const perPage = record.tabs.reduce((sum, tab) => sum + tab.carbon.totalCo2, 0);
+    expect(record.totalCarbon.totalCo2).toBeCloseTo(perPage, 10);
+  });
+
+  it("files everything under the local day it happened on", async () => {
+    // Act
+    await visit(BLOG_PAGE);
+
+    // Assert
+    const days = await store.getAllDays();
+    expect(days.map((day) => day.date)).toEqual([TODAY]);
+  });
+
+  it("reloading a tab replaces its measurements instead of adding an entry", async () => {
+    // Arrange
+    await visit(BLOG_PAGE);
+
+    // Act — the user reloads and twice as many images come down the wire
+    await visit({
+      ...BLOG_PAGE,
+      entries: [...BLOG_PAGE.entries, ...BLOG_PAGE.entries],
+      navigationDurationMs: 400,
     });
 
-    it("totalCarbon equals the sum of individual tab estimates", async () => {
-      const blogMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-      const heavyMetrics = toMetrics(ECOMMERCE_PAGE.entries, ECOMMERCE_PAGE.navigationDurationMs);
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(record.tabs).toHaveLength(1);
+    expect(record.totalMetrics.requestCount).toBe(30);
+  });
 
-      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, id: 10, metrics: blogMetrics }));
-      await metricsStore.addTab(withCarbon({ ...ECOMMERCE_PAGE, id: 20, metrics: heavyMetrics }));
+  it("survives a reload storm without double-counting the tab", async () => {
+    // Arrange — three loads racing, none awaited before the next starts
+    const storm = [1_000_000, 2_000_000, 3_000_000].map((transferSize) =>
+      visit({ ...BLOG_PAGE, entries: [resource(transferSize)] }),
+    );
 
-      const carbon = await metricsStore.getTotalCarbon();
-      const tabs = await metricsStore.getTabs();
-      const individualSum = tabs.reduce((s, t) => s + t.carbon.totalCo2, 0);
+    // Act
+    await Promise.all(storm);
 
-      expect(carbon.totalCo2).toBeCloseTo(individualSum, 10);
-    });
-
-    it("re-visiting a tab updates its metrics and propagates to the daily total", async () => {
-      const initialMetrics = toMetrics(BLOG_PAGE.entries, BLOG_PAGE.navigationDurationMs);
-      await metricsStore.addTab(withCarbon({ ...BLOG_PAGE, id: 10, metrics: initialMetrics }));
-
-      // User scrolls, more images load — resource count doubles
-      const refreshedEntries = [...BLOG_PAGE.entries, ...BLOG_PAGE.entries];
-      const refreshedMetrics = toMetrics(refreshedEntries, 400);
-      await metricsStore.updateTabMetrics(10, refreshedMetrics, computeCarbon(refreshedMetrics));
-
-      const total = await metricsStore.getTotalMetrics();
-      expect(total.requestCount).toBe(refreshedMetrics.requestCount);
-      expect(total.totalResourceSize).toBeCloseTo(refreshedMetrics.totalResourceSize, 4);
-    });
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(record.tabs).toHaveLength(1);
+    expect(record.totalMetrics.requestCount).toBe(1);
   });
 });

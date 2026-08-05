@@ -1,20 +1,16 @@
-// todo: remove func and pass the resource and navigation to the background message
-function collectAndSend(): void {
-  const resource = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).map(
-    (e) => ({
-      transferSize: e.transferSize,
-    }),
-  );
-  const navigation = performance.getEntriesByType("navigation").map((e) => ({
-    duration: e.duration,
-  }));
+import { MetricsCollector } from "./MetricsCollector";
+import { BrowserPerformanceSource } from "./BrowserPerformanceSource";
+import { RuntimeObservationSink } from "./RuntimeObservationSink";
 
-  chrome.runtime.sendMessage({ type: "page_metrics", resource, navigation });
-}
+const collector = new MetricsCollector(
+  new BrowserPerformanceSource(),
+  new RuntimeObservationSink(),
+);
 
-// todo: send without check readyState
+// Resource timings are only complete once the load event has fired, and a
+// content script injected at document_idle can arrive on either side of it.
 if (document.readyState === "complete") {
-  collectAndSend();
+  collector.collect();
 } else {
-  window.addEventListener("load", collectAndSend, { once: true });
+  window.addEventListener("load", () => collector.collect(), { once: true });
 }

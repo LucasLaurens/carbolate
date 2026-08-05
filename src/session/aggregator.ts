@@ -1,5 +1,5 @@
 import type { CarbonEstimate } from "../carbon/types";
-import type { Metrics } from "./types";
+import type { DailyRecord, Metrics } from "./types";
 
 export const sumMetrics = (metricsArray: Metrics[]): Metrics => ({
   requestCount: metricsArray.reduce((sum, m) => sum + m.requestCount, 0),
@@ -25,3 +25,15 @@ export const sumCarbonEstimates = (estimates: CarbonEstimate[]): CarbonEstimate 
 export const emptyMetrics = (): Metrics => sumMetrics([]);
 
 export const emptyCarbonEstimate = (): CarbonEstimate => sumCarbonEstimates([]);
+
+/**
+ * The neutral daily record, for a day on which nothing has been measured yet.
+ * Returning it instead of `null` is what lets every reader drop its own
+ * "no record" branch.
+ */
+export const emptyDailyRecord = (date: string): DailyRecord => ({
+  date,
+  tabs: [],
+  totalMetrics: emptyMetrics(),
+  totalCarbon: emptyCarbonEstimate(),
+});

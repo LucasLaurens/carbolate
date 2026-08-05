@@ -1,16 +1,16 @@
 import { beforeEach } from "vitest";
-import { resetClock } from "../src/utils/clock";
 
-// In-memory store reset before every test
+/**
+ * Minimal `chrome.storage.local` backing, for the tests that exercise the real
+ * `ChromeStorage` adapter. Everything above that adapter is constructed with an
+ * in-memory storage, so it needs no global at all — and no reset hook.
+ */
 let store: Record<string, unknown> = {};
 
 beforeEach(() => {
   store = {};
-  resetClock();
-  (globalThis as Record<string, unknown | (() => void)>).__carbolateCacheReset?.(); // resets store.ts in-memory cache
 });
 
-// Minimal chrome.storage.local mock
 (globalThis as unknown as { chrome: unknown }).chrome = {
   runtime: { lastError: undefined },
   storage: {
