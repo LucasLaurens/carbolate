@@ -1,3 +1,26 @@
+# Build output — dist/manifest.json is generated per target by scripts/build.mjs
 dist/
+
+# Dependencies
 node_modules/
+
+# Store-ready packages produced by npm run package:*
 carbolate-*.zip
+
+# Secrets — an extension has none today, but a leaked AMO/CWS key is unrecoverable
+.env
+.env.*
+!.env.example
+
+# Test coverage (vitest run --coverage)
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
