@@ -1,5 +1,6 @@
 import { Component } from "react";
 import { DEFAULT_PREFERENCES } from "../../config/preferences";
+import { isKept } from "../../config/retention";
 import { getTranslations } from "../../i18n";
 import type { Translations } from "../../i18n/types";
 import type { Preferences } from "../../config/types";
@@ -63,9 +64,36 @@ export default class Popup extends Component<Props, State> {
     }
   };
 
+  /**
+   * The panel cannot delete a day — its store is read-only on measurements, and
+   * the background owns the reset cycle. What it owns is the warning: it is the
+   * only context with a user to ask, and shrinking the window is the one action
+   * in the product that destroys recorded data.
+   *
+   * O(n) time, O(1) space — n = stored days.
+   */
+  private async allowsRetentionLoss(next: Preferences): Promise<boolean> {
+    const { preferences } = this.state;
+    if (next.retentionDays === preferences.retentionDays) return true;
+
+    const today = this.props.clock.now();
+    const records = await this.props.store.getAllDays();
+    const dropped = records.filter(
+      (record) => !isKept(record.date, next.retentionDays, today),
+    ).length;
+    if (dropped === 0) return true;
+
+    const t = getTranslations(preferences.language);
+    const warning = next.autoExportBeforeReset
+      ? t.settings.retention.confirmWithExport(dropped)
+      : t.settings.retention.confirm(dropped);
+    return window.confirm(warning);
+  }
+
   savePreferences = async (preferences: Preferences) => {
     if (!this.rateLimiter.isAllowed("save-preferences")) return;
     try {
+      if (!(await this.allowsRetentionLoss(preferences))) return;
       await this.props.storage.setPreferences(preferences);
       this.setState({ preferences });
     } catch (e) {

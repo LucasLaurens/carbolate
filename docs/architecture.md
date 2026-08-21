@@ -12,10 +12,12 @@ src/
 ├── config/
 │   ├── types.ts                    # Preferences — retentionDays is the retention source of truth
 │   ├── preferences.ts              # Single source of truth: DEFAULT_PREFERENCES
-│   └── retention.ts                # KEEP_EVERYTHING + resetPeriodMinutes() — the alarm period, derived
+│   └── retention.ts                # The retention rules: RETENTION_OPTIONS, isKept() and the derived alarm period
 │
 ├── background/
-│   └── index.ts                    # Chrome adapter: alarms, badge, message listener → MetricsIntake
+│   ├── index.ts                    # Chrome adapter: alarms, badge, message listener → MetricsIntake
+│   ├── badge.ts                    # Badge text, palette and refreshBadge() behind a BadgeSurface port
+│   └── resetCycle.ts               # Export-then-delete rule of the retention alarm
 │
 ├── intake/
 │   └── MetricsIntake.ts            # The one path from an observed page load to a stored, costed record
@@ -126,7 +128,7 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │  url    = sender.url ?? sender.tab?.url                      │
 │  → MetricsIntake.record({ tabId, url, payload })              │
 │                                                             │
-│  Also owns: reset alarm → runResetCycle, BETA badge.          │
+│  Also owns: reset alarm → runResetCycle, badge → refreshBadge. │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
@@ -259,16 +261,33 @@ no seam is built for it.
 
 ### The model decides the grade, the panel decides the paint
 
-`carbon/sobriety.ts` owns the sobriety thresholds and `carbon/worldComparison.ts`
-owns the comparison bands, both derived from the single
-`DAILY_BROWSING_REFERENCE_G_CO2` anchor. `DayView/utils.ts` maps a level to a colour
-and a badge and nothing more.
+`carbon/sobriety.ts` owns the sobriety thresholds, the colour each grade wears
+(`SOBRIETY_COLOR`), and `carbon/worldComparison.ts` owns the comparison bands — all
+derived from the single `DAILY_BROWSING_REFERENCE_G_CO2` anchor. The paint is what
+stays per medium: `DayView/utils.ts` mixes that colour into Tailwind classes and adds
+the panel's medals, `background/badge.ts` mixes it into a hex for the toolbar badge.
+Neither names a colour of its own, so the card and the badge cannot disagree on
+screen about what a grade looks like.
 
 The thresholds used to be the literals `50 / 250 / 600` sitting in that panel
 helper, unsourced and unrelated to the reference the same card compared against — so
 the badge and the comparison could contradict each other on screen.
 `carbon/sobriety.test.ts` asserts where the _grade_ flips rather than restating the
 derivation, so it fails if a literal is written back in.
+
+### The badge is behaviour, not a `chrome.action` call
+
+`background/badge.ts` writes through a `BadgeSurface` port — `setText`,
+`setBackgroundColor`, `setTitle` — so what the badge says about a stored day is
+assertable without a browser (`src/background/badge.test.ts`, an in-memory recording
+surface over the real store). The WCAG contrast of every hex it paints is asserted
+there too: white badge text is the default on both engines, so a palette that drops
+below 4.5:1 fails the suite instead of shipping.
+
+The background repaints it on every path that can move the day's total — a measure,
+a startup, the reset alarm, and a language change for the tooltip. The badge does not
+survive a browser restart, and a day that rolls over would otherwise keep yesterday's
+grade on screen.
 
 ### One read boundary for stored shapes
 
@@ -383,9 +402,40 @@ failed export aborts the deletion. The days then survive to the next alarm tick,
 a store that keeps growing while the export keeps failing — the trade taken deliberately, since
 the alternative loses data silently.
 
-It takes the store as `DailyRecordReader & RetentionEnforcer` and the export as a function, so
-the whole rule is assertable with the in-memory storage and no browser — `src/background/resetCycle.test.ts`.
-`background/index.ts` supplies `chrome.downloads` and logs the aborted reset; it holds no rule.
+A cycle that would drop nothing returns before it exports. The panel now fires this same cycle
+on every change to `retentionDays`, _widening_ included — and "export before deleting" that
+downloads a CSV without deleting is a file the user never asked for.
+
+It takes the store as `DailyRecordReader & RetentionEnforcer`, the export as a function, and the
+day as a `Date`, so the whole rule is assertable with the in-memory storage and no browser —
+`src/background/resetCycle.test.ts`. `background/index.ts` supplies `chrome.downloads` and logs
+the aborted reset; it holds no rule.
+
+### Retention has one cutoff rule, and two contexts read it
+
+`isKept(date, retentionDays, today)` in `src/config/retention.ts` decides whether a stored day
+survives a window. It has two callers that cannot share anything else: `store.clearPastDays`
+deletes by it, and the panel counts by it to announce how many days a shrink destroys. One rule,
+one representation — the numbers in the warning and in the deletion cannot drift apart.
+
+It also fixed a window one day too wide. The rule used to live only inside `clearPastDays`, as
+`date >= cutoff` against `today - retentionDays`, which keeps the cutoff day itself: "7 days"
+stored eight. Unreachable while `retentionDays` was pinned at `1` and nothing displayed a day
+count — the retention control and the history views are what make it countable.
+
+### The panel writes the preference, the background owns the alarm
+
+They are separate JavaScript realities sharing no memory, so `background/index.ts` listens on
+`chrome.storage.onChanged`. A change to `retentionDays` reschedules the alarm and runs the reset
+cycle at once; without it a new window only took effect at the next browser start.
+
+The listener is deliberately narrow. Every page load writes `sessions` and a language change
+writes `preferences` — neither may reach a path that deletes days, so it filters on the
+preferences key and then on `retentionDays` actually having moved.
+
+The deletion stays in the background because the panel cannot delete: its store is a
+`DailyRecordReader`. What the panel owns is the warning — it is the only context with a user to
+ask, and shrinking the window is the one action in the product that destroys recorded data.
 
 ### No network egress — an invariant, not a promise
 

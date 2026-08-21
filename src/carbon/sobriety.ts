@@ -21,6 +21,22 @@ const BANDS: ReadonlyArray<{ readonly upTo: number; readonly level: SobrietyLeve
   { upTo: DAILY_BROWSING_REFERENCE_G_CO2 * SOBRIETY_MULTIPLIERS.intensive, level: "intensive" },
 ];
 
+/**
+ * The paint names a grade wears. It lives beside the grade, not in the panel:
+ * the badge needs the same knowledge in hex, and a second literal in a second
+ * medium is how "sober is green" comes to disagree with itself. Each medium
+ * mixes this name its own way — Tailwind classes in the panel, a hex in the
+ * badge.
+ */
+export type SobrietyColor = "green" | "yellow" | "orange" | "red";
+
+export const SOBRIETY_COLOR: Record<SobrietyLevel, SobrietyColor> = {
+  sober: "green",
+  moderate: "yellow",
+  intensive: "orange",
+  excessive: "red",
+};
+
 /** O(1) time and space — three comparisons at most. */
 export function sobrietyLevel(totalCo2: number): SobrietyLevel {
   const band = BANDS.find(({ upTo }) => totalCo2 < upTo);
