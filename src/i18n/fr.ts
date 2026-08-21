@@ -2,7 +2,7 @@ import type { Translations } from "./types";
 
 export const fr: Translations = {
   header: "📊 Aujourd'hui",
-  nav: { today: "Aujourd'hui", settings: "Paramètres" },
+  nav: { today: "Aujourd'hui", settings: "Paramètres", privacy: "Vie privée" },
   noData: "Aucune donnée aujourd'hui",
   stats: {
     co2: "CO₂ estimé",
