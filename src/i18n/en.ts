@@ -37,5 +37,12 @@ export const en: Translations = {
     save: "Save",
     saved: "✅ Saved!",
     language: "Language",
+    method: {
+      summary: "How this number is built",
+      measurement:
+        "Energy can't be measured directly: the servers aren't ours, and a web page can't read your machine's power draw. Carbolate multiplies what it sees — bytes, load time — by published averages.",
+      perimeter:
+        "It counts browsing only. Building the servers, the network and your device is excluded, so the true figure is about a quarter higher.",
+    },
   },
 };

@@ -105,6 +105,22 @@ Accessible via the "Settings" tab in the popup.
 
 The entire popup UI switches language instantly on selection — no save button required.
 
+#### How this number is built (implemented)
+
+A collapsed disclosure under the language picker states, in the active language, why the
+figure is an estimate and why it is a floor. Two distinct reasons, because they answer two
+different objections:
+
+| Reason             | Answers                | Text says                                                                                                                                                   |
+| ------------------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Not measurable** | "your number is wrong" | The servers are not ours and a web page cannot read the machine's power draw, so what can be seen — bytes, load time — is multiplied by published averages. |
+| **Usage only**     | "your number is low"   | Making the servers, the network hardware and the device is excluded, so the real figure is about a quarter higher.                                          |
+
+It is a native `<details>` element, collapsed by default: one line in a 320 px panel, and no
+state to hold. Before it existed, the perimeter lived only in `docs/` — the UI said
+"Estimated CO₂" and nothing more, which says _approximate_ without ever saying
+_systematically below_.
+
 #### Other preferences (type exists, UI not yet implemented)
 
 The `Preferences` type supports `retentionDays` and `autoExportBeforeReset` but no UI is exposed for these yet:
