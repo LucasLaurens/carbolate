@@ -9,9 +9,15 @@ encore, une visite ne porte donc aucun état), et `ResourceInitiatorType` a ét�
 ci-dessous prévoyait sa suppression dans ce cas. La classification premier/tiers
 le recréera si elle en a besoin.
 
-Le reste — une entrée par navigation clé `(tabId, url)`, l'enregistrement vivant,
-le cycle de vie, le poids tiers — n'a pas été écrit. Le point de bascule est une
-seule comparaison, dans `upsertTab()` (`src/session/store.ts`).
+Le reste — une entrée par navigation, l'enregistrement vivant, le cycle de vie,
+le poids tiers — n'a pas été écrit. La clé `(tabId, url)` annoncée ci-dessous
+s'est révélée insuffisante : elle ne distingue pas deux rechargements de la même
+URL. Elle est remplacée par `(tabId, timeOrigin, url)` — voir
+[l'ADR d'identité de la visite](2026-08-21-identite-de-la-visite-de-page.md), qui
+tranche aussi le rechargement, le retour arrière et le sort des navigations SPA.
+Le point de bascule n'est donc pas une seule comparaison dans `upsertTab()`
+(`src/session/store.ts`) : la clé a trois composants et le cas par défaut devient
+l'ajout, pas le remplacement.
 
 **Contexte** : l'unité de mesure était `MetricTab` — une entrée par `chrome.tabs.Tab.id` et par jour. `updateTabMetrics()` (aujourd'hui `recordTabMetrics()`) remplaçait `metrics` et `carbon` mais conservait `url` et `domain` du premier chargement. Naviguer sur cinq pages dans un même onglet produisait donc une seule entrée, portant le domaine de la première page et les métriques de la cinquième. Le graphique « top 5 domaines » attribuait des émissions au mauvais site, et la statistique « onglets visités » comptait des identifiants d'onglets, pas des pages.
 
@@ -21,7 +27,7 @@ Troisième problème : `meta.status` était codé en dur à `200`, jamais lu, ja
 
 **Décision** : trois changements liés, parce qu'ils portent tous sur la même chose — ce qu'est une unité de mesure.
 
-1. `MetricTab` devient `PageVisit` : une entrée par navigation, identifiée par `(tabId, url)`. Naviguer sur cinq pages produit cinq visites, chacune avec son domaine et ses métriques. La statistique devient « pages visitées ».
+1. `MetricTab` devient `PageVisit` : une entrée par navigation. Naviguer sur cinq pages produit cinq visites, chacune avec son domaine et ses métriques. La clé annoncée ici était `(tabId, url)` ; elle est devenue `(tabId, timeOrigin, url)`. La statistique affichée compte des **chargements de page**, pas des pages visitées : un rechargement ajoute une entrée. Les deux points sont tranchés par [l'ADR d'identité de la visite](2026-08-21-identite-de-la-visite-de-page.md).
 
 2. Une `PageVisit` est un **enregistrement vivant** : un `PerformanceObserver("resource")` continue d'écouter après le `load` et pousse les deltas au background ; un écouteur `visibilitychange` accumule le temps d'écran. La visite est mise à jour plusieurs fois au lieu d'être figée une fois.
 
@@ -38,4 +44,4 @@ L'attribution du total ne change pas : le site visité porte l'intégralité des
 - `ResourceInitiatorType` (`src/performance/enums/`), aujourd'hui défini et jamais importé, sert enfin à la classification. S'il ne sert toujours pas après ce changement, il doit être supprimé.
 - Le poids tiers devient un concept métier exposé, donc un terme du glossaire, donc une clé i18n.
 - L'heuristique de domaine enregistrable est fausse sur les suffixes exotiques et compte un CDN maison sur un autre domaine comme tiers. La limite est documentée plutôt que masquée.
-- Les navigations SPA restent non comptées à ce stade : elles ne produisent ni `window.load` ni entrée `navigation`. C'est le prochain incrément, pas une régression introduite ici.
+- Les navigations SPA restent non comptées à ce stade : elles ne produisent ni `window.load` ni entrée `navigation`. C'est le prochain incrément, pas une régression introduite ici. Le mécanisme est arrêté — observation de l'History API côté content script, `chrome.webNavigation` exclu définitivement. Voir [l'ADR d'identité de la visite](2026-08-21-identite-de-la-visite-de-page.md).
