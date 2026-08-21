@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 
 /**
  * The privacy policy (`docs/privacy/index.html`) claims in writing that the

@@ -93,6 +93,26 @@ is redundant; in the two other surfaces it is the only way to see a new measurem
 - Deletes data older than the retention window; today is never dropped
 - `retentionDays` is the single source of truth — `1`, `7`, `30`, `60` or `-1` all work with no new type
 
+### Privacy view
+
+A third tab, "Privacy" / "Vie privée", holds the extension's privacy policy in the active
+language — ten sections, each a collapsed `<details>`: what is recorded, what is never read or
+sent, why each permission is asked for, how long data is kept, how to erase it, what the CSV
+export means, children, changes, contact.
+
+It exists because Chrome requires the data disclosure to appear **in the extension's UI**; a
+policy reachable only through the store listing does not satisfy the requirement. The panel's
+footer carries `lucas.laurens@proton.me` in fine print on every tab, so the contact is one
+glance away from wherever a user happens to be.
+
+The wording lives in `src/legal/privacy.ts` and nowhere else. `docs/privacy/index.html` is the
+same policy in long form, for the public URL the Chrome Web Store dashboard asks for, and
+`src/legal/privacy.test.ts` fails if the two drift apart.
+
+**Not yet hosted.** The page exists in the repo but answers at no public URL, and the store's
+_Privacy policy_ field takes a link, not text. Until it is published, Chrome submission is
+blocked. AMO accepts the policy as pasted text, so Firefox is not.
+
 ### Preferences view
 
 Accessible via the "Settings" tab in the popup.

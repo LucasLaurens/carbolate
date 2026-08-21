@@ -1,6 +1,7 @@
 import { Component } from "react";
 import { DEFAULT_PREFERENCES } from "../../config/preferences";
 import { getTranslations } from "../../i18n";
+import type { Translations } from "../../i18n/types";
 import type { Preferences } from "../../config/types";
 import { emptyDailyRecord } from "../../session/aggregator";
 import type { DailyRecord, DailyRecordReader } from "../../session/types";
@@ -9,9 +10,20 @@ import type { Clock } from "../../utils/clock";
 import { exportToCSV } from "../../utils/csv";
 import { RateLimiter } from "../../security/RateLimiter";
 import DayView from "./DayView";
+import PrivacyView from "./PrivacyView";
 import SettingsView from "./SettingsView";
+import { PRIVACY_CONTACT } from "../../legal/privacy";
 
-type View = "day" | "settings";
+type View = "day" | "settings" | "privacy";
+
+const NAV_ORDER: View[] = ["day", "settings", "privacy"];
+
+/** Keyed by view so a new tab cannot be added without giving it a label. */
+const NAV_LABEL_KEY: Record<View, keyof Translations["nav"]> = {
+  day: "today",
+  settings: "settings",
+  privacy: "privacy",
+};
 
 type Props = {
   /** Read-only on measurements: the panel never writes a metric. */
@@ -102,7 +114,7 @@ export default class Popup extends Component<Props, State> {
               </span>
             </div>
             <nav className="flex -mb-px">
-              {(["day", "settings"] as View[]).map((v) => (
+              {NAV_ORDER.map((v) => (
                 <button
                   key={v}
                   onClick={() => this.setView(v)}
@@ -112,7 +124,7 @@ export default class Popup extends Component<Props, State> {
                       : "border-transparent text-stone-400 hover:text-stone-600"
                   }`}
                 >
-                  {v === "day" ? t.nav.today : t.nav.settings}
+                  {t.nav[NAV_LABEL_KEY[v]]}
                 </button>
               ))}
             </nav>
@@ -132,7 +144,17 @@ export default class Popup extends Component<Props, State> {
           {view === "settings" && (
             <SettingsView preferences={preferences} onSave={this.savePreferences} t={t} />
           )}
+          {view === "privacy" && <PrivacyView language={preferences.language} />}
         </main>
+
+        <footer className="px-4 pb-3 text-center">
+          <a
+            href={`mailto:${PRIVACY_CONTACT}`}
+            className="text-[9px] text-stone-400 hover:text-stone-600 transition-colors"
+          >
+            {PRIVACY_CONTACT}
+          </a>
+        </footer>
       </div>
     );
   }

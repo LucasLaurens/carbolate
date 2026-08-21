@@ -20,7 +20,7 @@ export type WorldComparisonTranslations = Record<WorldComparison, string>;
 
 export type Translations = {
   header: string;
-  nav: { today: string; settings: string };
+  nav: { today: string; settings: string; privacy: string };
   noData: string;
   stats: {
     co2: string;

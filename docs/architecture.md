@@ -38,7 +38,8 @@ src/
 │       │   ├── StatsGrid.tsx       # CO₂ card + metrics strip + the avoided-CO₂ row
 │       │   ├── DomainChart.tsx     # Doughnut chart — top 5 domains by CO₂
 │       │   └── utils.ts            # Presentation only: colours, badges, formatCo2(), aggregateDomains()
-│       └── SettingsView.tsx        # Preferences form
+│       ├── SettingsView.tsx        # Preferences form
+│       └── PrivacyView.tsx         # The privacy policy in the panel — one <details> per section
 │
 ├── carbon/
 │   ├── types.ts                    # CarbonInput, CarbonEstimate, FootprintCalculator
@@ -64,6 +65,9 @@ src/
 │   ├── PageMetrics.ts              # measurePage(payload) → PageMeasurementResult (requests, bytes, ms, cached bytes)
 │   └── enums/
 │       └── PerformanceEntryType.ts # RESOURCE, NAVIGATION — the getEntriesByType() strings
+│
+├── legal/
+│   └── privacy.ts                  # The privacy policy's wording, EN + FR — authoritative over docs/privacy/index.html
 │
 ├── i18n/
 │   ├── types.ts                    # Language, Translations — keyed by SobrietyLevel / WorldComparison
@@ -388,3 +392,17 @@ the whole rule is assertable with the in-memory storage and no browser — `src/
 `docs/privacy/index.html` is the extension's privacy policy: it states in writing, at a URL store reviewers read, that the extension issues no network request. `test/no-network-egress.test.ts` holds that claim to the code — it scans every non-test `.ts`/`.tsx` file under `src/` and fails on `fetch(`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, `EventSource`, `chrome.storage.sync` or any `http(s)://` literal.
 
 Adding one of those is a legitimate change; shipping it while the published page still denies it is not. The test is what forces the page to move with the code.
+
+The guard cannot tell a call from prose, which is why `src/legal/privacy.ts` writes the egress
+APIs loosely — "no XHR, no socket, no beacon". Spelling `XMLHttpRequest` out in the panel's own
+policy text would fail the test that policy exists to back. The published page, outside the
+scan, keeps the full names for the reviewer who looks for them.
+
+### The policy has one home, and a test that says so
+
+`src/legal/privacy.ts` holds the wording; `PrivacyView` renders it in the panel and
+`docs/privacy/index.html` restates it in long form for the store's dashboard field, which wants
+a public URL rather than text. Two surfaces, one policy — so `src/legal/privacy.test.ts` fails
+when the published page loses a section the module still claims, or when the contact address
+drifts between them. That check earned its place immediately: it caught the panel calling a
+section "How to erase everything" while the page called it "How to erase it".
