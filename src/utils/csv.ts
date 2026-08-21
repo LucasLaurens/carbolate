@@ -64,13 +64,46 @@ export function toCSV(records: readonly DailyRecord[]): string {
   return [CSV_HEADERS, ...rows].join("\n");
 }
 
-export function exportToCSV(records: readonly DailyRecord[], clock: Clock): void {
-  const blob = new Blob([toCSV(records)], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
+const CSV_MIME = "text/csv;charset=utf-8";
 
-  // Firefox drops the blob as soon as the panel closes, so the URL is released
-  // only once the download has been handed over to the browser.
-  chrome.downloads.download({ url, filename: `carbolate-export-${clock.dailyDate()}.csv` }, () =>
-    URL.revokeObjectURL(url),
-  );
+/**
+ * `URL.createObjectURL` does not exist in a Chromium MV3 service worker — it was
+ * left out to avoid leaks a worker cannot clean up — and that worker is where the
+ * reset alarm fires. A data URL is the handle the downloads API takes there;
+ * Chromium accepts one up to roughly 64 MB.
+ *
+ * Firefox's MV3 background is an event page with a DOM, so it keeps the blob
+ * path. Hence a capability test rather than a browser test: each engine gets the
+ * form it has, and neither is asked to sniff the other.
+ *
+ * The object URL is never revoked. MDN is explicit that it must not be revoked
+ * before the download *completes*, and the alarm's event page may be torn down
+ * moments after the download starts — so the browser reclaims it with the
+ * context, which costs one CSV of memory and never a truncated file.
+ */
+function csvUrl(csv: string): string {
+  if (typeof URL.createObjectURL === "function") {
+    return URL.createObjectURL(new Blob([csv], { type: CSV_MIME }));
+  }
+  return `data:${CSV_MIME},${encodeURIComponent(csv)}`;
+}
+
+/**
+ * Resolves once the download has *started*; a later interruption (disk full,
+ * user cancel) is not reported here. `runResetCycle` deletes days on that
+ * resolution, so it is trading on the start, not on the finish.
+ */
+export function exportToCSV(records: readonly DailyRecord[], clock: Clock): Promise<void> {
+  const url = csvUrl(toCSV(records));
+  const filename = `carbolate-export-${clock.dailyDate()}.csv`;
+
+  return new Promise((resolve, reject) => {
+    chrome.downloads.download({ url, filename }, (downloadId) => {
+      if (downloadId === undefined) {
+        reject(new Error(chrome.runtime.lastError?.message ?? "download did not start"));
+        return;
+      }
+      resolve();
+    });
+  });
 }

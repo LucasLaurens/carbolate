@@ -121,14 +121,25 @@ state to hold. Before it existed, the perimeter lived only in `docs/` — the UI
 "Estimated CO₂" and nothing more, which says _approximate_ without ever saying
 _systematically below_.
 
-#### Other preferences (type exists, UI not yet implemented)
+#### Other preferences (no UI yet — both are read by the code)
 
-The `Preferences` type supports `retentionDays` and `autoExportBeforeReset` but no UI is exposed for these yet:
+The `Preferences` type supports `retentionDays` and `autoExportBeforeReset`. Both are honoured
+by the reset alarm; neither has a control, so both sit at their default for every user:
 
 | Setting                  | Values                                                       | Default |
 | ------------------------ | ------------------------------------------------------------ | ------- |
 | Retention                | `1` = today only, `7` = rolling week, `-1` = keep everything | `1`     |
 | Auto-export before reset | Yes / No                                                     | No      |
+
+**Auto-export before reset.** When on, the reset alarm exports every stored day as CSV — the
+same file the panel's export button produces — before the retention window drops anything. The
+export runs first and a failure **aborts the deletion**: the days stay, and the next alarm tick
+retries. A reset that wiped days after a refused download would lose them with nothing to show
+for it.
+
+The download is issued from the background, where the panel's blob URL is unavailable on
+Chromium (MV3 service workers have no `URL.createObjectURL`), so the CSV travels as a data URL
+there and as a blob on Firefox's event page — see `csvUrl` in `src/utils/csv.ts`.
 
 `ResetPeriod` (`"daily" | "weekly"`) has been **removed**: it duplicated
 `retentionDays` and allowed the incoherent pair `weekly` + `retentionDays: 1`.
