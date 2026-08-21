@@ -380,3 +380,9 @@ the alternative loses data silently.
 It takes the store as `DailyRecordReader & RetentionEnforcer` and the export as a function, so
 the whole rule is assertable with the in-memory storage and no browser — `src/background/resetCycle.test.ts`.
 `background/index.ts` supplies `chrome.downloads` and logs the aborted reset; it holds no rule.
+
+### No network egress — an invariant, not a promise
+
+`docs/privacy/index.html` is the extension's privacy policy: it states in writing, at a URL store reviewers read, that the extension issues no network request. `test/no-network-egress.test.ts` holds that claim to the code — it scans every non-test `.ts`/`.tsx` file under `src/` and fails on `fetch(`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, `EventSource`, `chrome.storage.sync` or any `http(s)://` literal.
+
+Adding one of those is a legitimate change; shipping it while the published page still denies it is not. The test is what forces the page to move with the code.
