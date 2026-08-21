@@ -15,7 +15,7 @@ const PANEL_TITLE = "Carbolate";
 function sharedManifest(version) {
   return {
     name: "Carbolate",
-    description: "Calculate your carbon footprint on the web.",
+    description: "Estimate the carbon footprint of your browsing.",
     version,
     manifest_version: 3,
     action: {

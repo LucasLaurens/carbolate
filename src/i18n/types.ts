@@ -39,5 +39,15 @@ export type Translations = {
     save: string;
     saved: string;
     language: string;
+    /**
+     * What the product says about its own figure. Two distinct reasons, because
+     * they answer two different objections: `measurement` answers "your number is
+     * wrong", `perimeter` answers "your number is low".
+     */
+    method: {
+      summary: string;
+      measurement: string;
+      perimeter: string;
+    };
   };
 };
