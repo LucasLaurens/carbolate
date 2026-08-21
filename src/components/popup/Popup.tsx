@@ -78,7 +78,11 @@ export default class Popup extends Component<Props, State> {
   handleExport = async () => {
     if (!this.rateLimiter.isAllowed("csv-export")) return;
     const records = await this.props.store.getAllDays();
-    exportToCSV(records, this.props.clock);
+    try {
+      await exportToCSV(records, this.props.clock);
+    } catch (e) {
+      console.error("Failed to export CSV", e);
+    }
   };
 
   setView = (view: View) => this.setState({ view });

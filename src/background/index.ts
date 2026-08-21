@@ -6,6 +6,8 @@ import { isPageMetricsMessage } from "../messaging/messages";
 import { createMetricsStore } from "../session/store";
 import { ChromeStorage } from "../storage/ChromeStorage";
 import { SystemClock } from "../utils/clock";
+import { exportToCSV } from "../utils/csv";
+import { runResetCycle } from "./resetCycle";
 
 const RESET_ALARM = "reset";
 // Firefox silently reschedules any alarm asked to fire in under a minute.
@@ -40,7 +42,13 @@ chrome.runtime.onStartup.addListener(async () => {
 chrome.alarms.onAlarm.addListener(async (alarm: chrome.alarms.Alarm) => {
   if (alarm.name !== RESET_ALARM) return;
   const preferences = await ChromeStorage.getPreferences();
-  await store.clearPastDays(preferences.retentionDays);
+  try {
+    await runResetCycle(store, (records) => exportToCSV(records, clock), preferences);
+  } catch (error) {
+    // Deliberately swallowed: the days are still there and the alarm is periodic,
+    // so the next tick retries. Throwing here only logs an unhandled rejection.
+    console.error("Reset skipped — the CSV export before it failed", error);
+  }
 });
 
 chrome.runtime.onMessage.addListener((message: unknown, sender) => {

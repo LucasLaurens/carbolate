@@ -122,7 +122,7 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │  url    = sender.url ?? sender.tab?.url                      │
 │  → MetricsIntake.record({ tabId, url, payload })              │
 │                                                             │
-│  Also owns: reset alarm, BETA badge. Nothing else.            │
+│  Also owns: reset alarm → runResetCycle, BETA badge.          │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
@@ -366,4 +366,17 @@ The `chrome.*` namespace is aliased in Firefox, callback style included, so `Chr
 
 - `background/index.ts` — the page URL is read from `sender.url` (no permission needed) rather than `sender.tab.url`, which Firefox withholds until host access is granted.
 - `background/index.ts` — reset alarm delay is clamped to 1 minute; Firefox silently reschedules anything shorter.
-- `utils/csv.ts` — the blob URL is revoked in the `downloads.download` callback; Firefox invalidates it when the panel closes.
+- `utils/csv.ts` — the CSV URL is chosen by capability, not by engine: a blob URL where `URL.createObjectURL` exists (the panel, and Firefox's event page), a data URL where it does not (a Chromium MV3 service worker, which is where the reset alarm runs). Chromium accepts a data URL up to roughly 64 MB.
+- `utils/csv.ts` — the object URL is **no longer revoked**. It must not be revoked before the download completes, and the event page that starts an auto-export can be torn down moments after it begins; the browser reclaims the URL with the context instead.
+
+### Reset — export before delete
+
+`background/resetCycle.ts` holds the one decision the alarm makes: when `autoExportBeforeReset`
+is on, every stored day is exported as CSV **before** `clearPastDays` drops anything, and a
+failed export aborts the deletion. The days then survive to the next alarm tick, at the price of
+a store that keeps growing while the export keeps failing — the trade taken deliberately, since
+the alternative loses data silently.
+
+It takes the store as `DailyRecordReader & RetentionEnforcer` and the export as a function, so
+the whole rule is assertable with the in-memory storage and no browser — `src/background/resetCycle.test.ts`.
+`background/index.ts` supplies `chrome.downloads` and logs the aborted reset; it holds no rule.
