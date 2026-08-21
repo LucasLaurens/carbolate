@@ -330,6 +330,8 @@ npm run package:sources  → carbolate-sources.zip (required by AMO review)
 
 The `chrome` target also covers Edge, Opera, Brave and Vivaldi — same MV3 runtime, same zip. Safari requires an extra `xcrun safari-web-extension-converter` pass over the `chrome` build.
 
+`package:sources` is a `git archive` of `HEAD`, so it carries the root `LICENSE` — proprietary, all rights reserved, supplied to AMO for review only. See `docs/decisions/2026-08-21-licence-du-depot.md`.
+
 ### Permissions
 
 ```json
