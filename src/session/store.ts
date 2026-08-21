@@ -2,9 +2,8 @@ import { emptyDailyRecord, sumCarbonEstimates, sumMetrics } from "./aggregator";
 import { normalizeDailyRecords } from "./legacy";
 import type { DailyRecord, DailyRecordsStore, MetricTab, MetricsStore } from "./types";
 import type { DailyRecordsStorage } from "../storage/types";
-import { KEEP_EVERYTHING } from "../config/retention";
+import { KEEP_EVERYTHING, isKept } from "../config/retention";
 import type { Clock } from "../utils/clock";
-import { toDailyDate } from "../utils/clock";
 
 function rebuildTotals(record: DailyRecord): DailyRecord {
   return {
@@ -19,9 +18,11 @@ function rebuildTotals(record: DailyRecord): DailyRecord {
  *
  * The identity fields (`url`, `domain`) deliberately stay as first observed:
  * today's unit of measurement is the browser tab, not the navigation. Moving to
- * one entry per navigation means keying this function on `(id, url)` — that
- * single comparison, and nothing else in the module.
- * See docs/decisions/2026-08-05-page-visit-unite-de-mesure.md
+ * one entry per navigation keys this function on `(tabId, timeOrigin, url)` and
+ * makes appending the default case — replacing only routes a delta onto a visit
+ * already known. It is therefore not the one-line change an earlier note here
+ * claimed.
+ * See docs/decisions/2026-08-21-identite-de-la-visite-de-page.md
  *
  * O(n) time, O(n) space — n = tabs recorded today.
  */
@@ -100,16 +101,14 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
     recordTabMetrics: (tab: MetricTab): Promise<void> =>
       mutateToday((record) => rebuildTotals({ ...record, tabs: upsertTab(record.tabs, tab) })),
 
+    /** O(n) time and space — n = stored days; `isKept` is O(1) per day. */
     clearPastDays: (retentionDays: number): Promise<void> => {
       if (retentionDays === KEEP_EVERYTHING) return Promise.resolve();
       return enqueue(async () => {
         const records = await loadRecords();
-        const today = clock.dailyDate();
-        const cutoffDate = clock.now();
-        cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
-        const cutoff = toDailyDate(cutoffDate);
+        const today = clock.now();
         const kept = Object.fromEntries(
-          Object.entries(records).filter(([date]) => date >= cutoff || date === today),
+          Object.entries(records).filter(([date]) => isKept(date, retentionDays, today)),
         );
         await storage.setSessions(kept);
         cached = undefined;
