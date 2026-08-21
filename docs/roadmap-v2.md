@@ -9,51 +9,41 @@ La V2 étend Carbolate sur deux axes :
 
 ---
 
-## 1. Paramétrage de la rétention des données
+## 1. Paramétrage de la rétention des données — **livré**
 
 **Objectif** : laisser l'utilisateur choisir la fenêtre d'historique conservée.
 
-### Comportement attendu
+### Comportement livré
 
-| Choix                           | `retentionDays` | Alarme de reset (dérivée)                             |
-| ------------------------------- | --------------- | ----------------------------------------------------- |
-| **Aujourd'hui** (défaut actuel) | `1`             | toutes les 24h                                        |
-| **Semaine glissante**           | `7`             | tous les 7 jours                                      |
-| **Mois glissant**               | `30`            | tous les 30 jours                                     |
-| **Tout conserver**              | `-1`            | toutes les 24h, mais `clearPastDays` ne supprime rien |
+| Choix               | `retentionDays` | Alarme de reset (dérivée)                             |
+| ------------------- | --------------- | ----------------------------------------------------- |
+| **1 jour** (défaut) | `1`             | toutes les 24h                                        |
+| **7 jours**         | `7`             | tous les 7 jours                                      |
+| **Tout**            | `-1`            | toutes les 24h, mais `clearPastDays` ne supprime rien |
 
-### Ce qui existe déjà
+`30` reste représentable sans nouveau type — c'est ce que la suppression de
+`ResetPeriod` a débloqué. Il n'est pas exposé tant que la comparaison mensuelle
+(section 3) n'existe pas : une option qui ne sert rien est une option à maintenir.
 
-- `Preferences.retentionDays` — **source de vérité unique** de la rétention
-- `resetPeriodMinutes(retentionDays)` dans `src/config/retention.ts` — la période de l'alarme s'en déduit, testée
-- Logique d'alarme dans `background/index.ts` — branchée mais non exposée en UI
-- `store.clearPastDays(retentionDays)` — fonctionnel, ne supprime jamais le jour courant
+Le contrôle est une rangée de trois boutons dans `SettingsView`, à côté de la langue,
+avec l'interrupteur `autoExportBeforeReset` qui n'avait lui non plus aucune UI.
+`RETENTION_OPTIONS` dans `src/config/retention.ts` est le domicile unique de la liste,
+et `Translations.settings.retention.options` est indexé par ces valeurs — une option
+ne peut pas être ajoutée sans son libellé dans les deux langues.
 
-### Ce qui manque
+### Reprogrammation de l'alarme
 
-- UI dans `SettingsView.tsx` : select sur `retentionDays`
-- Sauvegarde immédiate via `ChromeStorage.setPreferences()`
-- Reconfiguration de l'alarme au changement (sans attendre le redémarrage du navigateur)
-- Traduction i18n : clé `settings.retention` + un libellé par valeur
+Le panneau écrit les préférences, le background possède l'alarme, et les deux sont
+des contextes JavaScript séparés sans mémoire commune. Un `chrome.storage.onChanged`
+côté background rappelle `scheduleReset()` — sans lui le réglage n'aurait pris effet
+qu'au prochain démarrage du navigateur.
 
-### Contrat technique
+### Réduire la fenêtre détruit des jours
 
-`ResetPeriod` a été supprimé : il doublonnait `retentionDays` et autorisait la paire
-incohérente `{ resetPeriod: "weekly", retentionDays: 1 }`. Aucun nouveau type n'est
-nécessaire — n'importe quelle fenêtre est déjà représentable.
-Voir [l'ADR unités et rétention](decisions/2026-08-05-unites-et-retention.md).
-
-```ts
-// À ajouter dans background/index.ts
-import { resetPeriodMinutes } from "../config/retention";
-
-function reconfigureAlarm(retentionDays: number): void {
-  chrome.alarms.clear(RESET_ALARM);
-  chrome.alarms.create(RESET_ALARM, {
-    periodInMinutes: resetPeriodMinutes(retentionDays),
-  });
-}
-```
+C'est la seule action du produit qui supprime des données enregistrées. Elle est
+immédiate — « garde 1 jour » doit vouloir dire _maintenant_ — et précédée d'une
+confirmation native annonçant le nombre exact de journées perdues.
+Voir [l'ADR rétention configurable](decisions/2026-08-21-retention-configurable.md).
 
 ---
 

@@ -12,6 +12,7 @@ const TODAY = "2026-02-23";
 // Three days back, so a `retentionDays` of 1 drops it whatever the cutoff rounding.
 const PAST_DAY = "2026-02-20";
 const KEEP_TODAY_ONLY = 1;
+const NOW = new Date(`${TODAY}T12:00:00`);
 
 /** A real exporter whose destination is a variable instead of the Downloads folder. */
 class InMemoryExporter {
@@ -55,7 +56,7 @@ describe("runResetCycle", () => {
     const exporter = new InMemoryExporter();
 
     // Act
-    await runResetCycle(store, exporter.export, preferences(true));
+    await runResetCycle(store, exporter.export, preferences(true), NOW);
 
     // Assert
     expect(exporter.exports).toHaveLength(1);
@@ -68,7 +69,7 @@ describe("runResetCycle", () => {
     const exporter = new RefusingExporter();
 
     // Act
-    const cycle = runResetCycle(store, exporter.export, preferences(true));
+    const cycle = runResetCycle(store, exporter.export, preferences(true), NOW);
 
     // Assert
     await expect(cycle).rejects.toThrow("downloads API refused the URL");
@@ -81,10 +82,28 @@ describe("runResetCycle", () => {
     const exporter = new InMemoryExporter();
 
     // Act
-    await runResetCycle(store, exporter.export, preferences(false));
+    await runResetCycle(store, exporter.export, preferences(false), NOW);
 
     // Assert
     expect(exporter.exports).toEqual([]);
     expect(storage.dates()).toEqual([TODAY]);
+  });
+  it("exports nothing when the window drops nothing", async () => {
+    // Arrange — a store already inside its window: only today is stored
+    const emptied = new InMemoryDailyRecordsStorage();
+    emptied.seedDay(TODAY, emptyDailyRecord(TODAY));
+    const exporter = new InMemoryExporter();
+
+    // Act
+    await runResetCycle(
+      createMetricsStore(emptied, new FixedClock(TODAY)),
+      exporter.export,
+      preferences(true),
+      NOW,
+    );
+
+    // Assert — a download with no deletion behind it is noise the user did not ask for
+    expect(exporter.exports).toEqual([]);
+    expect(emptied.dates()).toEqual([TODAY]);
   });
 });

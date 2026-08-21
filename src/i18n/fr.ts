@@ -13,6 +13,10 @@ export const fr: Translations = {
   },
   chart: { title: "Top domaines par CO₂" },
   actions: { refresh: "Actualiser", export: "Export CSV" },
+  badge: {
+    tooltip: (grams, level) => `Carbolate — ${grams} g aujourd'hui · ${level}`,
+    tooltipEmpty: "Carbolate — rien mesuré aujourd'hui",
+  },
   sobrietyLevels: {
     sober: "Sobre",
     moderate: "Modéré",
@@ -43,6 +47,18 @@ export const fr: Translations = {
         "L'énergie n'est pas mesurable directement : les serveurs ne sont pas les nôtres, et une page web ne peut pas lire la consommation de ta machine. Carbolate multiplie ce qu'il voit — octets, durée de chargement — par des moyennes publiées.",
       perimeter:
         "Il ne compte que la navigation. La fabrication des serveurs, du réseau et de ton appareil est exclue : le chiffre réel est plus haut d'environ un quart.",
+    },
+    retention: {
+      label: "Historique conservé",
+      options: { 1: "1 jour", 7: "7 jours", [-1]: "Tout" },
+      confirm: (days: number) =>
+        `${days} ${days === 1 ? "journée enregistrée sera supprimée définitivement" : "journées enregistrées seront supprimées définitivement"}. C'est irréversible.`,
+      confirmWithExport: (days: number) =>
+        `${days} ${days === 1 ? "journée enregistrée va être exportée" : "journées enregistrées vont être exportées"} en CSV, puis ${days === 1 ? "supprimée" : "supprimées"} de l'extension.`,
+    },
+    autoExport: {
+      label: "Exporter avant de supprimer",
+      hint: "Télécharge un CSV à chaque suppression de journées.",
     },
   },
 };

@@ -37,12 +37,35 @@ The CO₂ card is colour-coded by sobriety level and shows:
 - an eco-equivalence (emails, streaming, car km, flight km)
 - a coarse position against the daily reference
 
-| Level     | Range         | Colour | Badge |
-| --------- | ------------- | ------ | ----- |
-| Sober     | < 60 gCO₂e    | green  | 🥇    |
-| Moderate  | 60–180 gCO₂e  | yellow | 🥈    |
-| Intensive | 180–480 gCO₂e | orange | 🥉    |
-| Excessive | ≥ 480 gCO₂e   | red    | ⛔    |
+| Level     | Range         | Colour | Medal | Badge hex |
+| --------- | ------------- | ------ | ----- | --------- |
+| Sober     | < 60 gCO₂e    | green  | 🥇    | `#15803d` |
+| Moderate  | 60–180 gCO₂e  | yellow | 🥈    | `#a16207` |
+| Intensive | 180–480 gCO₂e | orange | 🥉    | `#c2410c` |
+| Excessive | ≥ 480 gCO₂e   | red    | ⛔    | `#b91c1c` |
+
+## Toolbar badge
+
+The extension icon carries the day's own grade, panel closed:
+
+| Day's total | Badge  | Background      |
+| ----------- | ------ | --------------- |
+| `0`         | `–`    | grey `#6b7280`  |
+| under 1 g   | `<1`   | sobriety colour |
+| under 1 kg  | `133`  | sobriety colour |
+| under 10 kg | `1.2k` | sobriety colour |
+| beyond      | `12k`  | sobriety colour |
+
+Four characters is all a badge holds, so the unit and the level in words live in the
+tooltip: `Carbolate — 133 g aujourd'hui · Modéré`. That tooltip is also the only
+channel a screen reader reaches — neither the colour nor the digits are exposed to it.
+
+A day with nothing measured shows a grey `–`, never a green `0`: grading an absence
+of data would be a verdict on nothing. The badge always grades **today**, whatever
+history the panel displays — the thresholds derive from a daily anchor.
+
+The badge is rewritten after every measure, at startup, after the daily reset, and on
+a language change. See [ADR](decisions/2026-08-21-badge-icone.md).
 
 Those bands are **not literals**: they are the daily reference of **120 gCO₂e**
 (ADEME 2023 / Shift Project 2022) multiplied by `0.5 / 1.5 / 4`. The multipliers are
@@ -92,6 +115,9 @@ is redundant; in the two other surfaces it is the only way to see a new measurem
 - Its period is **derived from `retentionDays`**, not configured separately: a one-day window (and "keep everything") is checked every 24h, a longer window once per window
 - Deletes data older than the retention window; today is never dropped
 - `retentionDays` is the single source of truth — `1`, `7`, `30`, `60` or `-1` all work with no new type
+- The window is counted in whole local days: `7` keeps seven days, today included. The cutoff rule has one home, `isKept` in `src/config/retention.ts`
+- A cycle that would drop nothing does nothing — it does not export either, so widening the window never produces a CSV nobody asked for
+- A change to `retentionDays` reschedules the alarm at once through `chrome.storage.onChanged`; no browser restart
 
 ### Privacy view
 
@@ -141,15 +167,41 @@ state to hold. Before it existed, the perimeter lived only in `docs/` — the UI
 "Estimated CO₂" and nothing more, which says _approximate_ without ever saying
 _systematically below_.
 
-#### Other preferences (no UI yet — both are read by the code)
+#### History kept (implemented)
 
-The `Preferences` type supports `retentionDays` and `autoExportBeforeReset`. Both are honoured
-by the reset alarm; neither has a control, so both sit at their default for every user:
+A row of three buttons under the language picker, same markup as the language row.
 
-| Setting                  | Values                                                       | Default |
-| ------------------------ | ------------------------------------------------------------ | ------- |
-| Retention                | `1` = today only, `7` = rolling week, `-1` = keep everything | `1`     |
-| Auto-export before reset | Yes / No                                                     | No      |
+| Label             | `retentionDays` | Reset alarm fires        |
+| ----------------- | --------------- | ------------------------ |
+| 1 day / 1 jour    | `1`             | every 24h                |
+| 7 days / 7 jours  | `7`             | every 7 days             |
+| Everything / Tout | `-1`            | every 24h, drops nothing |
+
+`30` stays representable with no new type, but is not offered until the monthly comparison
+needs it. The list has one home — `RETENTION_OPTIONS` in `src/config/retention.ts` — and the
+translations are keyed by the window itself, so an option cannot ship without its two labels.
+
+**Shrinking the window deletes days, immediately.** It is the only action in the product that
+destroys recorded data, so it is the only one that asks first: a native confirmation naming the
+exact number of days about to go. Cancelling changes nothing — not even the selected button,
+because the control reads the stored preference rather than a local copy. Widening asks nothing
+and deletes nothing.
+
+The panel cannot delete a day: its store is read-only on measurements. It writes the preference,
+and the background — which owns the alarm and the reset cycle — reacts to the storage change by
+rescheduling the alarm and running the cycle. Without that listener the new window would only
+take effect at the next browser start.
+
+#### Export before deleting (implemented)
+
+An checkbox under the retention row, off by default.
+
+| Setting                | Values   | Default |
+| ---------------------- | -------- | ------- |
+| Export before deleting | Yes / No | No      |
+
+When it is on, the shrink confirmation says the days will be exported then removed, rather than
+deleted for good — the days leave the extension, not the disk.
 
 **Auto-export before reset.** When on, the reset alarm exports every stored day as CSV — the
 same file the panel's export button produces — before the retention window drops anything. The

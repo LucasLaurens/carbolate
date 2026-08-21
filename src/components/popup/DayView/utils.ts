@@ -2,7 +2,7 @@ import type { MetricTab } from "../../../session/types";
 import type { StatColor, DomainData } from "./types";
 import type { EquivalenceTranslations, WorldComparisonTranslations } from "../../../i18n/types";
 import type { SobrietyLevel } from "../../../carbon/sobriety";
-import { sobrietyLevel } from "../../../carbon/sobriety";
+import { SOBRIETY_COLOR, sobrietyLevel } from "../../../carbon/sobriety";
 import { compareToDailyReference } from "../../../carbon/worldComparison";
 
 export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4"];
@@ -49,22 +49,24 @@ export const COLOR_CLASSES: Record<
 };
 
 /**
- * How each grade is painted. Only the paint lives here — where the grade's
- * thresholds sit is a model decision, and it belongs to `carbon/sobriety.ts`
- * beside the anchor they derive from.
+ * How each grade is painted **in the panel**. Neither the thresholds nor the
+ * colour is decided here: `carbon/sobriety.ts` owns both, so the icon badge and
+ * this card cannot end up disagreeing on what colour a grade wears. What is
+ * local is the medal and the Tailwind mixing — the badge paints the same colour
+ * as a hex.
  */
-const LEVEL_STYLES: Record<SobrietyLevel, { color: StatColor; badge: string }> = {
-  sober: { color: "green", badge: "🥇" },
-  moderate: { color: "yellow", badge: "🥈" },
-  intensive: { color: "orange", badge: "🥉" },
-  excessive: { color: "red", badge: "⛔" },
+const LEVEL_MEDALS: Record<SobrietyLevel, string> = {
+  sober: "🥇",
+  moderate: "🥈",
+  intensive: "🥉",
+  excessive: "⛔",
 };
 
 export type CarbonLevel = { color: StatColor; badge: string; level: SobrietyLevel };
 
 export function getCarbonLevel(totalCo2: number): CarbonLevel {
   const level = sobrietyLevel(totalCo2);
-  return { ...LEVEL_STYLES[level], level };
+  return { color: SOBRIETY_COLOR[level], badge: LEVEL_MEDALS[level], level };
 }
 
 export function formatCo2(value: number): string {
