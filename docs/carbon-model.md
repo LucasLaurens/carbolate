@@ -102,7 +102,7 @@ totalSec  = Σ(pageLoadDurationMs) / 1000   [ms → seconds]
 deviceCo2 = totalSec × DEVICE_FACTOR       [0.0014 gCO₂e/s]
 ```
 
-**avoidedCarbon** (`src/carbon/avoidedCarbon.ts`):
+**computeAvoidedCarbon** (`src/carbon/avoidedCarbon.ts`):
 
 ```
 cachedGB   = Σ(cachedBytes) / 1_000_000_000

@@ -19,7 +19,7 @@ import { bytesToGigabytes } from "../utils/bytes";
  *
  * O(n) time, O(1) space — n = inputs.
  */
-export function avoidedCarbon(inputs: readonly CarbonInput[]): number {
+export function computeAvoidedCarbon(inputs: readonly CarbonInput[]): number {
   const bytes = inputs.reduce((sum, input) => sum + input.cachedBytes, 0);
   return bytesToGigabytes(bytes) * CARBON_PER_GB;
 }

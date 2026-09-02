@@ -7,8 +7,8 @@ import type {
 
 /** Where the timings come from. Injected, so the rules below can be exercised. */
 export interface PerformanceSource {
-  resources(): readonly ResourceTiming[];
-  navigations(): readonly NavigationTiming[];
+  readResources(): readonly ResourceTiming[];
+  readNavigations(): readonly NavigationTiming[];
 }
 
 /** Where the observation goes. Injected, for the same reason. */
@@ -32,8 +32,8 @@ export class MetricsCollector {
 
   collect(): void {
     this.sink.send({
-      [PerformanceEntryType.RESOURCE]: this.source.resources(),
-      [PerformanceEntryType.NAVIGATION]: this.source.navigations(),
+      [PerformanceEntryType.RESOURCE]: this.source.readResources(),
+      [PerformanceEntryType.NAVIGATION]: this.source.readNavigations(),
     });
   }
 }

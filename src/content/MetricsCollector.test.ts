@@ -16,11 +16,11 @@ class ScriptedPerformanceSource implements PerformanceSource {
     private readonly navigationEntries: NavigationTiming[],
   ) {}
 
-  resources(): readonly ResourceTiming[] {
+  readResources(): readonly ResourceTiming[] {
     return this.resourceEntries;
   }
 
-  navigations(): readonly NavigationTiming[] {
+  readNavigations(): readonly NavigationTiming[] {
     return this.navigationEntries;
   }
 }

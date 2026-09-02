@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { runResetCycle } from "./resetCycle";
 import { DEFAULT_PREFERENCES } from "../config/preferences";
 import type { Preferences } from "../config/types";
-import { emptyDailyRecord } from "../session/aggregator";
+import { createEmptyDailyRecord } from "../session/aggregator";
 import { createMetricsStore } from "../session/store";
 import type { DailyRecord, MetricsStore } from "../session/types";
 import { InMemoryDailyRecordsStorage } from "../../test/fakes/InMemoryDailyRecordsStorage";
@@ -45,8 +45,8 @@ let store: MetricsStore;
 
 beforeEach(() => {
   storage = new InMemoryDailyRecordsStorage();
-  storage.seedDay(PAST_DAY, emptyDailyRecord(PAST_DAY));
-  storage.seedDay(TODAY, emptyDailyRecord(TODAY));
+  storage.seedDay(PAST_DAY, createEmptyDailyRecord(PAST_DAY));
+  storage.seedDay(TODAY, createEmptyDailyRecord(TODAY));
   store = createMetricsStore(storage, new FixedClock(TODAY));
 });
 
@@ -91,7 +91,7 @@ describe("runResetCycle", () => {
   it("exports nothing when the window drops nothing", async () => {
     // Arrange — a store already inside its window: only today is stored
     const emptied = new InMemoryDailyRecordsStorage();
-    emptied.seedDay(TODAY, emptyDailyRecord(TODAY));
+    emptied.seedDay(TODAY, createEmptyDailyRecord(TODAY));
     const exporter = new InMemoryExporter();
 
     // Act

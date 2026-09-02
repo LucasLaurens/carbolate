@@ -211,7 +211,7 @@ for it.
 
 The download is issued from the background, where the panel's blob URL is unavailable on
 Chromium (MV3 service workers have no `URL.createObjectURL`), so the CSV travels as a data URL
-there and as a blob on Firefox's event page — see `csvUrl` in `src/utils/csv.ts`.
+there and as a blob on Firefox's event page — see `buildCsvUrl` in `src/utils/csv.ts`.
 
 `ResetPeriod` (`"daily" | "weekly"`) has been **removed**: it duplicated
 `retentionDays` and allowed the incoherent pair `weekly` + `retentionDays: 1`.

@@ -19,7 +19,7 @@ const CHOICE_BASE =
 const CHOICE_SELECTED = "bg-green-50 text-green-700 border-green-500";
 const CHOICE_IDLE = "bg-white text-stone-600 border-stone-200 hover:border-stone-300";
 
-const choiceClass = (selected: boolean): string =>
+const buildChoiceClass = (selected: boolean): string =>
   `${CHOICE_BASE} ${selected ? CHOICE_SELECTED : CHOICE_IDLE}`;
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -100,7 +100,7 @@ export default class SettingsView extends Component<Props, State> {
               <button
                 key={lang}
                 onClick={() => this.handleLanguageChange(lang)}
-                className={choiceClass(preferences.language === lang)}
+                className={buildChoiceClass(preferences.language === lang)}
               >
                 {lang === "en" ? "🇬🇧 English" : "🇫🇷 Français"}
               </button>
@@ -117,7 +117,7 @@ export default class SettingsView extends Component<Props, State> {
               <button
                 key={days}
                 onClick={() => this.handleRetentionChange(days)}
-                className={choiceClass(preferences.retentionDays === days)}
+                className={buildChoiceClass(preferences.retentionDays === days)}
               >
                 {t.settings.retention.options[days]}
               </button>

@@ -1,13 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { badgeText, badgeColor, refreshBadge, EMPTY_BADGE_COLOR, SOBRIETY_HEX } from "./badge";
+import {
+  formatBadgeText,
+  resolveBadgeColor,
+  refreshBadge,
+  EMPTY_BADGE_COLOR,
+  SOBRIETY_HEX,
+} from "./badge";
 import type { BadgeSurface } from "./badge";
-import { emptyMetrics } from "../session/aggregator";
+import { createEmptyMetrics } from "../session/aggregator";
 import { createMetricsStore } from "../session/store";
 import type { MetricTab } from "../session/types";
 import { en, fr } from "../i18n";
 import { InMemoryDailyRecordsStorage } from "../../test/fakes/InMemoryDailyRecordsStorage";
 import { FixedClock } from "../../test/fakes/FixedClock";
-import { sobrietyLevel } from "../carbon/sobriety";
+import { gradeSobrietyLevel } from "../carbon/sobriety";
 import type { SobrietyLevel } from "../carbon/sobriety";
 
 /** WCAG 2.1 relative luminance, from the hex the badge actually paints. */
@@ -24,32 +30,32 @@ function contrastWithWhite(hex: string): number {
 
 const WCAG_AA = 4.5;
 
-describe("badgeText", () => {
+describe("formatBadgeText", () => {
   it("shows a dash when nothing was measured", () => {
     // Act & Assert
-    expect(badgeText(0)).toBe("–");
+    expect(formatBadgeText(0)).toBe("–");
   });
 
   it("shows a dash only for a true zero, never for a rounding to zero", () => {
     // Act & Assert
-    expect(badgeText(0.4)).toBe("<1");
+    expect(formatBadgeText(0.4)).toBe("<1");
   });
 
   it("rounds to a whole gram under a kilogram", () => {
     // Act & Assert
-    expect(badgeText(132.6)).toBe("133");
+    expect(formatBadgeText(132.6)).toBe("133");
   });
 
   it("switches to one decimal in kilograms from a kilogram up", () => {
     // Act & Assert
-    expect(badgeText(1240)).toBe("1.2k");
+    expect(formatBadgeText(1240)).toBe("1.2k");
   });
 
   it("drops the decimal where it would overflow four characters", () => {
     // Arrange — 9.95k rounds to "10.0k", five characters Chrome would truncate
     // Act & Assert
-    expect(badgeText(9_960)).toBe("10k");
-    expect(badgeText(12_400)).toBe("12k");
+    expect(formatBadgeText(9_960)).toBe("10k");
+    expect(formatBadgeText(12_400)).toBe("12k");
   });
 });
 
@@ -73,8 +79,8 @@ describe("badge palette", () => {
 
   it("derives the colour from the grade the model gives, not from the total", () => {
     // Act & Assert
-    expect(badgeColor(sobrietyLevel(42))).toBe(SOBRIETY_HEX.sober);
-    expect(badgeColor(sobrietyLevel(1240))).toBe(SOBRIETY_HEX.excessive);
+    expect(resolveBadgeColor(gradeSobrietyLevel(42))).toBe(SOBRIETY_HEX.sober);
+    expect(resolveBadgeColor(gradeSobrietyLevel(1240))).toBe(SOBRIETY_HEX.excessive);
   });
 });
 
@@ -102,7 +108,7 @@ describe("refreshBadge", () => {
     id: 1,
     url: "https://example.test/page",
     domain: "example.test",
-    metrics: emptyMetrics(),
+    metrics: createEmptyMetrics(),
     meta: { date: new Date(`${TODAY}T12:00:00`).getTime() },
     carbon: { networkCo2: totalCo2, deviceCo2: 0, totalCo2, avoidedCo2: 0 },
   });

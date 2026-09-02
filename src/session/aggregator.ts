@@ -33,18 +33,18 @@ export const sumCarbonEstimates = (estimates: readonly CarbonEstimate[]): Carbon
  * missing from two separate empty literals — adding a field to `Metrics` or
  * `CarbonEstimate` now forces the sum to change, and both empties follow.
  */
-export const emptyMetrics = (): Metrics => sumMetrics([]);
+export const createEmptyMetrics = (): Metrics => sumMetrics([]);
 
-export const emptyCarbonEstimate = (): CarbonEstimate => sumCarbonEstimates([]);
+export const createEmptyCarbonEstimate = (): CarbonEstimate => sumCarbonEstimates([]);
 
 /**
  * The neutral daily record, for a day on which nothing has been measured yet.
  * Returning it instead of `null` is what lets every reader drop its own
  * "no record" branch.
  */
-export const emptyDailyRecord = (date: string): DailyRecord => ({
+export const createEmptyDailyRecord = (date: string): DailyRecord => ({
   date,
   tabs: [],
-  totalMetrics: emptyMetrics(),
-  totalCarbon: emptyCarbonEstimate(),
+  totalMetrics: createEmptyMetrics(),
+  totalCarbon: createEmptyCarbonEstimate(),
 });

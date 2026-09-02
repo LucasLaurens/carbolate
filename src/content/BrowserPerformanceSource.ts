@@ -11,7 +11,7 @@ import type { PerformanceSource } from "./MetricsCollector";
  * never arrives.
  */
 export class BrowserPerformanceSource implements PerformanceSource {
-  resources(): readonly ResourceTiming[] {
+  readResources(): readonly ResourceTiming[] {
     const entries = performance.getEntriesByType(
       PerformanceEntryType.RESOURCE,
     ) as PerformanceResourceTiming[];
@@ -21,7 +21,7 @@ export class BrowserPerformanceSource implements PerformanceSource {
     }));
   }
 
-  navigations(): readonly NavigationTiming[] {
+  readNavigations(): readonly NavigationTiming[] {
     return performance
       .getEntriesByType(PerformanceEntryType.NAVIGATION)
       .map((entry) => ({ duration: entry.duration }));

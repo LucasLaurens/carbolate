@@ -98,7 +98,7 @@ migration n'est nécessaire.
 - `exportToCSV` est scindé : `toCSV(records)` est pur et testé, `exportToCSV`
   garde l'effet de bord et reçoit son `Clock`.
 - `getDailyRecord()` ne retourne plus `null`. Un jour non mesuré est
-  `emptyDailyRecord(date)`, et les `?? emptyMetrics()` du `DayView` disparaissent.
+  `createEmptyDailyRecord(date)`, et les `?? createEmptyMetrics()` du `DayView` disparaissent.
 - `App.tsx` devient la racine de composition du panneau. Le `Popup` reçoit un
   `DailyRecordReader` : il ne peut plus écrire une mesure, même par accident.
 - Le nom des modules nouveaux (`MetricsIntake`, `MetricsCollector`) est documenté

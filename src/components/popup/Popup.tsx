@@ -4,7 +4,7 @@ import { isKept } from "../../config/retention";
 import { getTranslations } from "../../i18n";
 import type { Translations } from "../../i18n/types";
 import type { Preferences } from "../../config/types";
-import { emptyDailyRecord } from "../../session/aggregator";
+import { createEmptyDailyRecord } from "../../session/aggregator";
 import type { DailyRecord, DailyRecordReader } from "../../session/types";
 import type { PreferencesStorage } from "../../storage/types";
 import type { Clock } from "../../utils/clock";
@@ -45,7 +45,7 @@ export default class Popup extends Component<Props, State> {
 
   state: State = {
     view: "day",
-    record: emptyDailyRecord(this.props.clock.dailyDate()),
+    record: createEmptyDailyRecord(this.props.clock.readDailyDate()),
     preferences: { ...DEFAULT_PREFERENCES },
     isLoading: false,
   };

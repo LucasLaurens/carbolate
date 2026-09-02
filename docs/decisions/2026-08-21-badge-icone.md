@@ -20,7 +20,7 @@ Un prototype jetable a rendu les quatre formes candidates à taille réelle 16 p
 - **Infobulle dynamique** via `setTitle` : `Carbolate — 133 g aujourd'hui · Modéré`. C'est le seul endroit où l'unité et le mot du niveau apparaissent, et le seul canal qu'un lecteur d'écran atteint — il ne voit ni la couleur ni les quatre caractères.
 - Le badge note **toujours le jour courant**. Les paliers dérivent d'une ancre journalière (120 g/jour) ; les appliquer à une fenêtre de sept jours ferait retomber tout total en `excessive`. La rétention dit combien d'historique on garde, pas quelle fenêtre on note — les confondre serait une erreur de modèle.
 - Le badge est réécrit à **trois moments** : après chaque mesure, au démarrage (`onInstalled` / `onStartup`), et après l'alarme de reset. Un changement de langue le réécrit aussi, l'infobulle étant traduite.
-- **Quelle couleur porte un niveau** remonte au modèle (`SOBRIETY_COLOR`, à côté de `sobrietyLevel`). Chaque média mixe ensuite ce nom à sa façon : classes Tailwind dans le panneau, hex dans le badge.
+- **Quelle couleur porte un niveau** remonte au modèle (`SOBRIETY_COLOR`, à côté de `gradeSobrietyLevel`). Chaque média mixe ensuite ce nom à sa façon : classes Tailwind dans le panneau, hex dans le badge.
 - `"BETA"` disparaît du code. Il ne disait rien à qui a déjà installé l'extension ; la mention appartient à la fiche store. Le retrait de BETA à la soumission reste une question distincte.
 
 **Conséquences** :
