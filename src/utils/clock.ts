@@ -6,13 +6,13 @@
 export const toDailyDate = (date: Date): string => date.toLocaleDateString("sv");
 
 export interface Clock {
-  dailyDate(): string;
+  readDailyDate(): string;
   nowMs(): number;
   now(): Date;
 }
 
 export class SystemClock implements Clock {
-  dailyDate(): string {
+  readDailyDate(): string {
     return toDailyDate(this.now());
   }
 

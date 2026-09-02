@@ -5,6 +5,7 @@
 @.claude/rules/dry.md
 @.claude/rules/algorithms.md
 @.claude/rules/types.md
+@.claude/rules/naming.md
 @.claude/rules/tdd.md
 @.claude/rules/comments.md
 @.claude/rules/commits.md

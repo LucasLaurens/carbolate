@@ -2,7 +2,7 @@ import type { MetricTab } from "../../../session/types";
 import type { StatColor, DomainData } from "./types";
 import type { EquivalenceTranslations, WorldComparisonTranslations } from "../../../i18n/types";
 import type { SobrietyLevel } from "../../../carbon/sobriety";
-import { SOBRIETY_COLOR, sobrietyLevel } from "../../../carbon/sobriety";
+import { SOBRIETY_COLOR, gradeSobrietyLevel } from "../../../carbon/sobriety";
 import { compareToDailyReference } from "../../../carbon/worldComparison";
 
 export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4"];
@@ -65,7 +65,7 @@ const LEVEL_MEDALS: Record<SobrietyLevel, string> = {
 export type CarbonLevel = { color: StatColor; badge: string; level: SobrietyLevel };
 
 export function getCarbonLevel(totalCo2: number): CarbonLevel {
-  const level = sobrietyLevel(totalCo2);
+  const level = gradeSobrietyLevel(totalCo2);
   return { color: SOBRIETY_COLOR[level], badge: LEVEL_MEDALS[level], level };
 }
 

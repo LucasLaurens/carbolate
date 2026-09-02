@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import CarbonCalculator from "../src/carbon/CarbonCalculator";
 import { NetworkCarbonSource } from "../src/carbon/sources/NetworkCarbonSource";
 import { DeviceCarbonSource } from "../src/carbon/sources/DeviceCarbonSource";
-import { avoidedCarbon } from "../src/carbon/avoidedCarbon";
+import { computeAvoidedCarbon } from "../src/carbon/avoidedCarbon";
 import type { CarbonInput } from "../src/carbon/types";
 import { CARBON_PER_GB, DEVICE_FACTOR } from "../src/carbon/constants";
 
@@ -155,15 +155,15 @@ describe("DeviceCarbonSource", () => {
   });
 });
 
-describe("avoidedCarbon", () => {
+describe("computeAvoidedCarbon", () => {
   it("returns 0 when the cache served nothing", () => {
     // Act & Assert
-    expect(avoidedCarbon([input({ transferredBytes: ONE_GB })])).toBe(0);
+    expect(computeAvoidedCarbon([input({ transferredBytes: ONE_GB })])).toBe(0);
   });
 
   it("prices cached bytes at the network factor they spared", () => {
     // Act
-    const result = avoidedCarbon([input({ cachedBytes: ONE_GB })]);
+    const result = computeAvoidedCarbon([input({ cachedBytes: ONE_GB })]);
 
     // Assert
     expect(result).toBeCloseTo(CARBON_PER_GB, 10);
@@ -171,7 +171,7 @@ describe("avoidedCarbon", () => {
 
   it("adds up across inputs and stays positive", () => {
     // Act
-    const result = avoidedCarbon([
+    const result = computeAvoidedCarbon([
       input({ cachedBytes: ONE_GB / 2 }),
       input({ cachedBytes: ONE_GB / 2 }),
     ]);

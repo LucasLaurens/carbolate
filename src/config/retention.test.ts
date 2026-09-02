@@ -1,27 +1,27 @@
 import { describe, it, expect } from "vitest";
-import { KEEP_EVERYTHING, RETENTION_OPTIONS, isKept, resetPeriodMinutes } from "./retention";
+import { KEEP_EVERYTHING, RETENTION_OPTIONS, isKept, computeResetPeriodMinutes } from "./retention";
 
 const MINUTES_PER_DAY = 24 * 60;
 
-describe("resetPeriodMinutes", () => {
+describe("computeResetPeriodMinutes", () => {
   it("checks daily when only today is kept", () => {
     // Act & Assert
-    expect(resetPeriodMinutes(1)).toBe(MINUTES_PER_DAY);
+    expect(computeResetPeriodMinutes(1)).toBe(MINUTES_PER_DAY);
   });
 
   it("checks weekly for a rolling week — the cadence the removed enum expressed", () => {
     // Act & Assert
-    expect(resetPeriodMinutes(7)).toBe(7 * MINUTES_PER_DAY);
+    expect(computeResetPeriodMinutes(7)).toBe(7 * MINUTES_PER_DAY);
   });
 
   it("derives a period for a window that had no enum case", () => {
     // Act & Assert — this is what removing ResetPeriod buys: no new type for 30 days
-    expect(resetPeriodMinutes(30)).toBe(30 * MINUTES_PER_DAY);
+    expect(computeResetPeriodMinutes(30)).toBe(30 * MINUTES_PER_DAY);
   });
 
   it("still schedules a daily alarm when nothing is ever dropped", () => {
     // Act & Assert — the job returns early, but the alarm must remain valid
-    expect(resetPeriodMinutes(KEEP_EVERYTHING)).toBe(MINUTES_PER_DAY);
+    expect(computeResetPeriodMinutes(KEEP_EVERYTHING)).toBe(MINUTES_PER_DAY);
   });
 
   it("never returns a period a browser would refuse", () => {
@@ -29,7 +29,7 @@ describe("resetPeriodMinutes", () => {
     const windows = [KEEP_EVERYTHING, 0, 1, 7, 30, 365];
 
     // Act
-    const periods = windows.map(resetPeriodMinutes);
+    const periods = windows.map(computeResetPeriodMinutes);
 
     // Assert
     expect(periods.every((period) => period >= 1)).toBe(true);

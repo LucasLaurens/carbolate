@@ -53,7 +53,7 @@ const DEFAULT_PREFERENCES: Preferences = {
 > which made the pair `{ resetPeriod: "weekly", retentionDays: 1 }` representable and
 > meaningless, and left `-1` with no period at all. `retentionDays` is now the single
 > source of truth, and the reset alarm's period **derives** from it via
-> `resetPeriodMinutes()` in `src/config/retention.ts`. Any window — `1`, `7`, `30`,
+> `computeResetPeriodMinutes()` in `src/config/retention.ts`. Any window — `1`, `7`, `30`,
 > `-1` — needs no new type. A residual `resetPeriod` left in storage is ignored:
 > `getPreferences()` merges over `DEFAULT_PREFERENCES`, so no migration is needed.
 > See [the units and retention ADR](decisions/2026-08-05-unites-et-retention.md).
@@ -121,7 +121,7 @@ type CarbonEstimate = {
 > `totalCo2`: subtracting it would let a well-cached site report a negative
 > footprint.
 
-> The neutral elements `emptyMetrics()` / `emptyCarbonEstimate()` are **derived from
+> The neutral elements `createEmptyMetrics()` / `createEmptyCarbonEstimate()` are **derived from
 > the sums** rather than written out again — see `src/session/aggregator.ts` and its
 > test. The sums themselves carry no `?? 0` fallback any more: normalisation happens
 > once, at the storage boundary (below).
@@ -279,7 +279,7 @@ store.clearPastDays(retentionDays) → void
 ```
 
 `getDailyRecord()` never returns `null`: a day nothing was measured on is
-`emptyDailyRecord(date)`, so no caller carries a "no record" branch. Reading a day
+`createEmptyDailyRecord(date)`, so no caller carries a "no record" branch. Reading a day
 does **not** create it — a query never writes.
 
 ### Why one write method, not three

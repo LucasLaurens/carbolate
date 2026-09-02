@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   sumMetrics,
   sumCarbonEstimates,
-  emptyMetrics,
-  emptyCarbonEstimate,
-  emptyDailyRecord,
+  createEmptyMetrics,
+  createEmptyCarbonEstimate,
+  createEmptyDailyRecord,
 } from "./aggregator";
 import type { Metrics } from "./types";
 import type { CarbonEstimate } from "../carbon/types";
@@ -32,7 +32,7 @@ const POPULATED_ESTIMATE: CarbonEstimate = {
 describe("neutral elements cover every field of their type", () => {
   it("zeroes every key of Metrics", () => {
     // Act
-    const empty = emptyMetrics();
+    const empty = createEmptyMetrics();
 
     // Assert
     expect(Object.keys(empty).sort()).toEqual(Object.keys(POPULATED_METRICS).sort());
@@ -41,7 +41,7 @@ describe("neutral elements cover every field of their type", () => {
 
   it("zeroes every key of CarbonEstimate", () => {
     // Act
-    const empty = emptyCarbonEstimate();
+    const empty = createEmptyCarbonEstimate();
 
     // Assert
     expect(Object.keys(empty).sort()).toEqual(Object.keys(POPULATED_ESTIMATE).sort());
@@ -50,8 +50,8 @@ describe("neutral elements cover every field of their type", () => {
 
   it("returns a fresh object each call so callers cannot share mutable state", () => {
     // Act
-    const first = emptyCarbonEstimate();
-    const second = emptyCarbonEstimate();
+    const first = createEmptyCarbonEstimate();
+    const second = createEmptyCarbonEstimate();
     first.networkCo2 = 99;
 
     // Assert
@@ -72,8 +72,8 @@ describe("sums are identity-preserving", () => {
 
   it("adding the neutral element changes nothing", () => {
     // Act & Assert
-    expect(sumMetrics([POPULATED_METRICS, emptyMetrics()])).toEqual(POPULATED_METRICS);
-    expect(sumCarbonEstimates([POPULATED_ESTIMATE, emptyCarbonEstimate()])).toEqual(
+    expect(sumMetrics([POPULATED_METRICS, createEmptyMetrics()])).toEqual(POPULATED_METRICS);
+    expect(sumCarbonEstimates([POPULATED_ESTIMATE, createEmptyCarbonEstimate()])).toEqual(
       POPULATED_ESTIMATE,
     );
   });
@@ -118,16 +118,16 @@ describe("sums add across entries", () => {
 describe("the neutral daily record", () => {
   it("carries the day it was asked for", () => {
     // Act & Assert
-    expect(emptyDailyRecord("2026-02-23").date).toBe("2026-02-23");
+    expect(createEmptyDailyRecord("2026-02-23").date).toBe("2026-02-23");
   });
 
   it("holds no tab and zeroed totals, so no reader needs a null branch", () => {
     // Act
-    const record = emptyDailyRecord("2026-02-23");
+    const record = createEmptyDailyRecord("2026-02-23");
 
     // Assert
     expect(record.tabs).toEqual([]);
-    expect(record.totalMetrics).toEqual(emptyMetrics());
-    expect(record.totalCarbon).toEqual(emptyCarbonEstimate());
+    expect(record.totalMetrics).toEqual(createEmptyMetrics());
+    expect(record.totalCarbon).toEqual(createEmptyCarbonEstimate());
   });
 });

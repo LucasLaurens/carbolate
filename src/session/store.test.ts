@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createMetricsStore } from "./store";
 import type { MetricsStore } from "./types";
-import { emptyDailyRecord } from "./aggregator";
+import { createEmptyDailyRecord } from "./aggregator";
 import { KEEP_EVERYTHING } from "../config/retention";
 import { InMemoryDailyRecordsStorage } from "../../test/fakes/InMemoryDailyRecordsStorage";
 import { FixedClock } from "../../test/fakes/FixedClock";
@@ -27,7 +27,7 @@ let store: MetricsStore;
 
 beforeEach(() => {
   storage = new InMemoryDailyRecordsStorage();
-  SEEDED_DAYS.forEach((date) => storage.seedDay(date, emptyDailyRecord(date)));
+  SEEDED_DAYS.forEach((date) => storage.seedDay(date, createEmptyDailyRecord(date)));
   store = createMetricsStore(storage, new FixedClock(TODAY));
 });
 

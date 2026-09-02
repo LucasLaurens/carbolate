@@ -38,14 +38,14 @@ type StoredRecord = Omit<DailyRecord, "tabs" | "totalMetrics" | "totalCarbon"> &
   totalCarbon?: StoredCarbon;
 };
 
-const numberOr = (value: number | undefined, fallback: number): number =>
+const coalesceNumber = (value: number | undefined, fallback: number): number =>
   value === undefined || !Number.isFinite(value) ? fallback : value;
 
 function normalizeCarbon(carbon: StoredCarbon = {}): CarbonEstimate {
-  const networkCo2 = numberOr(carbon.networkCo2, 0);
-  const deviceCo2 = numberOr(
+  const networkCo2 = coalesceNumber(carbon.networkCo2, 0);
+  const deviceCo2 = coalesceNumber(
     carbon.deviceCo2,
-    numberOr(carbon.cpuCo2, 0) + numberOr(carbon.renderingCo2, 0),
+    coalesceNumber(carbon.cpuCo2, 0) + coalesceNumber(carbon.renderingCo2, 0),
   );
 
   return {
@@ -55,16 +55,19 @@ function normalizeCarbon(carbon: StoredCarbon = {}): CarbonEstimate {
     // number, but a record half-written by an interrupted update would otherwise
     // carry a total its own parts do not add up to.
     totalCo2: networkCo2 + deviceCo2,
-    avoidedCo2: numberOr(carbon.avoidedCo2, 0),
+    avoidedCo2: coalesceNumber(carbon.avoidedCo2, 0),
   };
 }
 
 function normalizeMetrics(metrics: StoredMetrics = {}): Metrics {
   return {
-    requestCount: numberOr(metrics.requestCount, 0),
-    totalResourceSize: numberOr(metrics.totalResourceSize, 0),
-    pageLoadDurationSec: numberOr(metrics.pageLoadDurationSec, numberOr(metrics.cpuTimeToLoad, 0)),
-    cachedPageWeight: numberOr(metrics.cachedPageWeight, 0),
+    requestCount: coalesceNumber(metrics.requestCount, 0),
+    totalResourceSize: coalesceNumber(metrics.totalResourceSize, 0),
+    pageLoadDurationSec: coalesceNumber(
+      metrics.pageLoadDurationSec,
+      coalesceNumber(metrics.cpuTimeToLoad, 0),
+    ),
+    cachedPageWeight: coalesceNumber(metrics.cachedPageWeight, 0),
   };
 }
 

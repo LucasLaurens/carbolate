@@ -38,7 +38,7 @@ export const SOBRIETY_COLOR: Record<SobrietyLevel, SobrietyColor> = {
 };
 
 /** O(1) time and space — three comparisons at most. */
-export function sobrietyLevel(totalCo2: number): SobrietyLevel {
+export function gradeSobrietyLevel(totalCo2: number): SobrietyLevel {
   const band = BANDS.find(({ upTo }) => totalCo2 < upTo);
   return band === undefined ? "excessive" : band.level;
 }

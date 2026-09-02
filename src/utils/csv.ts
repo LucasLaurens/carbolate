@@ -81,7 +81,7 @@ const CSV_MIME = "text/csv;charset=utf-8";
  * moments after the download starts — so the browser reclaims it with the
  * context, which costs one CSV of memory and never a truncated file.
  */
-function csvUrl(csv: string): string {
+function buildCsvUrl(csv: string): string {
   if (typeof URL.createObjectURL === "function") {
     return URL.createObjectURL(new Blob([csv], { type: CSV_MIME }));
   }
@@ -94,8 +94,8 @@ function csvUrl(csv: string): string {
  * resolution, so it is trading on the start, not on the finish.
  */
 export function exportToCSV(records: readonly DailyRecord[], clock: Clock): Promise<void> {
-  const url = csvUrl(toCSV(records));
-  const filename = `carbolate-export-${clock.dailyDate()}.csv`;
+  const url = buildCsvUrl(toCSV(records));
+  const filename = `carbolate-export-${clock.readDailyDate()}.csv`;
 
   return new Promise((resolve, reject) => {
     chrome.downloads.download({ url, filename }, (downloadId) => {

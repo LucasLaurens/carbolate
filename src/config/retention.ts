@@ -21,7 +21,7 @@ const MINUTES_PER_DAY = 24 * 60;
  *
  * O(1) time and space.
  */
-export function resetPeriodMinutes(retentionDays: number): number {
+export function computeResetPeriodMinutes(retentionDays: number): number {
   if (retentionDays <= 1) return MINUTES_PER_DAY;
   return retentionDays * MINUTES_PER_DAY;
 }

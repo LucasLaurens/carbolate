@@ -8,7 +8,11 @@
  */
 import { describe, it, expect } from "vitest";
 import { normalizeDailyRecord, normalizeDailyRecords } from "./legacy";
-import { emptyCarbonEstimate, emptyDailyRecord, emptyMetrics } from "./aggregator";
+import {
+  createEmptyCarbonEstimate,
+  createEmptyDailyRecord,
+  createEmptyMetrics,
+} from "./aggregator";
 import type { DailyRecord } from "./types";
 
 const TODAY = "2026-02-23";
@@ -125,8 +129,8 @@ describe("shapes that are not merely old but broken", () => {
 
     // Assert
     expect(record.tabs).toEqual([]);
-    expect(record.totalMetrics).toEqual(emptyMetrics());
-    expect(record.totalCarbon).toEqual(emptyCarbonEstimate());
+    expect(record.totalMetrics).toEqual(createEmptyMetrics());
+    expect(record.totalCarbon).toEqual(createEmptyCarbonEstimate());
   });
 
   it("substitutes zero for a field stored as something that is not a number", () => {
@@ -145,7 +149,7 @@ describe("shapes that are not merely old but broken", () => {
 
   it("leaves a record already in today's shape untouched", () => {
     // Arrange
-    const current: DailyRecord = emptyDailyRecord(TODAY);
+    const current: DailyRecord = createEmptyDailyRecord(TODAY);
 
     // Act
     const record = normalizeDailyRecord(current);

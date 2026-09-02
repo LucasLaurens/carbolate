@@ -141,7 +141,7 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │  3. Metrics { requestCount, totalResourceSize (MB),         │
 │     pageLoadDurationSec (s), cachedPageWeight (MB) }         │
 │  4. toCarbonInput(metrics) → CarbonCalculator.calculate()    │
-│     → [Network, Device] CarbonSource + avoidedCarbon()      │
+│     → Network/Device CarbonSource + computeAvoidedCarbon()  │
 │  5. recorder.recordTabMetrics(tab)                           │
 │                                                             │
 │  Injected: TabMetricsRecorder, FootprintCalculator, Clock    │
@@ -163,7 +163,7 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │    → DailyRecord { date, tabs[], totalMetrics, totalCarbon } │
 │                                                             │
 │  getDailyRecord — never null: an unmeasured day is the        │
-│    neutral record from emptyDailyRecord(date)                 │
+│    neutral record from createEmptyDailyRecord(date)         │
 │                                                             │
 │  In-memory cache, warmed on write, dropped by clearPastDays  │
 └──────────────────────┬──────────────────────────────────────┘

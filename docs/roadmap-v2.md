@@ -187,7 +187,7 @@ type DayBarData = {
   date: string; // "2026-04-28"
   co2: number; // totalCo2 du jour, 0 si pas de données
   isToday: boolean;
-  color: StatColor; // réutilise getCarbonLevel() — donc sobrietyLevel()
+  color: StatColor; // réutilise getCarbonLevel() — donc gradeSobrietyLevel()
 };
 
 export function buildWeeklyBarData(days: DailyRecord[], today: string): DayBarData[];

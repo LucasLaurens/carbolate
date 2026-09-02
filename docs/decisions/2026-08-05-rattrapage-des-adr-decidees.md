@@ -23,7 +23,7 @@ dehors.
 
 **1. `ResetPeriod` supprimé** ([ADR unités et rétention](2026-08-05-unites-et-retention.md)).
 `retentionDays` est la source de vérité unique ; la période de l'alarme se dérive via
-`resetPeriodMinutes()` dans `src/config/retention.ts`. La dérivation retenue conserve
+`computeResetPeriodMinutes()` dans `src/config/retention.ts`. La dérivation retenue conserve
 la cadence des deux valeurs livrées — une fenêtre d'un jour ou « tout conserver » est
 vérifiée toutes les 24 h, une fenêtre plus longue une fois par fenêtre. Vérifier plus
 souvent aurait été défendable, mais aucune ADR ne le demandait et ce serait un

@@ -1,4 +1,4 @@
-import { emptyDailyRecord, sumCarbonEstimates, sumMetrics } from "./aggregator";
+import { createEmptyDailyRecord, sumCarbonEstimates, sumMetrics } from "./aggregator";
 import { normalizeDailyRecords } from "./legacy";
 import type { DailyRecord, DailyRecordsStore, MetricTab, MetricsStore } from "./types";
 import type { DailyRecordsStorage } from "../storage/types";
@@ -66,10 +66,10 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
   }
 
   async function readToday(): Promise<DailyRecord> {
-    const date = clock.dailyDate();
+    const date = clock.readDailyDate();
     if (cached !== undefined && cached.date === date) return cached.record;
     const records = await loadRecords();
-    const record = records[date] ?? emptyDailyRecord(date);
+    const record = records[date] ?? createEmptyDailyRecord(date);
     cached = { date, record };
     return record;
   }
@@ -81,9 +81,9 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
    */
   function mutateToday(change: (record: DailyRecord) => DailyRecord): Promise<void> {
     return enqueue(async () => {
-      const date = clock.dailyDate();
+      const date = clock.readDailyDate();
       const records = await loadRecords();
-      const updated = change(records[date] ?? emptyDailyRecord(date));
+      const updated = change(records[date] ?? createEmptyDailyRecord(date));
       await storage.setSessions({ ...records, [date]: updated });
       // Warm rather than invalidate — saves a storage round-trip on the next read
       cached = { date, record: updated };

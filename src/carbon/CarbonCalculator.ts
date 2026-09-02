@@ -2,7 +2,7 @@ import type { FootprintCalculator, CarbonEstimate, CarbonInput, ContributionMetr
 import type { CarbonContributionSource } from "./contracts/CarbonContributionSource";
 import { NetworkCarbonSource } from "./sources/NetworkCarbonSource";
 import { DeviceCarbonSource } from "./sources/DeviceCarbonSource";
-import { avoidedCarbon } from "./avoidedCarbon";
+import { computeAvoidedCarbon } from "./avoidedCarbon";
 
 const DEFAULT_SOURCES: readonly CarbonContributionSource[] = [
   new NetworkCarbonSource(),
@@ -31,7 +31,7 @@ export default class CarbonCalculator implements FootprintCalculator<CarbonInput
       // Summed from the channels rather than tracked separately, so a new source
       // cannot ship without reaching the total.
       totalCo2: Object.values(contributions).reduce((sum, value) => sum + value, 0),
-      avoidedCo2: avoidedCarbon(inputs),
+      avoidedCo2: computeAvoidedCarbon(inputs),
     };
   }
 }

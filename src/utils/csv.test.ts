@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { toCSV } from "./csv";
-import { emptyDailyRecord } from "../session/aggregator";
+import { createEmptyDailyRecord } from "../session/aggregator";
 import type { DailyRecord, MetricTab } from "../session/types";
 
 const HEADER =
@@ -23,7 +23,7 @@ const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
 });
 
 const day = (date: string, tabs: MetricTab[]): DailyRecord => ({
-  ...emptyDailyRecord(date),
+  ...createEmptyDailyRecord(date),
   tabs,
 });
 

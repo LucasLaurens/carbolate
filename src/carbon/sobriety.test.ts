@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sobrietyLevel } from "./sobriety";
+import { gradeSobrietyLevel } from "./sobriety";
 import type { SobrietyLevel } from "./sobriety";
 import { DAILY_BROWSING_REFERENCE_G_CO2, SOBRIETY_MULTIPLIERS } from "./constants";
 
@@ -28,8 +28,8 @@ describe("every threshold is a multiple of the daily reference", () => {
       const edge = DAILY_BROWSING_REFERENCE_G_CO2 * multiplier;
 
       // Act & Assert
-      expect(sobrietyLevel(edge - JUST_UNDER)).toBe(below);
-      expect(sobrietyLevel(edge)).toBe(above);
+      expect(gradeSobrietyLevel(edge - JUST_UNDER)).toBe(below);
+      expect(gradeSobrietyLevel(edge)).toBe(above);
     },
   );
 
@@ -41,15 +41,15 @@ describe("every threshold is a multiple of the daily reference", () => {
   });
 });
 
-describe("sobrietyLevel", () => {
+describe("gradeSobrietyLevel", () => {
   it("grades a day with nothing measured as sober", () => {
     // Act & Assert
-    expect(sobrietyLevel(0)).toBe("sober");
+    expect(gradeSobrietyLevel(0)).toBe("sober");
   });
 
   it("grades an arbitrarily heavy day as excessive", () => {
     // Act & Assert
-    expect(sobrietyLevel(DAILY_BROWSING_REFERENCE_G_CO2 * 1_000)).toBe("excessive");
+    expect(gradeSobrietyLevel(DAILY_BROWSING_REFERENCE_G_CO2 * 1_000)).toBe("excessive");
   });
 
   it("returns a level for every total, with no unmatched branch", () => {
@@ -57,7 +57,7 @@ describe("sobrietyLevel", () => {
     const totals = [0, 1, 59.9, 60, 179.9, 180, 479.9, 480, 10_000];
 
     // Act
-    const levels = totals.map(sobrietyLevel);
+    const levels = totals.map(gradeSobrietyLevel);
 
     // Assert
     expect(levels.every((level) => level !== undefined)).toBe(true);

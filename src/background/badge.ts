@@ -1,5 +1,5 @@
 import type { SobrietyColor, SobrietyLevel } from "../carbon/sobriety";
-import { SOBRIETY_COLOR, sobrietyLevel } from "../carbon/sobriety";
+import { SOBRIETY_COLOR, gradeSobrietyLevel } from "../carbon/sobriety";
 import type { Translations } from "../i18n/types";
 import type { DailyRecordReader } from "../session/types";
 
@@ -46,7 +46,7 @@ const MAX_DECIMAL_KILOGRAMS = 9.95;
  *
  * O(1) time and space.
  */
-export function badgeText(totalCo2: number): string {
+export function formatBadgeText(totalCo2: number): string {
   if (totalCo2 === 0) return EMPTY_BADGE_TEXT;
   if (totalCo2 < 1) return "<1";
   if (totalCo2 < GRAMS_PER_KILOGRAM) return String(Math.round(totalCo2));
@@ -57,7 +57,7 @@ export function badgeText(totalCo2: number): string {
     : `${Math.round(kilograms)}k`;
 }
 
-export function badgeColor(level: SobrietyLevel): string {
+export function resolveBadgeColor(level: SobrietyLevel): string {
   return SOBRIETY_HEX[level];
 }
 
@@ -72,7 +72,7 @@ export type BadgeSurface = {
 };
 
 /** Two decimals under a gram, whole grams above — the badge has no room for either. */
-function tooltipGrams(totalCo2: number): string {
+function formatTooltipGrams(totalCo2: number): string {
   return totalCo2 < 1 ? totalCo2.toFixed(2) : String(Math.round(totalCo2));
 }
 
@@ -97,7 +97,7 @@ export async function refreshBadge(
   const { totalCarbon } = await reader.getDailyRecord();
   const total = totalCarbon.totalCo2;
 
-  surface.setText(badgeText(total));
+  surface.setText(formatBadgeText(total));
 
   if (total === 0) {
     surface.setBackgroundColor(EMPTY_BADGE_COLOR);
@@ -105,9 +105,9 @@ export async function refreshBadge(
     return;
   }
 
-  const level = sobrietyLevel(total);
-  surface.setBackgroundColor(badgeColor(level));
+  const level = gradeSobrietyLevel(total);
+  surface.setBackgroundColor(resolveBadgeColor(level));
   surface.setTitle(
-    translations.badge.tooltip(tooltipGrams(total), translations.sobrietyLevels[level]),
+    translations.badge.tooltip(formatTooltipGrams(total), translations.sobrietyLevels[level]),
   );
 }

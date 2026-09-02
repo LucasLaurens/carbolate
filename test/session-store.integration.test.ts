@@ -8,7 +8,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createMetricsStore } from "../src/session/store";
 import type { MetricTab, MetricsStore } from "../src/session/types";
-import { emptyCarbonEstimate, emptyDailyRecord, emptyMetrics } from "../src/session/aggregator";
+import {
+  createEmptyCarbonEstimate,
+  createEmptyDailyRecord,
+  createEmptyMetrics,
+} from "../src/session/aggregator";
 import { InMemoryDailyRecordsStorage } from "./fakes/InMemoryDailyRecordsStorage";
 import { FixedClock } from "./fakes/FixedClock";
 
@@ -60,7 +64,7 @@ describe("reading a day that has no data", () => {
     const record = await store.getDailyRecord();
 
     // Assert
-    expect(record).toEqual(emptyDailyRecord(TODAY));
+    expect(record).toEqual(createEmptyDailyRecord(TODAY));
   });
 
   it("reports zeroed totals", async () => {
@@ -68,8 +72,8 @@ describe("reading a day that has no data", () => {
     const record = await store.getDailyRecord();
 
     // Assert
-    expect(record.totalMetrics).toEqual(emptyMetrics());
-    expect(record.totalCarbon).toEqual(emptyCarbonEstimate());
+    expect(record.totalMetrics).toEqual(createEmptyMetrics());
+    expect(record.totalCarbon).toEqual(createEmptyCarbonEstimate());
   });
 
   it("does not create the day just by being read", async () => {
@@ -220,7 +224,7 @@ describe("concurrent writes", () => {
 describe("retention", () => {
   it("drops a day older than the window and keeps today", async () => {
     // Arrange
-    storage.seedDay("2026-02-01", emptyDailyRecord("2026-02-01"));
+    storage.seedDay("2026-02-01", createEmptyDailyRecord("2026-02-01"));
     await store.recordTabMetrics(TAB_A);
 
     // Act
@@ -232,7 +236,7 @@ describe("retention", () => {
 
   it("keeps a day still inside the window", async () => {
     // Arrange
-    storage.seedDay("2026-02-20", emptyDailyRecord("2026-02-20"));
+    storage.seedDay("2026-02-20", createEmptyDailyRecord("2026-02-20"));
     await store.recordTabMetrics(TAB_A);
 
     // Act
@@ -244,7 +248,7 @@ describe("retention", () => {
 
   it("keeps every day when retention is unlimited", async () => {
     // Arrange
-    storage.seedDay("2020-01-01", emptyDailyRecord("2020-01-01"));
+    storage.seedDay("2020-01-01", createEmptyDailyRecord("2020-01-01"));
     await store.recordTabMetrics(TAB_A);
 
     // Act
@@ -267,7 +271,7 @@ describe("retention", () => {
 
   it("still serves today after retention has run", async () => {
     // Arrange
-    storage.seedDay("2026-02-01", emptyDailyRecord("2026-02-01"));
+    storage.seedDay("2026-02-01", createEmptyDailyRecord("2026-02-01"));
     await store.recordTabMetrics(TAB_A);
     await store.getDailyRecord();
 
@@ -283,8 +287,8 @@ describe("retention", () => {
 describe("reading across days", () => {
   it("returns every stored day in chronological order", async () => {
     // Arrange
-    storage.seedDay("2026-02-24", emptyDailyRecord("2026-02-24"));
-    storage.seedDay("2026-02-22", emptyDailyRecord("2026-02-22"));
+    storage.seedDay("2026-02-24", createEmptyDailyRecord("2026-02-24"));
+    storage.seedDay("2026-02-22", createEmptyDailyRecord("2026-02-22"));
     await store.recordTabMetrics(TAB_A);
 
     // Act

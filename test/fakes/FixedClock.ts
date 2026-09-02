@@ -14,7 +14,7 @@ export class FixedClock implements Clock {
     this.ms = ms ?? new Date(`${date}T12:00:00`).getTime();
   }
 
-  dailyDate(): string {
+  readDailyDate(): string {
     return toDailyDate(this.now());
   }
 

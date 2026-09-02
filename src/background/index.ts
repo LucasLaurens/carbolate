@@ -1,5 +1,5 @@
 import CarbonCalculator from "../carbon/CarbonCalculator";
-import { resetPeriodMinutes } from "../config/retention";
+import { computeResetPeriodMinutes } from "../config/retention";
 import type { Preferences } from "../config/types";
 import { MetricsIntake } from "../intake/MetricsIntake";
 import { getTranslations } from "../i18n";
@@ -46,7 +46,7 @@ function scheduleReset(preferences: Preferences): void {
 
   chrome.alarms.create(RESET_ALARM, {
     delayInMinutes: Math.max(delayInMinutes, MIN_ALARM_DELAY_MINUTES),
-    periodInMinutes: resetPeriodMinutes(preferences.retentionDays),
+    periodInMinutes: computeResetPeriodMinutes(preferences.retentionDays),
   });
 }
 
