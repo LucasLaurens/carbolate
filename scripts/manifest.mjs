@@ -1,9 +1,20 @@
 import { readFileSync } from "node:fs";
 
+/**
+ * The union of what both stores ask for: Chromium wants 16/32/48/128, AMO wants
+ * 32 and 64. Each size is a committed file rather than one master scaled by the
+ * browser — and rather than a build script, since the only resizer on this
+ * machine (`sips`) is macOS-only and would break the build everywhere else.
+ *
+ * The 1024px master lives in `assets/`, outside `public/`: Vite copies `public/`
+ * verbatim, so a master left there shipped 1.3 MB inside every zip.
+ */
 const ICONS = {
-  16: "assets/logo.png",
-  48: "assets/logo.png",
-  128: "assets/logo.png",
+  16: "assets/icons/icon-16.png",
+  32: "assets/icons/icon-32.png",
+  48: "assets/icons/icon-48.png",
+  64: "assets/icons/icon-64.png",
+  128: "assets/icons/icon-128.png",
 };
 
 const GECKO_ID = "carbolate@lucaslaurens.dev";
