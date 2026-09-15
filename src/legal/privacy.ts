@@ -5,8 +5,10 @@ import type { Language } from "../i18n/types";
  *
  * Chrome requires the disclosure to live **in the extension's UI** — a policy
  * reachable only through the store listing does not satisfy it. The published
- * page (`docs/privacy/index.html`) is the same policy in long form, for the
- * store's dashboard field, which wants a public URL.
+ * page (`docs/privacy/index.html`) is the same policy in long form, published at
+ * https://lucaslaurens.github.io/carbolate/privacy/ — the public URL both store
+ * dashboards ask for. That URL is quoted in two listings: it moves only at the
+ * cost of editing both.
  *
  * This module is the authoritative home of the wording: the panel renders it,
  * and `privacy.test.ts` fails when the published page loses a section this
