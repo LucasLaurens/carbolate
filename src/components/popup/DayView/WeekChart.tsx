@@ -2,6 +2,7 @@ import type { DailyRecord } from "../../../session/types";
 import type { Language, Translations } from "../../../i18n/types";
 import type { SobrietyColor } from "../../../carbon/sobriety";
 import { buildWeekBars } from "./weekBars";
+import { computeWeeklyChange } from "./weeklyChange";
 import { formatCo2 } from "./utils";
 
 /**
@@ -35,6 +36,26 @@ type Props = { days: readonly DailyRecord[]; today: Date; language: Language; t:
 function labelClass(bar: { isToday: boolean; measured: boolean }): string {
   if (bar.isToday) return "font-bold text-stone-800";
   return bar.measured ? "text-stone-400" : "text-stone-300";
+}
+
+/**
+ * Under the bars, in the same card: one more box would cost a border and 12px of
+ * a 320px panel for a single line. Neutral by decision — the arrow carries the
+ * direction, and the day's sobriety colour stays the panel's only verdict.
+ */
+function WeeklyChangeRow({ days, today, t }: Omit<Props, "language">) {
+  const change = computeWeeklyChange(days, today);
+  if (!change.comparable) return null;
+
+  const percent = Math.round(change.ratio * 100);
+  const arrow = percent > 0 ? "▲" : percent < 0 ? "▼" : "=";
+
+  return (
+    <div className="flex items-baseline justify-center gap-1.5 mt-3 pt-3 border-t border-stone-100">
+      <span className="text-xs font-semibold text-stone-500">{arrow}</span>
+      <span className="text-[11px] text-stone-500">{t.history.versusPreviousWeek(percent)}</span>
+    </div>
+  );
 }
 
 export function WeekChart({ days, today, language, t }: Props) {
@@ -73,6 +94,7 @@ export function WeekChart({ days, today, language, t }: Props) {
           </div>
         ))}
       </div>
+      <WeeklyChangeRow days={days} today={today} t={t} />
     </div>
   );
 }

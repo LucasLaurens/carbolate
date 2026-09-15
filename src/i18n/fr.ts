@@ -17,6 +17,8 @@ export const fr: Translations = {
     title: "7 derniers jours",
     barTooltip: (date: string, grams: string) => `${date} — ${grams} g CO₂`,
     noMeasure: (date: string) => `${date} — aucune mesure`,
+    versusPreviousWeek: (percent: number) =>
+      `${percent > 0 ? "+" : percent < 0 ? "−" : ""}${Math.abs(percent)} % vs. semaine précédente`,
   },
   actions: { export: "Export CSV" },
   badge: {
