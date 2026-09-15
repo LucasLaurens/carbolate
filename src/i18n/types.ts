@@ -51,6 +51,13 @@ export type Translations = {
     title: string;
     barTooltip: (date: string, grams: string) => string;
     noMeasure: (date: string) => string;
+    /**
+     * A change, never a grade — a seven-day total cannot wear a sobriety badge,
+     * whose thresholds derive from a daily reference. The sign is carried by the
+     * text and the arrow, never by a colour: the day's card already spends the
+     * panel's one judgement colour.
+     */
+    versusPreviousWeek: (percent: number) => string;
   };
   actions: { export: string };
   /**

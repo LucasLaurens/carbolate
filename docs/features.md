@@ -46,6 +46,17 @@ grade; there is no vertical axis, and no grade on the week itself.
 - The whole section is **absent** while storage holds a single day, so there is no empty state
   to read.
 
+Under the bars, one line gives the change against the previous week — `▼ −18% vs. previous week`
+— as a **sliding** seven days against the seven before them, matching the bars above it. It is a
+change, never a grade: a seven-day total cannot wear a sobriety badge, whose thresholds come from
+a daily reference. Neutral grey on both sides, arrow only: the day's card already spends the
+panel's one judgement colour.
+
+It appears only when storage **covers** both windows — fourteen days back, which in practice
+means the "Everything" retention. A missing day inside that span is a day nobody browsed, a real
+zero, and does not hide the line; a previous week measured at exactly zero does, since a ratio
+needs a denominator.
+
 The CO₂ card is colour-coded by sobriety level and carries a permanent line saying what the
 figure is — "Running total — resets at midnight" — because it now grows while the panel is open.
 Without it, a user who reopens the panel and finds a higher number reads a bug. It also shows:
