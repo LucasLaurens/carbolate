@@ -31,6 +31,16 @@ export type Translations = {
     avoided: string;
   };
   chart: { title: string };
+  /**
+   * The seven-day section. `barTooltip` and `noMeasure` are the only channel a
+   * screen reader has for a bar — the value above it is 9px of decoration to
+   * everything else.
+   */
+  history: {
+    title: string;
+    barTooltip: (date: string, grams: string) => string;
+    noMeasure: (date: string) => string;
+  };
   actions: { refresh: string; export: string };
   /**
    * The badge holds four characters, so the unit and the grade in words live
