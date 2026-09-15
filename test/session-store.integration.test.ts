@@ -395,8 +395,23 @@ describe("retention", () => {
     // Act
     await store.clearPastDays(1);
 
-    // Assert — the cache was dropped, so this re-reads storage
+    // Assert — nothing is held in memory, so this reads what storage now holds
     const record = await store.getDailyRecord();
+    expect(record.visits).toHaveLength(1);
+  });
+});
+
+describe("two contexts sharing the storage", () => {
+  it("serves what another writer stored, without being told to forget anything", async () => {
+    // Arrange — the panel's own store, next to the background's
+    const panel = createMetricsStore(storage, clock);
+    await panel.getDailyRecord();
+
+    // Act — the background records a visit through its own instance
+    await store.recordPageVisit(VISIT_A);
+
+    // Assert — a living record writes every few seconds; a cached day would go stale
+    const record = await panel.getDailyRecord();
     expect(record.visits).toHaveLength(1);
   });
 });

@@ -10,6 +10,7 @@ import type { PreferencesStorage } from "../../storage/types";
 import type { Clock } from "../../utils/clock";
 import { exportToCSV } from "../../utils/csv";
 import { RateLimiter } from "../../security/RateLimiter";
+import { StorageKey } from "../../storage/StorageKey";
 import DayView from "./DayView";
 import PrivacyView from "./PrivacyView";
 import SettingsView from "./SettingsView";
@@ -54,8 +55,28 @@ export default class Popup extends Component<Props, State> {
 
   componentDidMount(): void {
     this.loadPreferences();
-    this.handleRefresh();
+    this.readRecords();
+    chrome.storage.onChanged.addListener(this.onStorageChanged);
   }
+
+  componentWillUnmount(): void {
+    chrome.storage.onChanged.removeListener(this.onStorageChanged);
+  }
+
+  /**
+   * The panel follows storage instead of being refreshed by hand: a living visit
+   * writes every few seconds while the user keeps browsing, and a snapshot taken
+   * at open would be stale before it was read. Preferences are ignored here —
+   * the panel is the only writer of those, and it already holds them.
+   */
+  private readonly onStorageChanged = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    areaName: string,
+  ): void => {
+    if (areaName !== "local") return;
+    if (changes[StorageKey.SESSIONS] === undefined) return;
+    void this.readRecords();
+  };
 
   loadPreferences = async () => {
     try {
@@ -103,8 +124,7 @@ export default class Popup extends Component<Props, State> {
     }
   };
 
-  handleRefresh = async () => {
-    if (!this.rateLimiter.isAllowed("refresh")) return;
+  readRecords = async () => {
     if (this.state.isLoading) return;
     this.setState({ isLoading: true });
     try {
@@ -171,7 +191,6 @@ export default class Popup extends Component<Props, State> {
               days={days}
               today={this.props.clock.now()}
               language={preferences.language}
-              onRefresh={this.handleRefresh}
               onExport={this.handleExport}
               isLoading={isLoading}
               t={t}

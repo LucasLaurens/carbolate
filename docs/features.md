@@ -2,7 +2,7 @@
 
 ## What is Carbolate?
 
-Carbolate is a browser extension — Chrome, Edge, Opera, Brave, Vivaldi and Firefox — that estimates the carbon footprint of your browsing in real time. It analyses two sources: **network traffic** (the bytes that actually crossed the network) and **page load duration** (a proxy for the energy your machine spent), then converts them into grams of CO₂ equivalent.
+Carbolate is a browser extension — Chrome, Edge, Opera, Brave, Vivaldi and Firefox — that estimates the carbon footprint of your browsing in real time. It analyses three sources: **network traffic** (the bytes that actually crossed the network), **page load duration** (a proxy for the energy your machine spent) and **time the page was visible** (the screen's share), then converts them into grams of CO₂ equivalent.
 
 The perimeter is **usage only**: manufacturing of servers, network gear and your device is excluded, so the figure is a floor rather than a total. See [the carbon model](carbon-model.md).
 
@@ -12,11 +12,12 @@ The perimeter is **usage only**: manufacturing of servers, network gear and your
 
 ### Automatic collection
 
-- On every new page load, metrics are collected **automatically** by the content script and sent to the background
-- If the tab has already been tracked during the day, its measurements and collection timestamp are replaced; the domain recorded stays that of the tab's first load
-- Concurrent reports for the same tab — a reload storm, for instance — produce a single entry, not one per report
+- A page is measured **for as long as it lives**, not once at its load event: a `PerformanceObserver` folds each resource as it arrives, so requests fired after the load — lazy images, XHR, a video playing — are counted too
+- Time is counted only while the page is **visible**. A tab loaded in the background and never looked at is charged its network and its CPU, and no screen at all
+- Totals are reported every **5 seconds**, and at each edge: load, tab hidden, tab closed. Each report carries the visit's cumulative totals, so a lost message is caught by the next and a repeated one changes nothing
+- A report is filed under the day its visit **began**. A page open across midnight keeps adding to yesterday; if retention has already dropped that day, the report is discarded rather than resurrecting it
 - Non-collectable URLs (`chrome://`, `about:blank`, `file://`) are silently ignored, and so is a page that reported no resource at all
-- The panel re-reads storage when it opens
+- The panel **follows storage as it changes** — no refresh button, and no stale figure while it stays open
 
 ### Current day dashboard
 
@@ -45,7 +46,9 @@ grade; there is no vertical axis, and no grade on the week itself.
 - The whole section is **absent** while storage holds a single day, so there is no empty state
   to read.
 
-The CO₂ card is colour-coded by sobriety level and shows:
+The CO₂ card is colour-coded by sobriety level and carries a permanent line saying what the
+figure is — "Running total — resets at midnight" — because it now grows while the panel is open.
+Without it, a user who reopens the panel and finds a higher number reads a bug. It also shows:
 
 - an eco-equivalence (emails, streaming, car km, flight km)
 - a coarse position against the daily reference

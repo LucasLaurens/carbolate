@@ -328,7 +328,7 @@ a `FixedClock` instead of waiting sixty seconds.
 ### Background / Popup / Content separation
 
 - The **Background script** (service worker on Chromium, event page on Gecko) wakes on demand → guards the incoming message, resolves the tab, hands it to `MetricsIntake`, and owns the alarms
-- The **Panel** holds a `DailyRecordReader`, so it reads measurements and writes only preferences. It remounts on every open as a toolbar popup, but **stays mounted** as a Chromium side panel or a Gecko sidebar — which is why it renders a Refresh button rather than relying on mount alone
+- The **Panel** holds a `DailyRecordReader`, so it reads measurements and writes only preferences. It remounts on every open as a toolbar popup, but **stays mounted** as a Chromium side panel or a Gecko sidebar — which is why it follows `chrome.storage.onChanged` instead of relying on mount alone. There is no Refresh button: a living record writes every few seconds, and a panel offering to refresh would teach the user it is not live
 - The **Content script** is injected on every page → builds a `VisitAccumulator`, folds resource entries as the `PerformanceObserver` delivers them, tracks visible time, and flushes cumulative totals every 5 s and at every edge (`load`, `hidden`, `pagehide`)
 
 ---
