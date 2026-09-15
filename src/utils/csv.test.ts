@@ -4,7 +4,8 @@ import { createEmptyDailyRecord } from "../session/aggregator";
 import type { DailyRecord, PageVisit } from "../session/types";
 
 const HEADER =
-  "date,domain,url,requestCount,totalResourceSize_MB,pageLoadDuration_s,cachedPageWeight_MB," +
+  "date,domain,url,requestCount,totalResourceSize_MB,pageLoadDuration_s,visibleDuration_s," +
+  "cachedPageWeight_MB," +
   "networkCo2_g,deviceCo2_g,screenCo2_g,totalCo2_g,avoidedCo2_g,visitTimestamp";
 
 const visit = (overrides: Partial<PageVisit> = {}): PageVisit => ({
@@ -15,6 +16,7 @@ const visit = (overrides: Partial<PageVisit> = {}): PageVisit => ({
     requestCount: 12,
     totalResourceSize: 1.5,
     pageLoadDurationSec: 2.4,
+    visibleDurationSec: 12,
     cachedPageWeight: 0.8,
   },
   meta: { date: 1_772_000_000_000 },

@@ -1,6 +1,8 @@
 export type CarbonInput = {
   transferredBytes: number;
   pageLoadDurationMs: number;
+  /** Milliseconds the page was visible — what the screen is charged for. */
+  visibleDurationMs: number;
   /** Uncompressed size of what the cache served — the input of avoided CO₂. */
   cachedBytes: number;
 };

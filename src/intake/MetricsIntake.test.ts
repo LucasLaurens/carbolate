@@ -5,24 +5,38 @@ import CarbonCalculator from "../carbon/CarbonCalculator";
 import { toCarbonInput } from "../carbon/toCarbonInput";
 import { createMetricsStore } from "../session/store";
 import type { MetricsStore } from "../session/types";
-import { PerformanceEntryType } from "../performance/enums/PerformanceEntryType";
-import type { NavigationTiming, ResourceTiming } from "../performance/PageMetrics";
+import type { PageMeasurement, ResourceTiming } from "../performance/PageMetrics";
+import { addResourceTiming, createEmptyMeasurement } from "../performance/PageMetrics";
 import { InMemoryDailyRecordsStorage } from "../../test/fakes/InMemoryDailyRecordsStorage";
 import { FixedClock } from "../../test/fakes/FixedClock";
+
+const measure = (
+  resources: ResourceTiming[],
+  loadDurationMs: number,
+  visibleDurationMs: number,
+): PageMeasurement => ({
+  ...resources.reduce(addResourceTiming, createEmptyMeasurement()),
+  loadDurationMs,
+  visibleDurationMs,
+});
 
 const observation = (
   overrides: Partial<PageObservation> & {
     resource?: ResourceTiming[];
-    navigation?: NavigationTiming[];
+    loadDurationMs?: number;
+    visibleDurationMs?: number;
   } = {},
 ): PageObservation => ({
   tabId: overrides.tabId ?? 7,
   url: overrides.url ?? "https://blog.example.com/article",
-  timeOrigin: overrides.timeOrigin ?? 1_771_800_000_000,
-  payload: {
-    [PerformanceEntryType.RESOURCE]: overrides.resource ?? [{ transferSize: 1_500_000 }],
-    [PerformanceEntryType.NAVIGATION]: overrides.navigation ?? [{ duration: 2_400 }],
-  },
+  timeOrigin: overrides.timeOrigin ?? new Date("2026-02-23T11:00:00").getTime(),
+  measurement:
+    overrides.measurement ??
+    measure(
+      overrides.resource ?? [{ transferSize: 1_500_000 }],
+      overrides.loadDurationMs ?? 2_400,
+      overrides.visibleDurationMs ?? 12_000,
+    ),
 });
 
 let storage: InMemoryDailyRecordsStorage;
@@ -52,7 +66,7 @@ describe("MetricsIntake — what reaches the daily record", () => {
   it("stores transferred data in megabytes and load duration in seconds", async () => {
     // Act
     await intake.record(
-      observation({ resource: [{ transferSize: 1_500_000 }], navigation: [{ duration: 2_400 }] }),
+      observation({ resource: [{ transferSize: 1_500_000 }], loadDurationMs: 2_400 }),
     );
 
     // Assert — base 10: 1 500 000 bytes = 1.5 MB, 2 400 ms = 2.4 s

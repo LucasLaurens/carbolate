@@ -1,5 +1,3 @@
-import { PerformanceEntryType } from "./enums/PerformanceEntryType";
-
 /**
  * `PerformanceResourceTiming` and `PerformanceNavigationTiming` are host objects
  * that Chrome's structured clone algorithm refuses to serialize, so a content
@@ -18,53 +16,72 @@ export type ResourceTiming = {
 
 export type NavigationTiming = { duration: number };
 
-export type PagePerformancePayload = {
-  [PerformanceEntryType.RESOURCE]: readonly ResourceTiming[];
-  [PerformanceEntryType.NAVIGATION]: readonly NavigationTiming[];
-};
-
-/** Raw units, straight from the Performance API: bytes and milliseconds. */
+/**
+ * What one visit has measured **so far**. Raw units, straight from the
+ * Performance API: bytes and milliseconds.
+ *
+ * It is cumulative, and it is what crosses the wire: a living visit reports its
+ * totals again rather than what changed, so a replayed message is a no-op and a
+ * lost one is caught by the next.
+ * See docs/decisions/2026-09-15-enregistrement-vivant.md
+ */
 export type PageMeasurement = {
   requests: number;
   transferredBytes: number;
   loadDurationMs: number;
   /** Uncompressed size of the resources the cache served — see avoided CO₂. */
   cachedBytes: number;
+  /**
+   * How long the page was **visible**, not how long it existed. A tab loaded in
+   * the background and never looked at reports zero here, and is charged no
+   * screen at all: the panel showed nothing of it.
+   */
+  visibleDurationMs: number;
 };
 
-export type PageMeasurementResult = ({ valid: true } & PageMeasurement) | { valid: false };
+export const createEmptyMeasurement = (): PageMeasurement => ({
+  requests: 0,
+  transferredBytes: 0,
+  loadDurationMs: 0,
+  cachedBytes: 0,
+  visibleDurationMs: 0,
+});
 
 /**
- * A page with no resource entry was not observed, it was merely visited too
- * early — counting it as zero would dilute the daily totals with empty rows.
+ * Folds one resource into the running totals.
  *
- * O(n) time, O(1) space — n = resource entries on the page.
+ * Incremental by necessity, not by taste: the resource timing buffer holds 250
+ * entries per document and drops the rest in silence, so a measurement that
+ * re-reads the buffer under-counts a heavy page. Observed one at a time, each
+ * entry is counted the moment it exists.
+ *
+ * O(1) time and space.
  */
-export function measurePage(payload: PagePerformancePayload): PageMeasurementResult {
-  const resources = payload[PerformanceEntryType.RESOURCE];
-  if (resources.length === 0) return { valid: false };
-
-  let transferredBytes = 0;
-  let cachedBytes = 0;
-
-  for (const resource of resources) {
-    transferredBytes += resource.transferSize;
-    // A zero transfer with a non-empty decoded body is the cache's signature: the
-    // bytes reached the page, they just never crossed the network.
-    if (resource.transferSize === 0 && Number.isFinite(resource.decodedBodySize)) {
-      cachedBytes += resource.decodedBodySize ?? 0;
-    }
-  }
-
-  const [navigation] = payload[PerformanceEntryType.NAVIGATION];
+export function addResourceTiming(
+  measurement: PageMeasurement,
+  timing: ResourceTiming,
+): PageMeasurement {
+  // A zero transfer with a non-empty decoded body is the cache's signature: the
+  // bytes reached the page, they just never crossed the network.
+  const fromCache = timing.transferSize === 0 && Number.isFinite(timing.decodedBodySize);
 
   return {
-    valid: true,
-    requests: resources.length,
-    transferredBytes,
-    // Prerendered and some SPA loads report no navigation entry at all: the
-    // duration is then unknown, and zero is the only floor that invents nothing.
-    loadDurationMs: navigation === undefined ? 0 : navigation.duration,
-    cachedBytes,
+    ...measurement,
+    requests: measurement.requests + 1,
+    transferredBytes: measurement.transferredBytes + timing.transferSize,
+    cachedBytes: measurement.cachedBytes + (fromCache ? (timing.decodedBodySize ?? 0) : 0),
   };
+}
+
+/**
+ * Prerendered and some SPA loads report no navigation entry at all: the duration
+ * is then unknown, and zero is the only floor that invents nothing.
+ *
+ * O(1) time and space.
+ */
+export function withLoadDuration(
+  measurement: PageMeasurement,
+  navigation: NavigationTiming | undefined,
+): PageMeasurement {
+  return { ...measurement, loadDurationMs: navigation === undefined ? 0 : navigation.duration };
 }

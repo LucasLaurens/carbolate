@@ -1,14 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { isPageMetricsMessage, MessageType } from "./messages";
-import { PerformanceEntryType } from "../performance/enums/PerformanceEntryType";
+import { createEmptyMeasurement } from "../performance/PageMetrics";
 
 const valid = {
   type: MessageType.PAGE_METRICS,
   timeOrigin: 1_771_800_000_000,
-  payload: {
-    [PerformanceEntryType.RESOURCE]: [{ transferSize: 10 }],
-    [PerformanceEntryType.NAVIGATION]: [{ duration: 100 }],
-  },
+  measurement: { ...createEmptyMeasurement(), requests: 1, transferredBytes: 10 },
 };
 
 describe("isPageMetricsMessage", () => {
@@ -17,16 +14,13 @@ describe("isPageMetricsMessage", () => {
     expect(isPageMetricsMessage(valid)).toBe(true);
   });
 
-  it("accepts empty entry arrays — emptiness is the measurement's call, not the guard's", () => {
+  it("accepts a zeroed measurement — emptiness is the intake's call, not the guard's", () => {
     // Act & Assert
     expect(
       isPageMetricsMessage({
         type: MessageType.PAGE_METRICS,
         timeOrigin: 1_771_800_000_000,
-        payload: {
-          [PerformanceEntryType.RESOURCE]: [],
-          [PerformanceEntryType.NAVIGATION]: [],
-        },
+        measurement: createEmptyMeasurement(),
       }),
     ).toBe(true);
   });
@@ -50,32 +44,28 @@ describe("isPageMetricsMessage", () => {
     expect(isPageMetricsMessage({ ...valid, type: "something_else" })).toBe(false);
   });
 
-  it("rejects a message with no payload", () => {
+  it("rejects a message with no measurement", () => {
     // Act & Assert
-    expect(isPageMetricsMessage({ type: MessageType.PAGE_METRICS })).toBe(false);
+    expect(isPageMetricsMessage({ type: MessageType.PAGE_METRICS, timeOrigin: 1 })).toBe(false);
   });
 
-  it("rejects a payload whose resource entries are not an array", () => {
-    // Arrange — the shape that would throw one frame later, inside the measurement
+  it("rejects a measurement whose field is not a number", () => {
+    // Arrange — the shape that would surface as NaN inside a stored total
     const malformed = {
-      type: MessageType.PAGE_METRICS,
-      timeOrigin: 1_771_800_000_000,
-      payload: { [PerformanceEntryType.RESOURCE]: null, [PerformanceEntryType.NAVIGATION]: [] },
+      ...valid,
+      measurement: { ...createEmptyMeasurement(), transferredBytes: "10" },
     };
 
     // Act & Assert
     expect(isPageMetricsMessage(malformed)).toBe(false);
   });
 
-  it("rejects a payload missing its navigation entries", () => {
+  it("rejects a measurement missing the visible time — a field added after the fact", () => {
+    // Arrange — a content script from before the living record, still running
+    const { visibleDurationMs: _dropped, ...withoutVisible } = createEmptyMeasurement();
+
     // Act & Assert
-    expect(
-      isPageMetricsMessage({
-        type: MessageType.PAGE_METRICS,
-        timeOrigin: 1_771_800_000_000,
-        payload: { [PerformanceEntryType.RESOURCE]: [] },
-      }),
-    ).toBe(false);
+    expect(isPageMetricsMessage({ ...valid, measurement: withoutVisible })).toBe(false);
   });
 
   it.each([null, undefined, 42, "page_metrics", []])("rejects %o", (message) => {

@@ -1,7 +1,7 @@
 /**
  * End-to-end: what a content script observes → what lands in browser storage.
  *
- * The chain is the real one — MetricsCollector, MetricsIntake, the metrics store
+ * The chain is the real one — VisitAccumulator, MetricsIntake, the metrics store
  * and the real ChromeStorage adapter. Only the browser is replaced: the
  * Performance API by scripted entries, `chrome.storage.local` by the in-memory
  * backing in test/setup.ts.
@@ -11,13 +11,9 @@
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import CarbonCalculator from "../src/carbon/CarbonCalculator";
-import { MetricsCollector } from "../src/content/MetricsCollector";
-import type { ObservationSink, PerformanceSource } from "../src/content/MetricsCollector";
-import type {
-  NavigationTiming,
-  PagePerformancePayload,
-  ResourceTiming,
-} from "../src/performance/PageMetrics";
+import { VisitAccumulator } from "../src/content/VisitAccumulator";
+import type { ObservationSink } from "../src/content/RuntimeObservationSink";
+import type { PageMeasurement, ResourceTiming } from "../src/performance/PageMetrics";
 import { MetricsIntake } from "../src/intake/MetricsIntake";
 import { createMetricsStore } from "../src/session/store";
 import type { DailyRecord, MetricsStore } from "../src/session/types";
@@ -27,26 +23,6 @@ import { FixedClock } from "./fakes/FixedClock";
 const TODAY = "2026-02-23";
 
 // ─── the browser's two halves, scripted ──────────────────────────────────────
-
-class ScriptedPerformanceSource implements PerformanceSource {
-  constructor(
-    private readonly resourceEntries: ResourceTiming[],
-    private readonly navigationEntries: NavigationTiming[],
-    private readonly timeOrigin: number = 1_771_800_000_000,
-  ) {}
-
-  readTimeOrigin(): number {
-    return this.timeOrigin;
-  }
-
-  readResources(): readonly ResourceTiming[] {
-    return this.resourceEntries;
-  }
-
-  readNavigations(): readonly NavigationTiming[] {
-    return this.navigationEntries;
-  }
-}
 
 /** Stands in for `chrome.runtime` messaging, keeping the async boundary honest. */
 class IntakeSink implements ObservationSink {
@@ -58,9 +34,9 @@ class IntakeSink implements ObservationSink {
     private readonly url: string,
   ) {}
 
-  send(payload: PagePerformancePayload, timeOrigin: number): void {
+  send(measurement: PageMeasurement, timeOrigin: number): void {
     this.pending.push(
-      this.intake.record({ tabId: this.tabId, url: this.url, payload, timeOrigin }),
+      this.intake.record({ tabId: this.tabId, url: this.url, measurement, timeOrigin }),
     );
   }
 
@@ -157,15 +133,19 @@ beforeEach(() => {
   intake = new MetricsIntake(store, new CarbonCalculator());
 });
 
-/** Loads a page the way the extension does, and waits for it to be persisted. */
-async function visit(page: Page, timeOrigin = 1_771_800_000_000): Promise<void> {
+const LOADED_AT = new Date(`${TODAY}T11:00:00`).getTime();
+const VISIBLE_MS = 30_000;
+
+/**
+ * Loads a page the way the extension does — entries observed one at a time, then
+ * one flush — and waits for it to be persisted.
+ */
+async function visit(page: Page, timeOrigin = LOADED_AT): Promise<void> {
   const sink = new IntakeSink(intake, page.tabId, page.url);
-  const source = new ScriptedPerformanceSource(
-    page.entries,
-    [{ duration: page.navigationDurationMs }],
-    timeOrigin,
-  );
-  new MetricsCollector(source, sink).collect();
+  const accumulator = new VisitAccumulator(true, timeOrigin);
+  for (const entry of page.entries) accumulator.addResource(entry);
+  accumulator.recordNavigation({ duration: page.navigationDurationMs });
+  sink.send(accumulator.readMeasurement(timeOrigin + VISIBLE_MS), timeOrigin);
   await sink.delivered();
 }
 

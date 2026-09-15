@@ -11,5 +11,6 @@ import { megabytesToBytes, secondsToMilliseconds } from "../utils/bytes";
 export const toCarbonInput = (metrics: Metrics): CarbonInput => ({
   transferredBytes: megabytesToBytes(metrics.totalResourceSize),
   pageLoadDurationMs: secondsToMilliseconds(metrics.pageLoadDurationSec),
+  visibleDurationMs: secondsToMilliseconds(metrics.visibleDurationSec),
   cachedBytes: megabytesToBytes(metrics.cachedPageWeight),
 });
