@@ -47,15 +47,17 @@ class IntakeSink implements ObservationSink {
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
 
-const resource = (transferSize: number): ResourceTiming => ({
+const resource = (transferSize: number, thirdParty = false): ResourceTiming => ({
   transferSize,
   decodedBodySize: transferSize,
+  thirdParty,
 });
 
 /** Served from cache: nothing crossed the network, the bytes still reached the page. */
 const cached = (decodedBodySize: number): ResourceTiming => ({
   transferSize: 0,
   decodedBodySize,
+  thirdParty: false,
 });
 
 type Page = {

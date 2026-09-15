@@ -23,13 +23,21 @@ The perimeter is **usage only**: manufacturing of servers, network gear and your
 
 The main view displays 4 indicators for the current day:
 
-| Indicator            | Source                           | Unit  |
-| -------------------- | -------------------------------- | ----- |
-| Estimated CO₂        | `totalCarbon.totalCo2`           | grams |
-| Data transferred     | `totalMetrics.totalResourceSize` | MB    |
-| HTTP requests        | `totalMetrics.requestCount`      | count |
-| Page loads           | `record.visits.length`           | count |
-| Avoided by the cache | `totalCarbon.avoidedCo2`         | grams |
+| Indicator            | Source                            | Unit  |
+| -------------------- | --------------------------------- | ----- |
+| Estimated CO₂        | `totalCarbon.totalCo2`            | grams |
+| Data transferred     | `totalMetrics.totalResourceSize`  | MB    |
+| HTTP requests        | `totalMetrics.requestCount`       | count |
+| Page loads           | `record.visits.length`            | count |
+| Third-party requests | `totalMetrics.thirdPartyRequests` | count |
+| Avoided by the cache | `totalCarbon.avoidedCo2`          | grams |
+
+Under the strip, one line counts what the day met from elsewhere — "41 of 92 requests come from
+third parties" — shown only when there was at least one. It is a count of **requests, never a share
+of bytes**: a cross-origin resource whose server omits `Timing-Allow-Origin` reports a size of zero,
+and only about a quarter of third-party requests carry that header, so a byte share would flatter
+the most opaque trackers. Classification happens **in the page**: only the count crosses to the
+background, never the hosts that were met.
 
 A doughnut chart displays the **5 most CO₂-intensive domains** for the day.
 

@@ -10,6 +10,8 @@ export const en: Translations = {
     requests: "Requests",
     pageLoads: "Page loads",
     running: "Running total — resets at midnight",
+    thirdParty: (third: number, total: number) =>
+      `${third} of ${total} requests come from third parties`,
     avoided: "avoided by the cache",
   },
   chart: { title: "Top domains by CO₂" },

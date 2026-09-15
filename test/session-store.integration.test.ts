@@ -31,6 +31,7 @@ const visit = (overrides: Partial<PageVisit> = {}): PageVisit => ({
   domain: "example.com",
   metrics: {
     requestCount: 10,
+    thirdPartyRequests: 3,
     totalResourceSize: 5,
     pageLoadDurationSec: 1.2,
     visibleDurationSec: 30,
@@ -54,6 +55,7 @@ const VISIT_B = visit({
   domain: "other.com",
   metrics: {
     requestCount: 4,
+    thirdPartyRequests: 3,
     totalResourceSize: 2,
     pageLoadDurationSec: 0.5,
     visibleDurationSec: 30,
@@ -149,6 +151,7 @@ describe("recording a page visit", () => {
         tabId: 1,
         metrics: {
           requestCount: 20,
+          thirdPartyRequests: 3,
           totalResourceSize: 50,
           pageLoadDurationSec: 3,
           visibleDurationSec: 30,
@@ -175,6 +178,7 @@ describe("recording a page visit", () => {
         tabId: 1,
         metrics: {
           requestCount: 99,
+          thirdPartyRequests: 3,
           totalResourceSize: 99,
           pageLoadDurationSec: 99,
           visibleDurationSec: 30,
@@ -236,6 +240,7 @@ describe("recording a page visit", () => {
         tabId: 1,
         metrics: {
           requestCount: 42,
+          thirdPartyRequests: 3,
           totalResourceSize: 5,
           pageLoadDurationSec: 1.2,
           visibleDurationSec: 30,
@@ -263,6 +268,7 @@ describe("a visit that crosses midnight", () => {
       visit({
         metrics: {
           requestCount: 40,
+          thirdPartyRequests: 3,
           totalResourceSize: 5,
           pageLoadDurationSec: 1.2,
           visibleDurationSec: 900,
@@ -319,6 +325,7 @@ describe("concurrent writes", () => {
           tabId: 1,
           metrics: {
             requestCount,
+            thirdPartyRequests: 0,
             totalResourceSize: 1,
             pageLoadDurationSec: 1,
             visibleDurationSec: 30,

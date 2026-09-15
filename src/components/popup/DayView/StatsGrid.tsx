@@ -91,6 +91,25 @@ function AvoidedRow({ avoidedCo2, t }: { avoidedCo2: number; t: Translations }) 
   );
 }
 
+/**
+ * Shown only when the day actually met a third party. A count of **requests**:
+ * a cross-origin resource whose server omits `Timing-Allow-Origin` reports zero
+ * bytes, and only about a quarter of third-party requests send that header — a
+ * byte share would quietly flatter the most closed trackers.
+ * See docs/decisions/2026-09-15-poids-tiers.md
+ */
+function ThirdPartyRow({ totalMetrics, t }: { totalMetrics: Metrics; t: Translations }) {
+  if (totalMetrics.thirdPartyRequests === 0) return null;
+
+  return (
+    <div className="flex items-baseline justify-center gap-1.5 bg-white border border-stone-200 rounded-xl py-2.5">
+      <span className="text-[11px] text-stone-500">
+        {t.stats.thirdParty(totalMetrics.thirdPartyRequests, totalMetrics.requestCount)}
+      </span>
+    </div>
+  );
+}
+
 type StatsGridProps = {
   totalCarbon: CarbonEstimate;
   totalMetrics: Metrics;
@@ -113,6 +132,7 @@ export function StatsGrid({ totalCarbon, totalMetrics, loadCount, t }: StatsGrid
         sub2={getWorldComparisonLabel(totalCarbon.totalCo2, t.worldComparison)}
       />
       <MetricsStrip loadCount={loadCount} totalMetrics={totalMetrics} t={t} />
+      <ThirdPartyRow totalMetrics={totalMetrics} t={t} />
       <AvoidedRow avoidedCo2={totalCarbon.avoidedCo2} t={t} />
     </div>
   );

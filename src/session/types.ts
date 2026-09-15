@@ -2,6 +2,12 @@ import type { CarbonEstimate } from "../carbon/types";
 
 export type Metrics = {
   requestCount: number;
+  /**
+   * How many of `requestCount` came from another registrable domain. A count of
+   * requests, not a share of bytes — see the third-party ADR for why the bytes
+   * are not measurable.
+   */
+  thirdPartyRequests: number;
   /** Transferred data in base-10 megabytes — what crossed the network, compressed. */
   totalResourceSize: number;
   /**

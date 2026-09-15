@@ -6,6 +6,13 @@
 export type ResourceTiming = {
   transferSize: number;
   /**
+   * Whether the resource came from another registrable domain than the page.
+   * Decided **in the page**, where the resource URL lives: sending those URLs to
+   * the background would put the list of trackers a user meets into storage and
+   * into the CSV export, which is a profile, not a measurement.
+   */
+  thirdParty: boolean;
+  /**
    * Optional because a content script injected **before** an extension update
    * keeps running the old projection until its tab reloads, and that projection
    * did not carry this field. Its absence must cost the avoided figure, not the
@@ -32,6 +39,17 @@ export type PageMeasurement = {
   /** Uncompressed size of the resources the cache served — see avoided CO₂. */
   cachedBytes: number;
   /**
+   * How many of those requests came from a third party.
+   *
+   * A count of **requests**, never a share of bytes: a cross-origin resource
+   * whose server omits `Timing-Allow-Origin` reports a size of zero, and only
+   * ~25 % of third-party requests carry that header — `google-analytics.com` and
+   * `googletagmanager.com` do not. A byte share would therefore under-report
+   * exactly the trackers it claims to expose, while every request is countable.
+   * See docs/decisions/2026-09-15-poids-tiers.md
+   */
+  thirdPartyRequests: number;
+  /**
    * How long the page was **visible**, not how long it existed. A tab loaded in
    * the background and never looked at reports zero here, and is charged no
    * screen at all: the panel showed nothing of it.
@@ -44,6 +62,7 @@ export const createEmptyMeasurement = (): PageMeasurement => ({
   transferredBytes: 0,
   loadDurationMs: 0,
   cachedBytes: 0,
+  thirdPartyRequests: 0,
   visibleDurationMs: 0,
 });
 
@@ -68,6 +87,7 @@ export function addResourceTiming(
   return {
     ...measurement,
     requests: measurement.requests + 1,
+    thirdPartyRequests: measurement.thirdPartyRequests + (timing.thirdParty ? 1 : 0),
     transferredBytes: measurement.transferredBytes + timing.transferSize,
     cachedBytes: measurement.cachedBytes + (fromCache ? (timing.decodedBodySize ?? 0) : 0),
   };

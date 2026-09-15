@@ -33,7 +33,7 @@ const observation = (
   measurement:
     overrides.measurement ??
     measure(
-      overrides.resource ?? [{ transferSize: 1_500_000 }],
+      overrides.resource ?? [{ transferSize: 1_500_000, thirdParty: false }],
       overrides.loadDurationMs ?? 2_400,
       overrides.visibleDurationMs ?? 12_000,
     ),
@@ -66,7 +66,10 @@ describe("MetricsIntake — what reaches the daily record", () => {
   it("stores transferred data in megabytes and load duration in seconds", async () => {
     // Act
     await intake.record(
-      observation({ resource: [{ transferSize: 1_500_000 }], loadDurationMs: 2_400 }),
+      observation({
+        resource: [{ transferSize: 1_500_000, thirdParty: false }],
+        loadDurationMs: 2_400,
+      }),
     );
 
     // Assert — base 10: 1 500 000 bytes = 1.5 MB, 2 400 ms = 2.4 s
@@ -80,8 +83,8 @@ describe("MetricsIntake — what reaches the daily record", () => {
     await intake.record(
       observation({
         resource: [
-          { transferSize: 1_000_000, decodedBodySize: 1_000_000 },
-          { transferSize: 0, decodedBodySize: 2_000_000 },
+          { transferSize: 1_000_000, decodedBodySize: 1_000_000, thirdParty: false },
+          { transferSize: 0, decodedBodySize: 2_000_000, thirdParty: false },
         ],
       }),
     );
@@ -100,7 +103,7 @@ describe("MetricsIntake — what reaches the daily record", () => {
     // Arrange — the projection shipped before avoided CO₂ existed, still running
     // in a tab that has not reloaded since the update
     // Act
-    await intake.record(observation({ resource: [{ transferSize: 0 }] }));
+    await intake.record(observation({ resource: [{ transferSize: 0, thirdParty: false }] }));
 
     // Assert — the observation survives; only the avoided figure is lost
     const [visit] = (await store.getDailyRecord()).visits;
@@ -113,7 +116,11 @@ describe("MetricsIntake — what reaches the daily record", () => {
     // Act
     await intake.record(
       observation({
-        resource: [{ transferSize: 10 }, { transferSize: 20 }, { transferSize: 0 }],
+        resource: [
+          { transferSize: 10, thirdParty: false },
+          { transferSize: 20, thirdParty: false },
+          { transferSize: 0, thirdParty: false },
+        ],
       }),
     );
 
@@ -149,11 +156,14 @@ describe("MetricsIntake — what reaches the daily record", () => {
 
   it("charges a heavier page more than a lighter one", async () => {
     // Arrange
-    const light = observation({ tabId: 1, resource: [{ transferSize: 50_000 }] });
+    const light = observation({
+      tabId: 1,
+      resource: [{ transferSize: 50_000, thirdParty: false }],
+    });
     const heavy = observation({
       tabId: 2,
       url: "https://heavy.example.com/",
-      resource: [{ transferSize: 12_000_000 }],
+      resource: [{ transferSize: 12_000_000, thirdParty: false }],
     });
 
     // Act
@@ -169,12 +179,14 @@ describe("MetricsIntake — what reaches the daily record", () => {
 
   it("adds every recorded page into the day's totals", async () => {
     // Act
-    await intake.record(observation({ tabId: 1, resource: [{ transferSize: 1_000_000 }] }));
+    await intake.record(
+      observation({ tabId: 1, resource: [{ transferSize: 1_000_000, thirdParty: false }] }),
+    );
     await intake.record(
       observation({
         tabId: 2,
         url: "https://other.example.com/",
-        resource: [{ transferSize: 3_000_000 }],
+        resource: [{ transferSize: 3_000_000, thirdParty: false }],
       }),
     );
 
@@ -217,10 +229,14 @@ describe("MetricsIntake — what it refuses", () => {
 describe("MetricsIntake — re-observing the same tab", () => {
   it("updates the existing entry instead of adding a second one", async () => {
     // Arrange
-    await intake.record(observation({ tabId: 7, resource: [{ transferSize: 1_000_000 }] }));
+    await intake.record(
+      observation({ tabId: 7, resource: [{ transferSize: 1_000_000, thirdParty: false }] }),
+    );
 
     // Act
-    await intake.record(observation({ tabId: 7, resource: [{ transferSize: 4_000_000 }] }));
+    await intake.record(
+      observation({ tabId: 7, resource: [{ transferSize: 4_000_000, thirdParty: false }] }),
+    );
 
     // Assert
     const record = await store.getDailyRecord();
@@ -233,9 +249,11 @@ describe("MetricsIntake — re-observing the same tab", () => {
     // Arrange — both land before either write settles, which is exactly how a
     // reload storm arrives. Deciding add-or-update outside the write queue
     // produced two entries here and double-counted the day.
-    const first = intake.record(observation({ tabId: 7, resource: [{ transferSize: 1_000_000 }] }));
+    const first = intake.record(
+      observation({ tabId: 7, resource: [{ transferSize: 1_000_000, thirdParty: false }] }),
+    );
     const second = intake.record(
-      observation({ tabId: 7, resource: [{ transferSize: 2_000_000 }] }),
+      observation({ tabId: 7, resource: [{ transferSize: 2_000_000, thirdParty: false }] }),
     );
 
     // Act

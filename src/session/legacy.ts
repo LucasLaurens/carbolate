@@ -76,6 +76,9 @@ function normalizeCarbon(carbon: StoredCarbon = {}): CarbonEstimate {
 function normalizeMetrics(metrics: StoredMetrics = {}): Metrics {
   return {
     requestCount: coalesceNumber(metrics.requestCount, 0),
+    // Days written before resources were classified hold no count, and it cannot
+    // be recovered: zero reads as "none seen", which is what the panel then shows.
+    thirdPartyRequests: coalesceNumber(metrics.thirdPartyRequests, 0),
     totalResourceSize: coalesceNumber(metrics.totalResourceSize, 0),
     pageLoadDurationSec: coalesceNumber(
       metrics.pageLoadDurationSec,
