@@ -11,19 +11,40 @@ export const NETWORK_ENERGY_KWH_PER_GB = 0.4;
 export const CARBON_PER_GB = NETWORK_ENERGY_KWH_PER_GB * GRID_INTENSITY_G_CO2_PER_KWH; // 176.8
 
 /**
- * gCO₂e per second of page load — the user's machine while the page loads.
+ * gCO₂e per second of page load — the CPU and the GPU of the user's machine.
  *
- * House estimate: a laptop drawing ≈ 11 W above idle (CPU under load, plus the
- * integrated GPU and the display) × 442 gCO₂e/kWh.
+ * House estimate, and said to be one: 11.40 W of total machine draw is what the
+ * former single 0.0014 factor implied, and 3.4 W of it is the sourced panel
+ * figure below, so 8.0 W remains for everything else. Nothing publishes that
+ * 8 W — it is the subtraction, not a measurement. At ≈ 0.003 g per page it is
+ * too small to justify blocking on a source and too real to delete.
  *
- * Replaces the former `CPU_FACTOR` (0.001) and `RENDERING_FACTOR` (0.0004).
- * Both multiplied the **same** value — the navigation duration — by two
- * coefficients, so the split described no second measurement, it only implied a
- * precision the input cannot carry. This factor is their sum, so what a stored
- * day totals to does not move.
- * See docs/decisions/2026-08-05-perimetre-modele-carbone.md
+ * Replaces the former `CPU_FACTOR` (0.001) and `RENDERING_FACTOR` (0.0004),
+ * which multiplied the **same** navigation duration by two coefficients.
+ * See docs/decisions/2026-09-15-energie-ecran.md
  */
-export const DEVICE_FACTOR = 0.0014;
+export const DEVICE_FACTOR = 0.00098;
+
+/**
+ * gCO₂e per second the screen stayed lit — 3.4 W of panel draw, the
+ * Fraunhofer/DOE parc average for a display alone, × 442 gCO₂e/kWh.
+ *
+ * Sourced rather than derived from a diagonal: the EU Commission's 1.0 W/dm²
+ * would need the physical size of the panel, which no browser API exposes and
+ * which the perimeter ADR forbids inventing from a resolution.
+ *
+ * `DEVICE_FACTOR + SCREEN_FACTOR === 0.0014`, the factor that shipped before
+ * the split — naming the panel separately renames a share, it does not add one,
+ * so no stored day moves.
+ *
+ * **Attributional, not avoidable.** It charges a share of a screen that was
+ * already on; closing the tab does not turn it off. See docs/glossary.md.
+ *
+ * Applied to the load duration for now, the only lit time the extension can
+ * observe; issue #40 widens the input to the whole display time without
+ * touching this factor.
+ */
+export const SCREEN_FACTOR = 0.00042;
 
 /**
  * Average daily web-browsing footprint of an internet user, gCO₂e

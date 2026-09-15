@@ -30,7 +30,13 @@ const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
     cachedPageWeight: 0.4,
   },
   meta: { date: 0 },
-  carbon: { networkCo2: 0.8, deviceCo2: 0.014, totalCo2: 0.814, avoidedCo2: 0.07 },
+  carbon: {
+    networkCo2: 0.8,
+    deviceCo2: 0.0098,
+    screenCo2: 0.0042,
+    totalCo2: 0.814,
+    avoidedCo2: 0.07,
+  },
   ...overrides,
 });
 
@@ -45,7 +51,13 @@ const TAB_B = tab({
     pageLoadDurationSec: 0.5,
     cachedPageWeight: 0.1,
   },
-  carbon: { networkCo2: 0.3, deviceCo2: 0.007, totalCo2: 0.307, avoidedCo2: 0.02 },
+  carbon: {
+    networkCo2: 0.3,
+    deviceCo2: 0.0049,
+    screenCo2: 0.0021,
+    totalCo2: 0.307,
+    avoidedCo2: 0.02,
+  },
 });
 
 let storage: InMemoryDailyRecordsStorage;

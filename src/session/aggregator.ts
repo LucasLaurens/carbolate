@@ -23,6 +23,7 @@ export const sumMetrics = (entries: readonly Metrics[]): Metrics => ({
 export const sumCarbonEstimates = (estimates: readonly CarbonEstimate[]): CarbonEstimate => ({
   networkCo2: estimates.reduce((sum, each) => sum + each.networkCo2, 0),
   deviceCo2: estimates.reduce((sum, each) => sum + each.deviceCo2, 0),
+  screenCo2: estimates.reduce((sum, each) => sum + each.screenCo2, 0),
   totalCo2: estimates.reduce((sum, each) => sum + each.totalCo2, 0),
   avoidedCo2: estimates.reduce((sum, each) => sum + each.avoidedCo2, 0),
 });

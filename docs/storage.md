@@ -109,8 +109,9 @@ type MetricTab = {
 ```typescript
 type CarbonEstimate = {
   networkCo2: number; // gCO₂e — transmission networks + data centres
-  deviceCo2: number; // gCO₂e — the user's machine during page load
-  totalCo2: number; // networkCo2 + deviceCo2
+  deviceCo2: number; // gCO₂e — CPU and GPU during page load
+  screenCo2: number; // gCO₂e — the screen's attributional share
+  totalCo2: number; // networkCo2 + deviceCo2 + screenCo2
   avoidedCo2: number; // gCO₂e the cache spared — NEVER inside totalCo2
 };
 ```
@@ -169,7 +170,8 @@ type DailyRecordsStore = Record<string, DailyRecord>;
           },
           "carbon": {
             "networkCo2": 0.605,
-            "deviceCo2": 0.0025,
+            "deviceCo2": 0.00175,
+            "screenCo2": 0.00075,
             "totalCo2": 0.6075,
             "avoidedCo2": 0.212
           }
@@ -183,7 +185,8 @@ type DailyRecordsStore = Record<string, DailyRecord>;
       },
       "totalCarbon": {
         "networkCo2": 0.605,
-        "deviceCo2": 0.0025,
+        "deviceCo2": 0.00175,
+        "screenCo2": 0.00075,
         "totalCo2": 0.6075,
         "avoidedCo2": 0.212
       }
@@ -209,7 +212,8 @@ extensions:
 | ------------------------------------ | ---------------------------------------------- |
 | `cpuCo2` alone                       | `deviceCo2 = cpuCo2`                           |
 | `cpuCo2` + `renderingCo2`            | `deviceCo2 = cpuCo2 + renderingCo2` (lossless) |
-| `deviceCo2`                          | unchanged                                      |
+| `deviceCo2`                          | unchanged, `screenCo2 = 0`                     |
+| `deviceCo2` + `screenCo2`            | unchanged                                      |
 | `cpuTimeToLoad`                      | `pageLoadDurationSec`                          |
 | no `avoidedCo2` / `cachedPageWeight` | `0` — unrecoverable, and zero invents nothing  |
 

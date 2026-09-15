@@ -51,6 +51,7 @@ function MethodDisclosure({ t }: { t: Translations }) {
       <div className="mt-3 flex flex-col gap-2 text-xs leading-relaxed text-stone-500">
         <p>{t.settings.method.measurement}</p>
         <p>{t.settings.method.perimeter}</p>
+        <p>{t.settings.method.allocation}</p>
       </div>
     </details>
   );

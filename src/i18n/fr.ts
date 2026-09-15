@@ -47,6 +47,8 @@ export const fr: Translations = {
         "L'énergie n'est pas mesurable directement : les serveurs ne sont pas les nôtres, et une page web ne peut pas lire la consommation de ta machine. Carbolate multiplie ce qu'il voit — octets, durée de chargement — par des moyennes publiées.",
       perimeter:
         "Il ne compte que la navigation. La fabrication des serveurs, du réseau et de ton appareil est exclue : le chiffre réel est plus haut d'environ un quart.",
+      allocation:
+        "La part de l'écran est une attribution, pas une émission évitable : l'écran était déjà allumé, la page en utilise une part. Fermer l'onglet ne l'éteint pas.",
     },
     retention: {
       label: "Historique conservé",

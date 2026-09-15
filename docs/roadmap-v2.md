@@ -62,7 +62,7 @@ Voir [l'ADR rétention configurable](decisions/2026-08-21-retention-configurable
 ```
 # Carbolate export — 2026-05-04 — rétention: 7 jours
 
-date,domain,url,requestCount,totalResourceSize_MB,pageLoadDuration_s,cachedPageWeight_MB,networkCo2_g,deviceCo2_g,totalCo2_g,avoidedCo2_g,visitTimestamp
+date,domain,url,requestCount,totalResourceSize_MB,pageLoadDuration_s,cachedPageWeight_MB,networkCo2_g,deviceCo2_g,screenCo2_g,totalCo2_g,avoidedCo2_g,visitTimestamp
 
 ## 2026-05-04
 2026-05-04,github.com,https://github.com/...,42,3.2,1.8,1.1,0.567,0.0025,0.570,0.194,...

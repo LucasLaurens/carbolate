@@ -75,7 +75,10 @@ describe("MetricsIntake — what reaches the daily record", () => {
     const [tab] = (await store.getDailyRecord()).tabs;
     expect(tab.metrics.cachedPageWeight).toBeCloseTo(2, 10);
     expect(tab.carbon.avoidedCo2).toBeGreaterThan(0);
-    expect(tab.carbon.totalCo2).toBeCloseTo(tab.carbon.networkCo2 + tab.carbon.deviceCo2, 10);
+    expect(tab.carbon.totalCo2).toBeCloseTo(
+      tab.carbon.networkCo2 + tab.carbon.deviceCo2 + tab.carbon.screenCo2,
+      10,
+    );
   });
 
   it("credits nothing when a stale content script sends no decoded size", async () => {
