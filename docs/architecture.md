@@ -340,6 +340,8 @@ One codebase, one manifest per browser engine. `dist/manifest.json` is **generat
 | File                   | Role                                                                        |
 | ---------------------- | --------------------------------------------------------------------------- |
 | `scripts/manifest.mjs` | Shared manifest base + one builder per target (`chrome`, `firefox`)         |
+| `public/assets/icons/` | The five committed icon sizes (16/32/48/64/128) the manifest points at      |
+| `assets/`              | The 1024px icon master — versioned, **outside** `public/` so it never ships |
 | `scripts/build.mjs`    | Runs the three Vite builds, then writes `dist/manifest.json` for the target |
 | `vite.config.ts`       | Plugins only (React, Tailwind), used by `npm run dev`                       |
 
