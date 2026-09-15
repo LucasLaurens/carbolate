@@ -29,15 +29,16 @@ _house estimate_. See [the perimeter ADR](decisions/2026-08-05-perimetre-modele-
 
 Defined in `src/carbon/constants.ts`:
 
-| Constant                         | Value                 | Description                                                | Source                          |
-| -------------------------------- | --------------------- | ---------------------------------------------------------- | ------------------------------- |
-| `GRID_INTENSITY_G_CO2_PER_KWH`   | `442` gCO₂e/kWh       | Global average grid carbon intensity                       | IEA 2023                        |
-| `NETWORK_ENERGY_KWH_PER_GB`      | `0.4` kWh/GB          | Energy per GB for data centres + transmission              | IEA 2023 / ADEME 2023           |
-| `CARBON_PER_GB`                  | `176.8` gCO₂e/GB      | `NETWORK_ENERGY × GRID_INTENSITY`                          | derived                         |
-| `DEVICE_FACTOR`                  | `0.0014` gCO₂e/s      | Machine energy per second of page load (≈ 11 W above idle) | **house estimate**              |
-| `DAILY_BROWSING_REFERENCE_G_CO2` | `120` gCO₂e           | Average daily web-browsing footprint of an internet user   | ADEME 2023 / Shift Project 2022 |
-| `SOBRIETY_MULTIPLIERS`           | `0.5 / 1.5 / 4`       | Applied to the reference → the sobriety thresholds         | **design choice, not a source** |
-| `WORLD_COMPARISON_MULTIPLIERS`   | `0.5 / 0.9 / 1.1 / 2` | Band edges of the world comparison                         | **design choice, not a source** |
+| Constant                         | Value                 | Description                                              | Source                          |
+| -------------------------------- | --------------------- | -------------------------------------------------------- | ------------------------------- |
+| `GRID_INTENSITY_G_CO2_PER_KWH`   | `442` gCO₂e/kWh       | Global average grid carbon intensity                     | IEA 2023                        |
+| `NETWORK_ENERGY_KWH_PER_GB`      | `0.4` kWh/GB          | Energy per GB for data centres + transmission            | IEA 2023 / ADEME 2023           |
+| `CARBON_PER_GB`                  | `176.8` gCO₂e/GB      | `NETWORK_ENERGY × GRID_INTENSITY`                        | derived                         |
+| `DEVICE_FACTOR`                  | `0.00098` gCO₂e/s     | CPU + GPU per second of page load (8.0 W)                | **house estimate**              |
+| `SCREEN_FACTOR`                  | `0.00042` gCO₂e/s     | Screen per second lit (3.4 W panel draw)                 | Fraunhofer/DOE parc average     |
+| `DAILY_BROWSING_REFERENCE_G_CO2` | `120` gCO₂e           | Average daily web-browsing footprint of an internet user | ADEME 2023 / Shift Project 2022 |
+| `SOBRIETY_MULTIPLIERS`           | `0.5 / 1.5 / 4`       | Applied to the reference → the sobriety thresholds       | **design choice, not a source** |
+| `WORLD_COMPARISON_MULTIPLIERS`   | `0.5 / 0.9 / 1.1 / 2` | Band edges of the world comparison                       | **design choice, not a source** |
 
 > **Methodology note**: `NETWORK_ENERGY_KWH_PER_GB = 0.4` is updated from the 2019
 > Shift Project estimate of 0.75 kWh/GB, reflecting efficiency gains in data centres
@@ -47,8 +48,15 @@ Defined in `src/carbon/constants.ts`:
 > `RENDERING_FACTOR` (0.0004) pair that multiplied the **same** value — the
 > navigation duration — by two coefficients. That was never two measurements; it
 > was one measurement with a factor cut in half, and the cut implied a precision the
-> input cannot carry. `0.0014` is their sum, so what a stored day totals to does not
-> move.
+> input cannot carry.
+
+> **Why the screen is split out, and only the screen.** `DEVICE_FACTOR + SCREEN_FACTOR`
+> is exactly the `0.0014` that shipped before, so no stored day moves. The split is not
+> a second measurement either — it is the one number for which a published source
+> exists (3.4 W of panel), which makes the remaining 8.0 W nameable as the house
+> estimate it always was. The screen's share is **attributional**: the panel was
+> already on, browsing only uses a part of it, and closing the tab does not turn it
+> off. See [ADR](decisions/2026-09-15-energie-ecran.md).
 
 ---
 
@@ -59,7 +67,7 @@ The calculation is decomposed into **independent sources**:
 ```typescript
 // src/carbon/contracts/CarbonContributionSource.ts
 interface CarbonContributionSource {
-  readonly metric: ContributionMetric; // "networkCo2" | "deviceCo2"
+  readonly metric: ContributionMetric; // "networkCo2" | "deviceCo2" | "screenCo2"
   calculate(inputs: readonly CarbonInput[]): number; // returns gCO₂e
 }
 ```
@@ -67,7 +75,11 @@ interface CarbonContributionSource {
 `CarbonCalculator` accepts an array of sources in its constructor. By default:
 
 ```typescript
-new CarbonCalculator([new NetworkCarbonSource(), new DeviceCarbonSource()]);
+new CarbonCalculator([
+  new NetworkCarbonSource(),
+  new DeviceCarbonSource(),
+  new ScreenCarbonSource(),
+]);
 ```
 
 To add a new emission channel, create a class implementing
@@ -99,8 +111,19 @@ networkCo2 = totalGB × CARBON_PER_GB               [176.8 gCO₂e/GB]
 
 ```
 totalSec  = Σ(pageLoadDurationMs) / 1000   [ms → seconds]
-deviceCo2 = totalSec × DEVICE_FACTOR       [0.0014 gCO₂e/s]
+deviceCo2 = totalSec × DEVICE_FACTOR       [0.00098 gCO₂e/s]
 ```
+
+**ScreenCarbonSource** (`src/carbon/sources/ScreenCarbonSource.ts`):
+
+```
+totalSec  = Σ(pageLoadDurationMs) / 1000   [the only lit time observed today]
+screenCo2 = totalSec × SCREEN_FACTOR       [0.00042 gCO₂e/s]
+```
+
+Its input is the load duration until the living record ([#40]) makes the whole display
+time reachable. Until then `screenCo2` is a floor: it charges the panel for the load and
+for nothing after it.
 
 **computeAvoidedCarbon** (`src/carbon/avoidedCarbon.ts`):
 
@@ -112,7 +135,7 @@ avoidedCo2 = cachedGB × CARBON_PER_GB      [the network transfer that did not h
 **CarbonCalculator** aggregates:
 
 ```
-totalCo2 = networkCo2 + deviceCo2          [avoidedCo2 is NOT in here]
+totalCo2 = networkCo2 + deviceCo2 + screenCo2   [avoidedCo2 is NOT in here]
 ```
 
 ### Concrete example
@@ -126,7 +149,8 @@ totalSec   = 1500 / 1000 = 1.5 s
 cachedGB   = 3_000_000 / 1_000_000_000 = 0.003 GB
 
 networkCo2 = 0.002 × 176.8 = 0.3536 g
-deviceCo2  = 1.5   × 0.0014 = 0.0021 g
+deviceCo2  = 1.5   × 0.00098 = 0.00147 g
+screenCo2  = 1.5   × 0.00042 = 0.00063 g
 totalCo2   ≈ 0.356 g
 
 avoidedCo2 = 0.003 × 176.8 = 0.5304 g   ← reported beside the total, never inside it

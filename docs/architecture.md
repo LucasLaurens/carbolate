@@ -45,7 +45,7 @@ src/
 │
 ├── carbon/
 │   ├── types.ts                    # CarbonInput, CarbonEstimate, FootprintCalculator
-│   ├── constants.ts                # CARBON_PER_GB (176.8), DEVICE_FACTOR (0.0014), DAILY_BROWSING_REFERENCE_G_CO2 (120), the multipliers
+│   ├── constants.ts                # CARBON_PER_GB (176.8), DEVICE_FACTOR (0.00098), SCREEN_FACTOR (0.00042), DAILY_BROWSING_REFERENCE_G_CO2 (120), the multipliers
 │   ├── CarbonCalculator.ts         # CO₂ calculation engine (accepts CarbonContributionSource[])
 │   ├── toCarbonInput.ts            # Adapter: stored Metrics (MB, s) → CarbonInput (bytes, ms)
 │   ├── avoidedCarbon.ts            # What the cache spared — never part of totalCo2

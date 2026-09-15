@@ -51,12 +51,15 @@ export type Translations = {
     /**
      * What the product says about its own figure. Two distinct reasons, because
      * they answer two different objections: `measurement` answers "your number is
-     * wrong", `perimeter` answers "your number is low".
+     * wrong", `perimeter` answers "your number is low". `allocation` answers a
+     * third — "then turning this off would save that" — which the screen share
+     * makes reachable for the first time.
      */
     method: {
       summary: string;
       measurement: string;
       perimeter: string;
+      allocation: string;
     };
     /**
      * Keyed by the window itself, so a new option cannot ship without its label

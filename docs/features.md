@@ -92,7 +92,7 @@ The entire UI supports **English and French**. The active language is stored in 
 
 - Generates a `carbolate-export-YYYY-MM-DD.csv` file downloaded via `chrome.downloads`
 - Contains all historical data: one row per tracked tab
-- Columns: `date, domain, url, requestCount, totalResourceSize_MB, pageLoadDuration_s, cachedPageWeight_MB, networkCo2_g, deviceCo2_g, totalCo2_g, avoidedCo2_g, visitTimestamp`
+- Columns: `date, domain, url, requestCount, totalResourceSize_MB, pageLoadDuration_s, cachedPageWeight_MB, networkCo2_g, deviceCo2_g, screenCo2_g, totalCo2_g, avoidedCo2_g, visitTimestamp`
 - Fields containing a comma or a quote are quoted and escaped, so the column count survives any url
 - Reachable from the **Export CSV** button at the bottom of the day view, rate-limited under the `"csv-export"` key
 
@@ -236,7 +236,7 @@ User navigates to a new URL
         → parseDomain(url)      — discard if not http(s)
         → measurePage(payload)  — discard if no resource entry
         → Metrics { requestCount, totalResourceSize (MB), pageLoadDurationSec (s), cachedPageWeight (MB) }
-        → toCarbonInput + CarbonCalculator → CarbonEstimate { networkCo2, deviceCo2, totalCo2, avoidedCo2 }
+        → toCarbonInput + CarbonCalculator → CarbonEstimate { networkCo2, deviceCo2, screenCo2, totalCo2, avoidedCo2 }
         → store.recordTabMetrics(tab) — upsert inside the write queue
     → Data persisted in ChromeStorage
 ```

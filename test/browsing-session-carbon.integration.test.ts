@@ -267,7 +267,7 @@ describe("A mostly cached page load", () => {
     const visit_ = visited(await store.getDailyRecord(), CACHED_NAVIGATION.tabId);
     expect(visit_.carbon.avoidedCo2).toBeGreaterThan(0);
     expect(visit_.carbon.totalCo2).toBeCloseTo(
-      visit_.carbon.networkCo2 + visit_.carbon.deviceCo2,
+      visit_.carbon.networkCo2 + visit_.carbon.deviceCo2 + visit_.carbon.screenCo2,
       10,
     );
   });

@@ -110,7 +110,7 @@ describe("refreshBadge", () => {
     domain: "example.test",
     metrics: createEmptyMetrics(),
     meta: { date: new Date(`${TODAY}T12:00:00`).getTime() },
-    carbon: { networkCo2: totalCo2, deviceCo2: 0, totalCo2, avoidedCo2: 0 },
+    carbon: { networkCo2: totalCo2, deviceCo2: 0, screenCo2: 0, totalCo2, avoidedCo2: 0 },
   });
 
   const storeOf = (storage: InMemoryDailyRecordsStorage) =>

@@ -2,9 +2,10 @@ import { describe, it, expect } from "vitest";
 import CarbonCalculator from "../src/carbon/CarbonCalculator";
 import { NetworkCarbonSource } from "../src/carbon/sources/NetworkCarbonSource";
 import { DeviceCarbonSource } from "../src/carbon/sources/DeviceCarbonSource";
+import { ScreenCarbonSource } from "../src/carbon/sources/ScreenCarbonSource";
 import { computeAvoidedCarbon } from "../src/carbon/avoidedCarbon";
 import type { CarbonInput } from "../src/carbon/types";
-import { CARBON_PER_GB, DEVICE_FACTOR } from "../src/carbon/constants";
+import { CARBON_PER_GB, DEVICE_FACTOR, SCREEN_FACTOR } from "../src/carbon/constants";
 
 const ONE_GB = 1_000_000_000;
 
@@ -23,6 +24,7 @@ describe("CarbonCalculator", () => {
     expect(calculator.calculate([])).toEqual({
       networkCo2: 0,
       deviceCo2: 0,
+      screenCo2: 0,
       totalCo2: 0,
       avoidedCo2: 0,
     });
@@ -54,7 +56,10 @@ describe("CarbonCalculator", () => {
     ]);
 
     // Assert
-    expect(result.totalCo2).toBeCloseTo(result.networkCo2 + result.deviceCo2, 10);
+    expect(result.totalCo2).toBeCloseTo(
+      result.networkCo2 + result.deviceCo2 + result.screenCo2,
+      10,
+    );
   });
 
   it("sums transferred bytes across several inputs", () => {
@@ -68,13 +73,13 @@ describe("CarbonCalculator", () => {
     expect(result.networkCo2).toBeCloseTo(CARBON_PER_GB, 10);
   });
 
-  it("reports one device figure where two coefficients used to be split", () => {
-    // Act — the former CPU_FACTOR 0.001 plus RENDERING_FACTOR 0.0004
+  it("splits the machine into device and screen without moving the total", () => {
+    // Act — what the single 0.0014 factor used to charge on its own
     const result = calculator.calculate([input({ pageLoadDurationMs: 10_000 })]);
 
-    // Assert — merging them must not move what a day totals to
-    expect(result.deviceCo2).toBeCloseTo(10 * (0.001 + 0.0004), 10);
-    expect(DEVICE_FACTOR).toBeCloseTo(0.001 + 0.0004, 10);
+    // Assert — naming the panel separately must not change what a stored day totals to
+    expect(result.deviceCo2 + result.screenCo2).toBeCloseTo(10 * 0.0014, 10);
+    expect(DEVICE_FACTOR + SCREEN_FACTOR).toBeCloseTo(0.0014, 10);
   });
 
   it("never lets avoided CO₂ reach the total", () => {
@@ -98,6 +103,7 @@ describe("CarbonCalculator", () => {
     // Assert
     expect(result.networkCo2).toBe(CARBON_PER_GB);
     expect(result.deviceCo2).toBe(0);
+    expect(result.screenCo2).toBe(0);
     expect(result.totalCo2).toBe(CARBON_PER_GB);
   });
 });
@@ -152,6 +158,28 @@ describe("DeviceCarbonSource", () => {
 
     // Assert
     expect(result).toBeCloseTo(5 * DEVICE_FACTOR, 10);
+  });
+});
+
+describe("ScreenCarbonSource", () => {
+  const source = new ScreenCarbonSource();
+
+  it("returns 0 for empty inputs", () => {
+    // Act & Assert
+    expect(source.calculate([])).toBe(0);
+  });
+
+  it("applies SCREEN_FACTOR per second the panel stayed lit", () => {
+    // Act — 2 000 ms = 2 s
+    const result = source.calculate([input({ pageLoadDurationMs: 2_000 })]);
+
+    // Assert
+    expect(result).toBeCloseTo(2 * SCREEN_FACTOR, 10);
+  });
+
+  it("charges less than the rest of the machine, as the sourced split says", () => {
+    // Act & Assert — 3.4 W of panel against 8.0 W of CPU and GPU
+    expect(SCREEN_FACTOR).toBeLessThan(DEVICE_FACTOR);
   });
 });
 

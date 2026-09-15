@@ -47,6 +47,8 @@ export const en: Translations = {
         "Energy can't be measured directly: the servers aren't ours, and a web page can't read your machine's power draw. Carbolate multiplies what it sees — bytes, load time — by published averages.",
       perimeter:
         "It counts browsing only. Building the servers, the network and your device is excluded, so the true figure is about a quarter higher.",
+      allocation:
+        "The screen's share is an allocation, not an avoidable emission: the display was already on and the page uses a part of it. Closing the tab does not turn it off.",
     },
     retention: {
       label: "History kept",

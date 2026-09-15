@@ -48,13 +48,19 @@ function normalizeCarbon(carbon: StoredCarbon = {}): CarbonEstimate {
     coalesceNumber(carbon.cpuCo2, 0) + coalesceNumber(carbon.renderingCo2, 0),
   );
 
+  // Days stored before the split carry the whole machine in `deviceCo2`. They
+  // are not retro-split: the share is unknowable per record, and a zero here
+  // keeps the total the user already saw.
+  const screenCo2 = coalesceNumber(carbon.screenCo2, 0);
+
   return {
     networkCo2,
     deviceCo2,
+    screenCo2,
     // Recomputed rather than trusted: a legacy total happens to be the same
     // number, but a record half-written by an interrupted update would otherwise
     // carry a total its own parts do not add up to.
-    totalCo2: networkCo2 + deviceCo2,
+    totalCo2: networkCo2 + deviceCo2 + screenCo2,
     avoidedCo2: coalesceNumber(carbon.avoidedCo2, 0),
   };
 }

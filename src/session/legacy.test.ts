@@ -66,6 +66,15 @@ describe("a record written before deviceCo2 existed", () => {
     expect(record.tabs[0].carbon.totalCo2).toBeCloseTo(0.0894, 10);
   });
 
+  it("reports no screen CO₂ for a day stored before the channel existed", () => {
+    // Act
+    const record = normalizeDailyRecord(storedDay([splitFactorTab]));
+
+    // Assert — the stored device figure is not retro-split; zero invents nothing
+    expect(record.tabs[0].carbon.screenCo2).toBe(0);
+    expect(record.tabs[0].carbon.totalCo2).toBeCloseTo(0.0894, 10);
+  });
+
   it("reports no avoided CO₂ for a day that never measured it", () => {
     // Act
     const record = normalizeDailyRecord(storedDay([cpuOnlyTab]));

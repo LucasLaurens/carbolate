@@ -5,7 +5,7 @@ import type { DailyRecord, MetricTab } from "../session/types";
 
 const HEADER =
   "date,domain,url,requestCount,totalResourceSize_MB,pageLoadDuration_s,cachedPageWeight_MB," +
-  "networkCo2_g,deviceCo2_g,totalCo2_g,avoidedCo2_g,visitTimestamp";
+  "networkCo2_g,deviceCo2_g,screenCo2_g,totalCo2_g,avoidedCo2_g,visitTimestamp";
 
 const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
   id: 1,
@@ -18,9 +18,17 @@ const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
     cachedPageWeight: 0.8,
   },
   meta: { date: 1_772_000_000_000 },
-  carbon: { networkCo2: 0.26, deviceCo2: 0.00336, totalCo2: 0.26336, avoidedCo2: 0.14 },
+  carbon: {
+    networkCo2: 0.26,
+    deviceCo2: 0.00235,
+    screenCo2: 0.00101,
+    totalCo2: 0.26336,
+    avoidedCo2: 0.14,
+  },
   ...overrides,
 });
+
+const columnIndex = (name: string) => HEADER.split(",").indexOf(name);
 
 const day = (date: string, tabs: MetricTab[]): DailyRecord => ({
   ...createEmptyDailyRecord(date),
@@ -75,7 +83,18 @@ describe("toCSV", () => {
     // Assert
     expect(HEADER).not.toContain("cpuCo2_g");
     expect(HEADER).not.toContain("renderingCo2_g");
-    expect(row.split(",")[8]).toBe("0.00336");
+    expect(row.split(",")[columnIndex("deviceCo2_g")]).toBe("0.00235");
+  });
+
+  it("exports the screen share as its own column, between device and total", () => {
+    // Act
+    const [, row] = toCSV([day("2026-02-23", [tab()])]).split("\n");
+
+    // Assert — a reader can tell the attributional share from the rest of the machine
+    const columns = row.split(",");
+    expect(columns[columnIndex("screenCo2_g")]).toBe("0.00101");
+    expect(columnIndex("screenCo2_g")).toBe(columnIndex("deviceCo2_g") + 1);
+    expect(columnIndex("totalCo2_g")).toBe(columnIndex("screenCo2_g") + 1);
   });
 
   it("exports avoided CO₂ in its own column, after the total", () => {
@@ -84,8 +103,8 @@ describe("toCSV", () => {
 
     // Assert — a reader must never mistake it for part of the footprint
     const columns = row.split(",");
-    expect(columns[9]).toBe("0.26336");
-    expect(columns[10]).toBe("0.14");
+    expect(columns[columnIndex("totalCo2_g")]).toBe("0.26336");
+    expect(columns[columnIndex("avoidedCo2_g")]).toBe("0.14");
   });
 
   it("emits nothing for a day that recorded no tab", () => {

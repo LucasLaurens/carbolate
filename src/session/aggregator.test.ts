@@ -24,7 +24,8 @@ const POPULATED_METRICS: Metrics = {
 
 const POPULATED_ESTIMATE: CarbonEstimate = {
   networkCo2: 0.5,
-  deviceCo2: 0.028,
+  deviceCo2: 0.0196,
+  screenCo2: 0.0084,
   totalCo2: 0.528,
   avoidedCo2: 0.13,
 };
@@ -102,6 +103,7 @@ describe("sums add across entries", () => {
     // Assert
     expect(summed.networkCo2).toBeCloseTo(POPULATED_ESTIMATE.networkCo2 * 2, 10);
     expect(summed.deviceCo2).toBeCloseTo(POPULATED_ESTIMATE.deviceCo2 * 2, 10);
+    expect(summed.screenCo2).toBeCloseTo(POPULATED_ESTIMATE.screenCo2 * 2, 10);
     expect(summed.totalCo2).toBeCloseTo(POPULATED_ESTIMATE.totalCo2 * 2, 10);
   });
 
@@ -111,7 +113,10 @@ describe("sums add across entries", () => {
 
     // Assert — it accumulates like the rest, and stays out of what browsing cost
     expect(summed.avoidedCo2).toBeCloseTo(POPULATED_ESTIMATE.avoidedCo2 * 2, 10);
-    expect(summed.totalCo2).toBeCloseTo(summed.networkCo2 + summed.deviceCo2, 10);
+    expect(summed.totalCo2).toBeCloseTo(
+      summed.networkCo2 + summed.deviceCo2 + summed.screenCo2,
+      10,
+    );
   });
 });
 
