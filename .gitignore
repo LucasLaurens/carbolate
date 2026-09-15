@@ -27,3 +27,6 @@ Thumbs.db
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Answers captured by scripts/verify-csv-export.sh — an observation, not a config.
+/verification-export-csv.txt

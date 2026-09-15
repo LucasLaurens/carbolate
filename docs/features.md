@@ -249,6 +249,11 @@ The download is issued from the background, where the panel's blob URL is unavai
 Chromium (MV3 service workers have no `URL.createObjectURL`), so the CSV travels as a data URL
 there and as a blob on Firefox's event page — see `buildCsvUrl` in `src/utils/csv.ts`.
 
+Both paths are covered by `test/csv-export.integration.test.ts` against a real downloads API that
+keeps its requests in memory. What a test cannot see — the file actually landing in a browser's
+downloads — is walked by `scripts/verify-csv-export.sh`, a wizard that loads the unpacked build in
+Chrome and Firefox, seeds a second day, shrinks the retention window and asks what happened.
+
 `ResetPeriod` (`"daily" | "weekly"`) has been **removed**: it duplicated
 `retentionDays` and allowed the incoherent pair `weekly` + `retentionDays: 1`.
 
