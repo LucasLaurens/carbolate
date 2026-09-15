@@ -209,6 +209,14 @@ SEED_SNIPPET='(async () => {
   console.log("seeded", date, Object.keys(sessions));
 })()'
 
+# Every answer below is something a human saw in a browser. Without a terminal
+# `read` returns EOF at once, so a piped run would walk all eight stages in
+# silence and write a report of observations nobody made.
+if [[ ! -t 0 ]]; then
+  printf 'verify-csv-export: needs a terminal — run it yourself, not through a pipe.\n' >&2
+  exit 1
+fi
+
 banner "Carbolate — automatic CSV export, both engines"
 
 # ── 1 ─────────────────────────────────────────────────────────────────────
