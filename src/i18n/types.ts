@@ -34,6 +34,12 @@ export type Translations = {
      */
     pageLoads: string;
     avoided: string;
+    /**
+     * Says the figure is a counter, not a closed balance. Without it, a user who
+     * reopens the panel and finds a higher number reads a bug — the totals only
+     * ever grow until the day rolls over.
+     */
+    running: string;
   };
   chart: { title: string };
   /**
@@ -46,7 +52,7 @@ export type Translations = {
     barTooltip: (date: string, grams: string) => string;
     noMeasure: (date: string) => string;
   };
-  actions: { refresh: string; export: string };
+  actions: { export: string };
   /**
    * The badge holds four characters, so the unit and the grade in words live
    * only here — and this tooltip is all a screen reader gets of either.

@@ -10,26 +10,22 @@ type Props = {
   days: readonly DailyRecord[];
   today: Date;
   language: Language;
-  onRefresh: () => void;
   onExport: () => void;
   isLoading?: boolean;
   t: Translations;
 };
 
 /**
- * Both actions are reachable from here, and both are rate-limited by the caller.
- *
- * Refresh is not a convenience: the panel is a side panel on Chromium and a
- * sidebar on Gecko, so it stays mounted while the user keeps browsing and its
- * figures go stale the moment the next page loads. Export is what the `downloads`
- * permission is requested for.
+ * Export is the only action left here, and the caller rate-limits it. The Refresh
+ * button that used to sit beside it is gone: the panel now follows storage as it
+ * changes, and a live panel still offering to refresh teaches the user it is not
+ * one. See docs/decisions/2026-09-15-enregistrement-vivant.md
  */
 export default function DayView({
   record,
   days,
   today,
   language,
-  onRefresh,
   onExport,
   isLoading = false,
   t,
@@ -57,15 +53,7 @@ export default function DayView({
           still has days until the next purge. */}
       {days.length > 1 && <WeekChart days={days} today={today} language={language} t={t} />}
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={isLoading}
-          className="flex-1 py-2.5 rounded-xl text-[11px] font-semibold uppercase tracking-widest bg-white border border-stone-200 text-stone-600 cursor-pointer transition-colors hover:border-stone-300 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {t.actions.refresh}
-        </button>
+      <div className="flex">
         <button
           type="button"
           onClick={onExport}

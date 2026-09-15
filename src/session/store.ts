@@ -40,13 +40,20 @@ function upsertVisit(visits: PageVisit[], incoming: PageVisit): PageVisit[] {
 }
 
 /**
- * Owns today's daily record: one read-modify-write critical section, one
- * in-memory cache. Constructed rather than ambient, so every test gets its own
- * instance and no reset hook has to be published.
+ * Owns today's daily record: one read-modify-write critical section.
+ * Constructed rather than ambient, so every test gets its own instance and no
+ * reset hook has to be published.
+ *
+ * **No in-memory cache.** One used to sit here, warmed on every read and write.
+ * It saved a storage round-trip and cost correctness the moment two contexts
+ * shared the data: the background writes a delta, the panel's own instance keeps
+ * serving the copy it read at mount, and the panel goes quietly stale — which a
+ * living record makes visible every five seconds. Every write already re-reads
+ * storage inside its queued turn, so the cache only ever spared a read on the
+ * badge path.
+ * See docs/decisions/2026-09-15-enregistrement-vivant.md
  */
 export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): MetricsStore {
-  let cached: { date: string; record: DailyRecord } | undefined;
-
   // Serializes all mutations to prevent concurrent read-modify-write races
   let writeQueue: Promise<void> = Promise.resolve();
 
@@ -70,11 +77,8 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
 
   async function readToday(): Promise<DailyRecord> {
     const date = clock.readDailyDate();
-    if (cached !== undefined && cached.date === date) return cached.record;
     const records = await loadRecords();
-    const record = records[date] ?? createEmptyDailyRecord(date);
-    cached = { date, record };
-    return record;
+    return records[date] ?? createEmptyDailyRecord(date);
   }
 
   /**
@@ -95,8 +99,6 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
 
       const updated = change(stored ?? createEmptyDailyRecord(date));
       await storage.setSessions({ ...records, [date]: updated });
-      // Warm rather than invalidate — saves a storage round-trip on the next read
-      if (date === clock.readDailyDate()) cached = { date, record: updated };
     });
   }
 
@@ -129,7 +131,6 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
           Object.entries(records).filter(([date]) => isKept(date, retentionDays, today)),
         );
         await storage.setSessions(kept);
-        cached = undefined;
       });
     },
   };

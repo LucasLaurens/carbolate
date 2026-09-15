@@ -13,13 +13,14 @@ import type { Translations } from "../../../i18n/types";
 type StatCardProps = {
   value: string;
   label: string;
+  note?: string;
   color: StatColor;
   badge?: { emoji: string; name: string };
   sub?: string;
   sub2?: string;
 };
 
-function StatCard({ value, label, color, badge, sub, sub2 }: StatCardProps) {
+function StatCard({ value, label, note, color, badge, sub, sub2 }: StatCardProps) {
   const cls = COLOR_CLASSES[color];
   return (
     <div className={`${cls.bg} border ${cls.border} rounded-xl px-4 pt-4 pb-3.5 text-center`}>
@@ -39,6 +40,7 @@ function StatCard({ value, label, color, badge, sub, sub2 }: StatCardProps) {
       <div className={`text-[10px] font-semibold uppercase tracking-widest mt-2 ${cls.label}`}>
         {label}
       </div>
+      {note && <div className="text-[10px] text-stone-400 mt-1.5">{note}</div>}
       {sub && <div className={`text-xs mt-3 font-medium ${cls.label}`}>{sub}</div>}
       {sub2 && <div className={`text-[11px] mt-1 opacity-70 ${cls.label}`}>{sub2}</div>}
     </div>
@@ -104,6 +106,7 @@ export function StatsGrid({ totalCarbon, totalMetrics, loadCount, t }: StatsGrid
       <StatCard
         value={`${formatCo2(totalCarbon.totalCo2)}g`}
         label={t.stats.co2}
+        note={t.stats.running}
         color={level.color}
         badge={{ emoji: level.badge, name: t.sobrietyLevels[level.level] }}
         sub={getCarbonEquivalence(totalCarbon.totalCo2, t.equivalences)}
