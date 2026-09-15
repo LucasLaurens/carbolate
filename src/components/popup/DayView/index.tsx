@@ -1,10 +1,15 @@
 import type { DailyRecord } from "../../../session/types";
-import type { Translations } from "../../../i18n/types";
+import type { Language, Translations } from "../../../i18n/types";
 import { StatsGrid } from "./StatsGrid";
 import { DomainChart } from "./DomainChart";
+import { WeekChart } from "./WeekChart";
 
 type Props = {
   record: DailyRecord;
+  /** Every stored day, for the week section — the panel reads, it never writes. */
+  days: readonly DailyRecord[];
+  today: Date;
+  language: Language;
   onRefresh: () => void;
   onExport: () => void;
   isLoading?: boolean;
@@ -19,7 +24,16 @@ type Props = {
  * figures go stale the moment the next page loads. Export is what the `downloads`
  * permission is requested for.
  */
-export default function DayView({ record, onRefresh, onExport, isLoading = false, t }: Props) {
+export default function DayView({
+  record,
+  days,
+  today,
+  language,
+  onRefresh,
+  onExport,
+  isLoading = false,
+  t,
+}: Props) {
   const tabCount = record.tabs.length;
 
   return (
@@ -38,6 +52,10 @@ export default function DayView({ record, onRefresh, onExport, isLoading = false
       ) : (
         <p className="text-center text-stone-400 text-sm py-4">{t.noData}</p>
       )}
+
+      {/* On the data, not on the preference: a user who just narrowed the window
+          still has days until the next purge. */}
+      {days.length > 1 && <WeekChart days={days} today={today} language={language} t={t} />}
 
       <div className="flex gap-2">
         <button

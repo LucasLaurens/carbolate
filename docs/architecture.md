@@ -35,10 +35,12 @@ src/
 │   └── popup/
 │       ├── Popup.tsx               # Panel shell — receives store, storage and clock as props
 │       ├── DayView/
-│       │   ├── index.tsx           # Daily dashboard — stats grid + domain chart
+│       │   ├── index.tsx           # Daily dashboard — stats grid + domain chart + the week section
 │       │   ├── types.ts            # StatColor, DomainData types
 │       │   ├── StatsGrid.tsx       # CO₂ card + metrics strip + the avoided-CO₂ row
 │       │   ├── DomainChart.tsx     # Doughnut chart — top 5 domains by CO₂
+│       │   ├── WeekChart.tsx       # Seven day bars in plain divs — absent below two stored days
+│       │   └── weekBars.ts         # buildWeekBars() — the pure series behind WeekChart
 │       │   └── utils.ts            # Presentation only: colours, badges, formatCo2(), aggregateDomains()
 │       ├── SettingsView.tsx        # Preferences form
 │       └── PrivacyView.tsx         # The privacy policy in the panel — one <details> per section
@@ -184,7 +186,8 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │  store, passes them in as props.                            │
 │  Popup receives a DailyRecordReader — it cannot write a     │
 │  measurement even by accident.                              │
-│  componentDidMount → store.getDailyRecord() → DayView       │
+│  componentDidMount → getDailyRecord() + getAllDays()        │
+│                     → DayView (today, and the week section) │
 └─────────────────────────────────────────────────────────────┘
 ```
 

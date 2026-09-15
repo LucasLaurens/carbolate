@@ -12,6 +12,11 @@ export const fr: Translations = {
     avoided: "évités par le cache",
   },
   chart: { title: "Top domaines par CO₂" },
+  history: {
+    title: "7 derniers jours",
+    barTooltip: (date: string, grams: string) => `${date} — ${grams} g CO₂`,
+    noMeasure: (date: string) => `${date} — aucune mesure`,
+  },
   actions: { refresh: "Actualiser", export: "Export CSV" },
   badge: {
     tooltip: (grams, level) => `Carbolate — ${grams} g aujourd'hui · ${level}`,

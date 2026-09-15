@@ -36,6 +36,7 @@ type Props = {
 type State = {
   view: View;
   record: DailyRecord;
+  days: readonly DailyRecord[];
   preferences: Preferences;
   isLoading: boolean;
 };
@@ -46,6 +47,7 @@ export default class Popup extends Component<Props, State> {
   state: State = {
     view: "day",
     record: createEmptyDailyRecord(this.props.clock.readDailyDate()),
+    days: [],
     preferences: { ...DEFAULT_PREFERENCES },
     isLoading: false,
   };
@@ -106,8 +108,11 @@ export default class Popup extends Component<Props, State> {
     if (this.state.isLoading) return;
     this.setState({ isLoading: true });
     try {
-      const record = await this.props.store.getDailyRecord();
-      this.setState({ record });
+      const [record, days] = await Promise.all([
+        this.props.store.getDailyRecord(),
+        this.props.store.getAllDays(),
+      ]);
+      this.setState({ record, days });
     } catch (e) {
       console.error("Failed to load record", e);
     } finally {
@@ -128,7 +133,7 @@ export default class Popup extends Component<Props, State> {
   setView = (view: View) => this.setState({ view });
 
   render() {
-    const { view, record, preferences, isLoading } = this.state;
+    const { view, record, days, preferences, isLoading } = this.state;
     const t = getTranslations(preferences.language);
 
     return (
@@ -163,6 +168,9 @@ export default class Popup extends Component<Props, State> {
           {view === "day" && (
             <DayView
               record={record}
+              days={days}
+              today={this.props.clock.now()}
+              language={preferences.language}
               onRefresh={this.handleRefresh}
               onExport={this.handleExport}
               isLoading={isLoading}

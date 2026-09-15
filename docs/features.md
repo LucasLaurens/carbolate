@@ -32,6 +32,19 @@ The main view displays 4 indicators for the current day:
 
 A doughnut chart displays the **5 most CO₂-intensive domains** for the day.
 
+### Last seven days
+
+Under the doughnut, seven bars — one per day, oldest first, today outlined — each carrying its
+total in grams above it and its short weekday name below. Bar colour is the **daily** sobriety
+grade; there is no vertical axis, and no grade on the week itself.
+
+- A day with **no measurement draws no bar**; its label is greyed. A zero-height bar would
+  claim a sober day that was never recorded.
+- The window is always seven days, whatever `retentionDays` is worth — thirty bars would be 8px
+  wide in a 320px panel.
+- The whole section is **absent** while storage holds a single day, so there is no empty state
+  to read.
+
 The CO₂ card is colour-coded by sobriety level and shows:
 
 - an eco-equivalence (emails, streaming, car km, flight km)
