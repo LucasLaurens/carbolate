@@ -265,25 +265,43 @@ half-run across two browsers.
 
 ## User flows
 
-### Page load (automatic collection)
+### Page visit (living collection)
+
+A visit reports **cumulative totals, repeatedly** — not one measurement taken after
+load. The running total lives in the page, because the background is a service worker
+Chromium kills after 30 seconds of inactivity and a total held there would be lost at
+a moment nobody chooses.
 
 ```
 User navigates to a new URL
-  → Content script builds a MetricsCollector and fires it once the load event has passed
-  → BrowserPerformanceSource reads the Performance API
-      getEntriesByType("resource")   → [{ transferSize, decodedBodySize }]
-      getEntriesByType("navigation") → [{ duration }]
-    (projected onto plain objects — the entries themselves are not serializable)
-  → RuntimeObservationSink sends { type: "page_metrics", payload }
+  → Content script builds a VisitAccumulator(visible?, performance.timeOrigin)
+  → PerformanceObserver("resource", buffered: true)
+      each entry → accumulator.addResource({ transferSize, decodedBodySize, thirdParty })
+      (buffered replays what landed before the script ran; thirdParty is classified
+       HERE, in the page, so no resource host ever crosses the wire)
+  → load event, or readyState already "complete"
+      → accumulator.recordNavigation(getEntriesByType("navigation")[0].duration)
+      → flush, so the first figure is immediate rather than up to five seconds late
+  → visibilitychange / pageshow / pagehide → markVisible | markHidden, and flush on hide
+      (hidden is the last moment a closing tab is guaranteed to get)
+  → setInterval(flush, 5_000)
+
+  flush = RuntimeObservationSink.send(accumulator.readMeasurement(Date.now()), timeOrigin)
+    → chrome.runtime.sendMessage({ type: "page_metrics", timeOrigin, measurement })
     → Background guards the message shape with isPageMetricsMessage()
-    → tabId + url resolved from sender
-    → MetricsIntake.record({ tabId, url, payload })
-        → parseDomain(url)      — discard if not http(s)
-        → measurePage(payload)  — discard if no resource entry
-        → Metrics { requestCount, totalResourceSize (MB), pageLoadDurationSec (s), cachedPageWeight (MB) }
-        → toCarbonInput + CarbonCalculator → CarbonEstimate { networkCo2, deviceCo2, screenCo2, totalCo2, avoidedCo2 }
-        → store.recordPageVisit(visit) — append, or replace the same (tabId, timeOrigin, url)
+    → tabId from sender.tab.id; url from sender.url, the sending frame — not
+      sender.tab.url, which Firefox withholds until host access is granted
+    → MetricsIntake.record({ tabId, url, measurement, timeOrigin })
+        → parseDomain(url)            — discard if not http(s)
+        → measurement.requests === 0  — discard: visited too early, never observed
+        → Metrics { requestCount, thirdPartyRequests, totalResourceSize (MB),
+                    pageLoadDurationSec (s), visibleDurationSec (s), cachedPageWeight (MB) }
+        → toCarbonInput + CarbonCalculator
+          → CarbonEstimate { networkCo2, deviceCo2, screenCo2, totalCo2, avoidedCo2 }
+        → store.recordPageVisit(visit) — append, or replace the same
+          (tabId, timeOrigin, url); filed under the day the visit BEGAN
     → Data persisted in ChromeStorage
+    → paintBadge() — the day's total and its sobriety colour
 ```
 
 ### Panel opened
@@ -292,14 +310,19 @@ User navigates to a new URL
 User clicks the Carbolate icon
   → App.tsx builds the clock and the store, passes them to Popup as props
   → Popup mounted (componentDidMount)
-  → Preferences loaded from PreferencesStorage.getPreferences()
-  → handleRefresh()
-    → store.getDailyRecord() → reads ChromeStorage
+    → loadPreferences() → storage.getPreferences()
+    → readRecords() → store.getDailyRecord() + store.getAllDays(), in parallel
       (normalised through session/legacy.ts, so a day written by an older
        version carries today's shape; the neutral record if nothing was
        measured today — never null)
-    → setState({ record })
-  → DayView displayed with today's data
+    → chrome.storage.onChanged subscribed, dropped again on unmount
+  → DayView displayed with today's data, and the history section under it
+    once more than one day is stored
+
+While the panel stays open
+  → a living visit writes `sessions` every few seconds
+  → onStorageChanged (SESSIONS only — the panel is the sole writer of preferences)
+    → readRecords() → setState({ record, days })
 ```
 
 ### Manual export
