@@ -52,6 +52,7 @@ export class MetricsIntake {
     // stored value, so they can never drift apart by a rounding step.
     const metrics: Metrics = {
       requestCount: measurement.requests,
+      thirdPartyRequests: measurement.thirdPartyRequests,
       totalResourceSize: bytesToMegabytes(measurement.transferredBytes),
       pageLoadDurationSec: millisecondsToSeconds(measurement.loadDurationMs),
       visibleDurationSec: millisecondsToSeconds(measurement.visibleDurationMs),

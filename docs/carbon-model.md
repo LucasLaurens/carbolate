@@ -158,9 +158,26 @@ avoidedCo2 = 0.003 × 176.8 = 0.5304 g   ← reported beside the total, never in
 
 ---
 
+## What the browser hides, and why the figure is a floor twice over
+
+A cross-origin resource whose server does not send `Timing-Allow-Origin` is an **opaque** entry:
+`transferSize`, `encodedBodySize` and `decodedBodySize` all read `0`, whatever the resource really
+weighed. Only about a quarter of third-party requests carry that header — `google-analytics.com`
+and `googletagmanager.com` do not — so **`networkCo2` misses those bytes entirely**, and no
+content-script API reports them without a new permission.
+
+This is a second, independent reason the figure is a floor: the first is the usage-only perimeter
+(manufacturing excluded, ≈ 20–25 % below a full-perimeter model), this one is measurement itself,
+and its size varies per page with no way to estimate it. It is also why third-party weight counts
+**requests** rather than bytes — see [the third-party ADR](decisions/2026-09-15-poids-tiers.md).
+
+---
+
 ## Why the cache gets no factor of its own
 
-A resource served from cache has `transferSize = 0`, so it emits no network CO₂.
+A resource served from cache has `transferSize = 0`, so it emits no network CO₂. (An opaque
+cross-origin resource reports `0` too, but with a decoded size of `0` as well, so it is credited
+nothing rather than mistaken for a cache hit.)
 The intuition that it is not free is correct, but its residual cost is **time** —
 decoding, disk reads — which `deviceCo2` already charges through the load duration.
 Adding a per-byte factor would count the same energy twice, and no published source

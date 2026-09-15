@@ -2,6 +2,7 @@ import { VisitAccumulator } from "./VisitAccumulator";
 import { RuntimeObservationSink } from "./RuntimeObservationSink";
 import { PerformanceEntryType } from "../performance/enums/PerformanceEntryType";
 import type { NavigationTiming } from "../performance/PageMetrics";
+import { isThirdPartyResource } from "../utils/url";
 
 /**
  * How often a living visit reports its totals. Below this the panel reads as
@@ -28,6 +29,9 @@ new PerformanceObserver((list) => {
     accumulator.addResource({
       transferSize: timing.transferSize,
       decodedBodySize: timing.decodedBodySize,
+      // Classified here, where the resource URL is: only the count crosses the
+      // wire, never the hosts a user's browsing met.
+      thirdParty: isThirdPartyResource(timing.name, location.hostname),
     });
   }
 }).observe({ type: PerformanceEntryType.RESOURCE, buffered: true });

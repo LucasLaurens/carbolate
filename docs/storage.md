@@ -64,7 +64,8 @@ const DEFAULT_PREFERENCES: Preferences = {
 
 ```typescript
 type Metrics = {
-  requestCount: number; // Number of HTTP/HTTPS requests
+  requestCount: number;
+  thirdPartyRequests: number; // How many came from another registrable domain // Number of HTTP/HTTPS requests
   totalResourceSize: number; // Transferred data (MB, base 10 — 10⁶ bytes)
   pageLoadDurationSec: number;
   visibleDurationSec: number; // Seconds the page was visible — the input of screenCo2 // Navigation duration (seconds) — wall clock, not CPU
@@ -225,6 +226,7 @@ extensions:
 | `cpuTimeToLoad`                      | `pageLoadDurationSec`                          |
 | `tabs` array / `id` field            | `visits` array / `tabId` field                 |
 | no `visibleDurationSec`              | `0` — no screen time was ever measured         |
+| no `thirdPartyRequests`              | `0` — resources were not classified then       |
 | no `avoidedCo2` / `cachedPageWeight` | `0` — unrecoverable, and zero invents nothing  |
 
 `normalizeDailyRecords()` runs on every `getSessions()` read inside the metrics

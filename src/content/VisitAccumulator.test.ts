@@ -9,8 +9,8 @@ describe("VisitAccumulator — what the page measured", () => {
     const accumulator = new VisitAccumulator(true, START);
 
     // Act
-    accumulator.addResource({ transferSize: 1_000 });
-    accumulator.addResource({ transferSize: 0, decodedBodySize: 4_000 });
+    accumulator.addResource({ transferSize: 1_000, thirdParty: false });
+    accumulator.addResource({ transferSize: 0, decodedBodySize: 4_000, thirdParty: false });
 
     // Assert
     const measurement = accumulator.readMeasurement(START);
@@ -23,10 +23,10 @@ describe("VisitAccumulator — what the page measured", () => {
     // Arrange
     const accumulator = new VisitAccumulator(true, START);
     accumulator.recordNavigation({ duration: 900 });
-    accumulator.addResource({ transferSize: 1_000 });
+    accumulator.addResource({ transferSize: 1_000, thirdParty: false });
 
     // Act — a lazy image, an XHR: bytes that used to be lost
-    accumulator.addResource({ transferSize: 500_000 });
+    accumulator.addResource({ transferSize: 500_000, thirdParty: false });
 
     // Assert
     expect(accumulator.readMeasurement(START).transferredBytes).toBe(501_000);
@@ -70,7 +70,7 @@ describe("VisitAccumulator — visible time", () => {
   it("reports nothing for a tab loaded in the background and never looked at", () => {
     // Arrange — ctrl-clicked link: the document exists, the panel showed none of it
     const accumulator = new VisitAccumulator(false, START);
-    accumulator.addResource({ transferSize: 2_000_000 });
+    accumulator.addResource({ transferSize: 2_000_000, thirdParty: false });
 
     // Act & Assert — the network is charged, the screen is not
     const measurement = accumulator.readMeasurement(START + 600_000);

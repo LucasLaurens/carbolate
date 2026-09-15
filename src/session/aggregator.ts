@@ -4,6 +4,7 @@ import type { DailyRecord, Metrics } from "./types";
 /** O(n) time, O(1) space — n = entries. */
 export const sumMetrics = (entries: readonly Metrics[]): Metrics => ({
   requestCount: entries.reduce((sum, each) => sum + each.requestCount, 0),
+  thirdPartyRequests: entries.reduce((sum, each) => sum + each.thirdPartyRequests, 0),
   totalResourceSize: entries.reduce((sum, each) => sum + each.totalResourceSize, 0),
   pageLoadDurationSec: entries.reduce((sum, each) => sum + each.pageLoadDurationSec, 0),
   visibleDurationSec: entries.reduce((sum, each) => sum + each.visibleDurationSec, 0),

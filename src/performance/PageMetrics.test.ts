@@ -13,15 +13,33 @@ describe("createEmptyMeasurement", () => {
       transferredBytes: 0,
       loadDurationMs: 0,
       cachedBytes: 0,
+      thirdPartyRequests: 0,
       visibleDurationMs: 0,
     });
   });
 });
 
 describe("addResourceTiming", () => {
+  it("counts a third-party resource in both totals", () => {
+    // Act
+    const result = [
+      { transferSize: 10, thirdParty: false },
+      { transferSize: 20, thirdParty: true },
+      { transferSize: 30, thirdParty: true },
+    ].reduce(addResourceTiming, createEmptyMeasurement());
+
+    // Assert — the share is of requests, never of bytes
+    expect(result.requests).toBe(3);
+    expect(result.thirdPartyRequests).toBe(2);
+  });
+
   it("counts one request per resource", () => {
     // Act
-    const result = foldAll([{ transferSize: 10 }, { transferSize: 20 }, { transferSize: 30 }]);
+    const result = foldAll([
+      { transferSize: 10, thirdParty: false },
+      { transferSize: 20, thirdParty: false },
+      { transferSize: 30, thirdParty: false },
+    ]);
 
     // Assert
     expect(result.requests).toBe(3);
@@ -29,7 +47,10 @@ describe("addResourceTiming", () => {
 
   it("sums transferred bytes across every resource", () => {
     // Act
-    const result = foldAll([{ transferSize: 1_200 }, { transferSize: 800 }]);
+    const result = foldAll([
+      { transferSize: 1_200, thirdParty: false },
+      { transferSize: 800, thirdParty: false },
+    ]);
 
     // Assert
     expect(result.transferredBytes).toBe(2_000);
@@ -37,7 +58,7 @@ describe("addResourceTiming", () => {
 
   it("credits a cache hit — zero transferred, a decoded body of its own", () => {
     // Act
-    const result = foldAll([{ transferSize: 0, decodedBodySize: 120_000 }]);
+    const result = foldAll([{ transferSize: 0, decodedBodySize: 120_000, thirdParty: false }]);
 
     // Assert
     expect(result.cachedBytes).toBe(120_000);
@@ -46,7 +67,7 @@ describe("addResourceTiming", () => {
 
   it("credits nothing to a resource that crossed the network", () => {
     // Act — a real transfer, decoded size known: it was downloaded, not spared
-    const result = foldAll([{ transferSize: 40_000, decodedBodySize: 120_000 }]);
+    const result = foldAll([{ transferSize: 40_000, decodedBodySize: 120_000, thirdParty: false }]);
 
     // Assert
     expect(result.cachedBytes).toBe(0);
@@ -54,7 +75,7 @@ describe("addResourceTiming", () => {
 
   it("credits nothing when a stale content script sent no decoded size", () => {
     // Act
-    const result = foldAll([{ transferSize: 0 }]);
+    const result = foldAll([{ transferSize: 0, thirdParty: false }]);
 
     // Assert — the absence costs the avoided figure, never the whole observation
     expect(result.cachedBytes).toBe(0);
@@ -66,7 +87,7 @@ describe("addResourceTiming", () => {
     const before = createEmptyMeasurement();
 
     // Act
-    addResourceTiming(before, { transferSize: 500 });
+    addResourceTiming(before, { transferSize: 500, thirdParty: false });
 
     // Assert — a living visit keeps folding; a mutated total would double-count
     expect(before.requests).toBe(0);

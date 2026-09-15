@@ -17,6 +17,7 @@ import type { CarbonEstimate } from "../carbon/types";
  */
 const POPULATED_METRICS: Metrics = {
   requestCount: 7,
+  thirdPartyRequests: 3,
   totalResourceSize: 1.5,
   pageLoadDurationSec: 2.25,
   visibleDurationSec: 12,
@@ -88,6 +89,7 @@ describe("sums add across entries", () => {
       sumMetrics([
         {
           requestCount: 5,
+          thirdPartyRequests: 3,
           totalResourceSize: 1,
           pageLoadDurationSec: 0.5,
           visibleDurationSec: 20,
@@ -95,6 +97,7 @@ describe("sums add across entries", () => {
         },
         {
           requestCount: 3,
+          thirdPartyRequests: 3,
           totalResourceSize: 2,
           pageLoadDurationSec: 1.5,
           visibleDurationSec: 40,
@@ -103,6 +106,7 @@ describe("sums add across entries", () => {
       ]),
     ).toEqual({
       requestCount: 8,
+      thirdPartyRequests: 6,
       totalResourceSize: 3,
       pageLoadDurationSec: 2,
       visibleDurationSec: 60,

@@ -35,6 +35,12 @@ export type Translations = {
     pageLoads: string;
     avoided: string;
     /**
+     * A count of requests, never a share of bytes: ~75 % of third-party requests
+     * report a size of zero, so a byte share would under-report the most opaque
+     * trackers. The wording must not let it read as a share of the CO₂ figure.
+     */
+    thirdParty: (third: number, total: number) => string;
+    /**
      * Says the figure is a counter, not a closed balance. Without it, a user who
      * reopens the panel and finds a higher number reads a bug — the totals only
      * ever grow until the day rolls over.
