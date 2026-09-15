@@ -191,6 +191,8 @@ ENV_FILE="${ENV_FILE:-verification-export-csv.txt}"
 DIST="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/dist"
 
 SEED_SNIPPET='(async () => {
+  // Chrome exposes a promise-based chrome.*; Firefox puts promises on browser.*.
+  const storage = (typeof browser !== "undefined" ? browser : chrome).storage.local;
   const d = new Date(); d.setDate(d.getDate() - 1);
   const date = d.toLocaleDateString("sv");
   const visit = {
@@ -201,9 +203,9 @@ SEED_SNIPPET='(async () => {
     carbon: { networkCo2: 0.26, deviceCo2: 0.0024, screenCo2: 0.025,
               totalCo2: 0.287, avoidedCo2: 0.14 },
   };
-  const { sessions = {} } = await chrome.storage.local.get(["sessions"]);
+  const { sessions = {} } = await storage.get(["sessions"]);
   sessions[date] = { date, visits: [visit], totalMetrics: {}, totalCarbon: {} };
-  await chrome.storage.local.set({ sessions });
+  await storage.set({ sessions });
   console.log("seeded", date, Object.keys(sessions));
 })()'
 
