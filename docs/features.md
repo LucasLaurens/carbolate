@@ -27,7 +27,7 @@ The main view displays 4 indicators for the current day:
 | Estimated CO₂        | `totalCarbon.totalCo2`           | grams |
 | Data transferred     | `totalMetrics.totalResourceSize` | MB    |
 | HTTP requests        | `totalMetrics.requestCount`      | count |
-| Tabs visited         | `record.tabs.length`             | count |
+| Page loads           | `record.visits.length`           | count |
 | Avoided by the cache | `totalCarbon.avoidedCo2`         | grams |
 
 A doughnut chart displays the **5 most CO₂-intensive domains** for the day.
@@ -251,7 +251,7 @@ User navigates to a new URL
         → measurePage(payload)  — discard if no resource entry
         → Metrics { requestCount, totalResourceSize (MB), pageLoadDurationSec (s), cachedPageWeight (MB) }
         → toCarbonInput + CarbonCalculator → CarbonEstimate { networkCo2, deviceCo2, screenCo2, totalCo2, avoidedCo2 }
-        → store.recordTabMetrics(tab) — upsert inside the write queue
+        → store.recordPageVisit(visit) — append, or replace the same (tabId, timeOrigin, url)
     → Data persisted in ChromeStorage
 ```
 

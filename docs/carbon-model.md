@@ -263,8 +263,8 @@ sumMetrics(entries)         → { requestCount, totalResourceSize, pageLoadDurat
 sumCarbonEstimates(entries) → { networkCo2, deviceCo2, totalCo2, avoidedCo2 }
 ```
 
-Each `MetricTab` carries its own `carbon`. `DailyRecord.totalCarbon` is the **sum**
-across all tabs for the day. `avoidedCo2` is summed like every other channel and
+Each `PageVisit` carries its own `carbon`. `DailyRecord.totalCarbon` is the **sum**
+across all visits for the day. `avoidedCo2` is summed like every other channel and
 still stays out of `totalCo2`.
 
 Every estimate reaching these functions has passed through

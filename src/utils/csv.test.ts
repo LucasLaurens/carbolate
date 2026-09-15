@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { toCSV } from "./csv";
 import { createEmptyDailyRecord } from "../session/aggregator";
-import type { DailyRecord, MetricTab } from "../session/types";
+import type { DailyRecord, PageVisit } from "../session/types";
 
 const HEADER =
   "date,domain,url,requestCount,totalResourceSize_MB,pageLoadDuration_s,cachedPageWeight_MB," +
   "networkCo2_g,deviceCo2_g,screenCo2_g,totalCo2_g,avoidedCo2_g,visitTimestamp";
 
-const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
-  id: 1,
+const visit = (overrides: Partial<PageVisit> = {}): PageVisit => ({
+  tabId: 1,
   url: "https://example.com/page",
   domain: "example.com",
   metrics: {
@@ -30,9 +30,9 @@ const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
 
 const columnIndex = (name: string) => HEADER.split(",").indexOf(name);
 
-const day = (date: string, tabs: MetricTab[]): DailyRecord => ({
+const day = (date: string, visits: PageVisit[]): DailyRecord => ({
   ...createEmptyDailyRecord(date),
-  tabs,
+  visits,
 });
 
 describe("toCSV", () => {
@@ -41,7 +41,7 @@ describe("toCSV", () => {
   });
 
   it("writes one row per tab, headed by the column names", () => {
-    const records = [day("2026-02-23", [tab({ id: 1 }), tab({ id: 2 })])];
+    const records = [day("2026-02-23", [visit({ tabId: 1 }), visit({ tabId: 2 })])];
 
     const lines = toCSV(records).split("\n");
 
@@ -50,7 +50,7 @@ describe("toCSV", () => {
   });
 
   it("carries the day of each record onto its rows", () => {
-    const records = [day("2026-02-22", [tab()]), day("2026-02-23", [tab()])];
+    const records = [day("2026-02-22", [visit()]), day("2026-02-23", [visit()])];
 
     const [, first, second] = toCSV(records).split("\n");
 
@@ -59,7 +59,7 @@ describe("toCSV", () => {
   });
 
   it("quotes a url containing a comma so the column count survives", () => {
-    const records = [day("2026-02-23", [tab({ url: "https://example.com/a,b" })])];
+    const records = [day("2026-02-23", [visit({ url: "https://example.com/a,b" })])];
 
     const [, row] = toCSV(records).split("\n");
 
@@ -68,7 +68,7 @@ describe("toCSV", () => {
   });
 
   it("doubles an embedded quote rather than breaking the field", () => {
-    const records = [day("2026-02-23", [tab({ url: 'https://example.com/"q"' })])];
+    const records = [day("2026-02-23", [visit({ url: 'https://example.com/"q"' })])];
 
     const [, row] = toCSV(records).split("\n");
 
@@ -78,7 +78,7 @@ describe("toCSV", () => {
   it("exports the device figure as one column, not two", () => {
     // Act — the split cpuCo2_g / renderingCo2_g pair propagated a ventilation the
     // measurement never supported
-    const [, row] = toCSV([day("2026-02-23", [tab()])]).split("\n");
+    const [, row] = toCSV([day("2026-02-23", [visit()])]).split("\n");
 
     // Assert
     expect(HEADER).not.toContain("cpuCo2_g");
@@ -88,7 +88,7 @@ describe("toCSV", () => {
 
   it("exports the screen share as its own column, between device and total", () => {
     // Act
-    const [, row] = toCSV([day("2026-02-23", [tab()])]).split("\n");
+    const [, row] = toCSV([day("2026-02-23", [visit()])]).split("\n");
 
     // Assert — a reader can tell the attributional share from the rest of the machine
     const columns = row.split(",");
@@ -99,7 +99,7 @@ describe("toCSV", () => {
 
   it("exports avoided CO₂ in its own column, after the total", () => {
     // Act
-    const [, row] = toCSV([day("2026-02-23", [tab()])]).split("\n");
+    const [, row] = toCSV([day("2026-02-23", [visit()])]).split("\n");
 
     // Assert — a reader must never mistake it for part of the footprint
     const columns = row.split(",");

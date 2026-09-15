@@ -34,7 +34,7 @@ export default function DayView({
   isLoading = false,
   t,
 }: Props) {
-  const tabCount = record.tabs.length;
+  const loadCount = record.visits.length;
 
   return (
     <div
@@ -43,11 +43,11 @@ export default function DayView({
       <StatsGrid
         totalCarbon={record.totalCarbon}
         totalMetrics={record.totalMetrics}
-        tabCount={tabCount}
+        loadCount={loadCount}
         t={t}
       />
 
-      {tabCount > 0 ? (
+      {loadCount > 0 ? (
         <DomainChart record={record} t={t} />
       ) : (
         <p className="text-center text-stone-400 text-sm py-4">{t.noData}</p>

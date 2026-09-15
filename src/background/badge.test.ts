@@ -9,7 +9,7 @@ import {
 import type { BadgeSurface } from "./badge";
 import { createEmptyMetrics } from "../session/aggregator";
 import { createMetricsStore } from "../session/store";
-import type { MetricTab } from "../session/types";
+import type { PageVisit } from "../session/types";
 import { en, fr } from "../i18n";
 import { InMemoryDailyRecordsStorage } from "../../test/fakes/InMemoryDailyRecordsStorage";
 import { FixedClock } from "../../test/fakes/FixedClock";
@@ -104,8 +104,8 @@ describe("refreshBadge", () => {
     };
   }
 
-  const measuredTab = (totalCo2: number): MetricTab => ({
-    id: 1,
+  const measuredVisit = (totalCo2: number): PageVisit => ({
+    tabId: 1,
     url: "https://example.test/page",
     domain: "example.test",
     metrics: createEmptyMetrics(),
@@ -119,7 +119,7 @@ describe("refreshBadge", () => {
   it("grades the day's total, in the language the panel is set to", async () => {
     // Arrange
     const store = storeOf(new InMemoryDailyRecordsStorage());
-    await store.recordTabMetrics(measuredTab(133));
+    await store.recordPageVisit(measuredVisit(133));
     const badge = new RecordingBadge();
 
     // Act
@@ -148,7 +148,7 @@ describe("refreshBadge", () => {
   it("spells the unit out in the tooltip a badge cannot carry", async () => {
     // Arrange — under a gram the badge only has room for "<1"
     const store = storeOf(new InMemoryDailyRecordsStorage());
-    await store.recordTabMetrics(measuredTab(0.42));
+    await store.recordPageVisit(measuredVisit(0.42));
     const badge = new RecordingBadge();
 
     // Act

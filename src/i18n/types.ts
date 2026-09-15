@@ -27,7 +27,12 @@ export type Translations = {
     co2: string;
     data: string;
     requests: string;
-    tabs: string;
+    /**
+     * Page **loads**, not pages: three F5 are three stored visits, and calling
+     * them "3 pages visited" would be false. The stored unit is a page visit;
+     * this statistic counts loads. Two things, two words.
+     */
+    pageLoads: string;
     avoided: string;
   };
   chart: { title: string };

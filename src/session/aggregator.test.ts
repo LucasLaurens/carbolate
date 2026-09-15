@@ -131,7 +131,7 @@ describe("the neutral daily record", () => {
     const record = createEmptyDailyRecord("2026-02-23");
 
     // Assert
-    expect(record.tabs).toEqual([]);
+    expect(record.visits).toEqual([]);
     expect(record.totalMetrics).toEqual(createEmptyMetrics());
     expect(record.totalCarbon).toEqual(createEmptyCarbonEstimate());
   });

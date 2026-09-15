@@ -1,4 +1,4 @@
-import type { MetricTab } from "../../../session/types";
+import type { PageVisit } from "../../../session/types";
 import type { StatColor, DomainData } from "./types";
 import type { EquivalenceTranslations, WorldComparisonTranslations } from "../../../i18n/types";
 import type { SobrietyLevel } from "../../../carbon/sobriety";
@@ -113,11 +113,11 @@ export function getWorldComparisonLabel(gCO2: number, labels: WorldComparisonTra
   return labels[compareToDailyReference(gCO2)];
 }
 
-/** O(n) time and space — n = tabs. One pass, indexed by domain. */
-export function aggregateDomains(tabs: readonly MetricTab[]): DomainData[] {
+/** O(n) time and space — n = visits. One pass, indexed by domain. */
+export function aggregateDomains(visits: readonly PageVisit[]): DomainData[] {
   const perDomain = new Map<string, number>();
-  for (const tab of tabs) {
-    perDomain.set(tab.domain, (perDomain.get(tab.domain) ?? 0) + tab.carbon.totalCo2);
+  for (const visit of visits) {
+    perDomain.set(visit.domain, (perDomain.get(visit.domain) ?? 0) + visit.carbon.totalCo2);
   }
   return Array.from(perDomain.entries()).map(([domain, totalCo2]) => ({ domain, totalCo2 }));
 }

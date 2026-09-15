@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { createMetricsStore } from "../src/session/store";
-import type { MetricTab, MetricsStore } from "../src/session/types";
+import type { PageVisit, MetricsStore } from "../src/session/types";
 import {
   createEmptyCarbonEstimate,
   createEmptyDailyRecord,
@@ -18,9 +18,11 @@ import { FixedClock } from "./fakes/FixedClock";
 
 const TODAY = "2026-02-23";
 const MS_PER_DAY = 24 * 60 * 60 * 1_000;
+/** A document start — the identity timestamp, not the hour the message landed. */
+const LOADED_AT = 1_771_800_000_000;
 
-const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
-  id: 1,
+const visit = (overrides: Partial<PageVisit> = {}): PageVisit => ({
+  tabId: 1,
   url: "https://example.com/page",
   domain: "example.com",
   metrics: {
@@ -29,7 +31,7 @@ const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
     pageLoadDurationSec: 1.2,
     cachedPageWeight: 0.4,
   },
-  meta: { date: 0 },
+  meta: { date: LOADED_AT },
   carbon: {
     networkCo2: 0.8,
     deviceCo2: 0.0098,
@@ -40,9 +42,9 @@ const tab = (overrides: Partial<MetricTab> = {}): MetricTab => ({
   ...overrides,
 });
 
-const TAB_A = tab({ id: 1 });
-const TAB_B = tab({
-  id: 2,
+const VISIT_A = visit({ tabId: 1 });
+const VISIT_B = visit({
+  tabId: 2,
   url: "https://other.com",
   domain: "other.com",
   metrics: {
@@ -97,32 +99,32 @@ describe("reading a day that has no data", () => {
   });
 });
 
-describe("recording tab metrics", () => {
-  it("stores a tab under today and reads it back", async () => {
+describe("recording a page visit", () => {
+  it("stores a visit under today and reads it back", async () => {
     // Act
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(record.tabs).toHaveLength(1);
-    expect(record.tabs[0].domain).toBe("example.com");
+    expect(record.visits).toHaveLength(1);
+    expect(record.visits[0].domain).toBe("example.com");
     expect(storage.dates()).toEqual([TODAY]);
   });
 
-  it("keeps distinct tabs side by side", async () => {
+  it("keeps distinct visits side by side", async () => {
     // Act
-    await store.recordTabMetrics(TAB_A);
-    await store.recordTabMetrics(TAB_B);
+    await store.recordPageVisit(VISIT_A);
+    await store.recordPageVisit(VISIT_B);
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(record.tabs.map((each) => each.id).sort()).toEqual([1, 2]);
+    expect(record.visits.map((each) => each.tabId).sort()).toEqual([1, 2]);
   });
 
-  it("rebuilds the day's totals from its tabs on every write", async () => {
+  it("rebuilds the day's totals from its visits on every write", async () => {
     // Act
-    await store.recordTabMetrics(TAB_A);
-    await store.recordTabMetrics(TAB_B);
+    await store.recordPageVisit(VISIT_A);
+    await store.recordPageVisit(VISIT_B);
 
     // Assert
     const record = await store.getDailyRecord();
@@ -131,14 +133,14 @@ describe("recording tab metrics", () => {
     expect(record.totalCarbon.totalCo2).toBeCloseTo(0.814 + 0.307, 10);
   });
 
-  it("replaces the measurements of a tab already recorded today", async () => {
+  it("replaces the measurements of a visit already recorded today", async () => {
     // Arrange
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
     // Act
-    await store.recordTabMetrics(
-      tab({
-        id: 1,
+    await store.recordPageVisit(
+      visit({
+        tabId: 1,
         metrics: {
           requestCount: 20,
           totalResourceSize: 50,
@@ -150,20 +152,20 @@ describe("recording tab metrics", () => {
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(record.tabs).toHaveLength(1);
-    expect(record.tabs[0].metrics.requestCount).toBe(20);
+    expect(record.visits).toHaveLength(1);
+    expect(record.visits[0].metrics.requestCount).toBe(20);
     expect(record.totalMetrics.requestCount).toBe(20);
   });
 
-  it("leaves the other tabs untouched when one is updated", async () => {
+  it("leaves the other visits untouched when one is updated", async () => {
     // Arrange
-    await store.recordTabMetrics(TAB_A);
-    await store.recordTabMetrics(TAB_B);
+    await store.recordPageVisit(VISIT_A);
+    await store.recordPageVisit(VISIT_B);
 
     // Act
-    await store.recordTabMetrics(
-      tab({
-        id: 1,
+    await store.recordPageVisit(
+      visit({
+        tabId: 1,
         metrics: {
           requestCount: 99,
           totalResourceSize: 99,
@@ -175,44 +177,96 @@ describe("recording tab metrics", () => {
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(record.tabs.find((each) => each.id === 2)!.metrics).toEqual(TAB_B.metrics);
+    expect(record.visits.find((each) => each.tabId === 2)!.metrics).toEqual(VISIT_B.metrics);
   });
 
-  it("keeps the identity of the first load when a tab is re-recorded", async () => {
+  it("counts a reload of the same URL as a second visit", async () => {
     // Arrange
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
-    // Act — the tab navigated elsewhere; today the unit of measure is the tab
-    await store.recordTabMetrics(
-      tab({ id: 1, url: "https://example.com/other", domain: "elsewhere.com" }),
+    // Act — same tab, same URL, a new document: two F5 are two documents
+    await store.recordPageVisit(visit({ tabId: 1, meta: { date: LOADED_AT + 60_000 } }));
+
+    // Assert — replacing would under-count bytes that really crossed the network
+    const record = await store.getDailyRecord();
+    expect(record.visits).toHaveLength(2);
+    expect(record.totalMetrics.requestCount).toBe(20);
+  });
+
+  it("counts the same URL open in two tabs as two visits", async () => {
+    // Arrange
+    await store.recordPageVisit(VISIT_A);
+
+    // Act — same document start, same URL, another tab
+    await store.recordPageVisit(visit({ tabId: 2 }));
+
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(record.visits).toHaveLength(2);
+  });
+
+  it("counts a navigation inside one document as its own visit", async () => {
+    // Arrange
+    await store.recordPageVisit(VISIT_A);
+
+    // Act — same tab, same document start, another URL: an SPA navigation
+    await store.recordPageVisit(visit({ url: "https://example.com/other" }));
+
+    // Assert
+    const record = await store.getDailyRecord();
+    expect(record.visits).toHaveLength(2);
+  });
+
+  it("routes a delta onto the visit it belongs to, without adding one", async () => {
+    // Arrange
+    await store.recordPageVisit(VISIT_A);
+    await store.recordPageVisit(visit({ tabId: 1, meta: { date: LOADED_AT + 60_000 } }));
+
+    // Act — a later measurement of the first load, same three-part key
+    await store.recordPageVisit(
+      visit({
+        tabId: 1,
+        metrics: {
+          requestCount: 42,
+          totalResourceSize: 5,
+          pageLoadDurationSec: 1.2,
+          cachedPageWeight: 0.4,
+        },
+      }),
     );
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(record.tabs[0].domain).toBe("example.com");
+    expect(record.visits).toHaveLength(2);
+    expect(record.visits[0].metrics.requestCount).toBe(42);
+    expect(record.visits[1].metrics.requestCount).toBe(10);
   });
 });
 
 describe("concurrent writes", () => {
-  it("serializes distinct tabs without losing any", async () => {
+  it("serializes distinct visits without losing any", async () => {
     // Arrange
-    const tabs = [TAB_A, TAB_B, tab({ id: 3, url: "https://third.com", domain: "third.com" })];
+    const visits = [
+      VISIT_A,
+      VISIT_B,
+      visit({ tabId: 3, url: "https://third.com", domain: "third.com" }),
+    ];
 
     // Act
-    await Promise.all(tabs.map((each) => store.recordTabMetrics(each)));
+    await Promise.all(visits.map((each) => store.recordPageVisit(each)));
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(record.tabs.map((each) => each.id).sort()).toEqual([1, 2, 3]);
+    expect(record.visits.map((each) => each.tabId).sort()).toEqual([1, 2, 3]);
   });
 
-  it("collapses concurrent writes of one tab into a single entry", async () => {
+  it("collapses concurrent writes of one visit into a single entry", async () => {
     // Arrange — the read-then-write race: deciding add-or-update outside the
     // queue let both calls conclude "not there yet" and append twice.
     const writes = [10, 20, 30].map((requestCount) =>
-      store.recordTabMetrics(
-        tab({
-          id: 1,
+      store.recordPageVisit(
+        visit({
+          tabId: 1,
           metrics: {
             requestCount,
             totalResourceSize: 1,
@@ -228,8 +282,8 @@ describe("concurrent writes", () => {
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(record.tabs).toHaveLength(1);
-    expect(record.totalMetrics.requestCount).toBe(record.tabs[0].metrics.requestCount);
+    expect(record.visits).toHaveLength(1);
+    expect(record.totalMetrics.requestCount).toBe(record.visits[0].metrics.requestCount);
   });
 });
 
@@ -237,7 +291,7 @@ describe("retention", () => {
   it("drops a day older than the window and keeps today", async () => {
     // Arrange
     storage.seedDay("2026-02-01", createEmptyDailyRecord("2026-02-01"));
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
     // Act
     await store.clearPastDays(1);
@@ -249,7 +303,7 @@ describe("retention", () => {
   it("keeps a day still inside the window", async () => {
     // Arrange
     storage.seedDay("2026-02-20", createEmptyDailyRecord("2026-02-20"));
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
     // Act
     await store.clearPastDays(7);
@@ -261,7 +315,7 @@ describe("retention", () => {
   it("keeps every day when retention is unlimited", async () => {
     // Arrange
     storage.seedDay("2020-01-01", createEmptyDailyRecord("2020-01-01"));
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
     // Act
     await store.clearPastDays(-1);
@@ -272,7 +326,7 @@ describe("retention", () => {
 
   it("never drops today, however short the window", async () => {
     // Arrange
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
     // Act
     await store.clearPastDays(0);
@@ -284,7 +338,7 @@ describe("retention", () => {
   it("still serves today after retention has run", async () => {
     // Arrange
     storage.seedDay("2026-02-01", createEmptyDailyRecord("2026-02-01"));
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
     await store.getDailyRecord();
 
     // Act
@@ -292,7 +346,7 @@ describe("retention", () => {
 
     // Assert — the cache was dropped, so this re-reads storage
     const record = await store.getDailyRecord();
-    expect(record.tabs).toHaveLength(1);
+    expect(record.visits).toHaveLength(1);
   });
 });
 
@@ -301,7 +355,7 @@ describe("reading across days", () => {
     // Arrange
     storage.seedDay("2026-02-24", createEmptyDailyRecord("2026-02-24"));
     storage.seedDay("2026-02-22", createEmptyDailyRecord("2026-02-22"));
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
     // Act
     const days = await store.getAllDays();
@@ -319,7 +373,7 @@ describe("reading across days", () => {
 describe("crossing midnight", () => {
   it("serves the new day empty once the clock rolls over", async () => {
     // Arrange
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
     // Act
     clock.advance(MS_PER_DAY);
@@ -327,19 +381,19 @@ describe("crossing midnight", () => {
     // Assert
     const record = await store.getDailyRecord();
     expect(record.date).toBe("2026-02-24");
-    expect(record.tabs).toEqual([]);
+    expect(record.visits).toEqual([]);
   });
 
   it("leaves yesterday's data intact", async () => {
     // Arrange
-    await store.recordTabMetrics(TAB_A);
+    await store.recordPageVisit(VISIT_A);
 
     // Act
     clock.advance(MS_PER_DAY);
-    await store.recordTabMetrics(TAB_B);
+    await store.recordPageVisit(VISIT_B);
 
     // Assert
     const days = await store.getAllDays();
-    expect(days.map((day) => day.tabs.length)).toEqual([1, 1]);
+    expect(days.map((day) => day.visits.length)).toEqual([1, 1]);
   });
 });

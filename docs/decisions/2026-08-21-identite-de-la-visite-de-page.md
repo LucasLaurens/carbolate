@@ -33,3 +33,18 @@ Trois faits ont contraint les réponses :
 - Le volume stocké croît des rechargements en plus des navigations. La rétention par défaut à un jour le borne.
 - Limite préexistante, désormais écrite : une page qui charge plus de 250 ressources en perd au-delà, donc son poids est sous-compté. Le plafond du buffer n'a jamais été relevé. À reprendre avec l'enregistrement vivant, qui doit de toute façon changer de mécanisme de collecte.
 - Le glossaire gagne un terme pour la statistique affichée, distinct de l'unité stockée.
+
+**Amendement du 2026-09-15 — la forme est écrite** ([#47](https://github.com/LucasLaurens/carbolate/issues/47)) :
+
+- `MetricTab` devient `PageVisit`, son champ `id` devient `tabId`, et `DailyRecord.tabs` devient
+  `DailyRecord.visits`. `session/legacy.ts` lit les deux anciens noms et écrit les nouveaux : aucune
+  migration, aucun jour perdu — vérifié à l'écran sur un storage mélangeant les deux formes.
+- `TabMetricsRecorder` devient `PageVisitRecorder`, `recordTabMetrics` devient `recordPageVisit`.
+- Le `timeOrigin` voyage dans le message (`PageMetricsMessage.timeOrigin`), lu dans la page par
+  `PerformanceSource.readTimeOrigin()`. Le garde du message le **refuse absent ou non fini** : un
+  content script d'avant la mise à jour n'a pas d'identité à offrir, et une visite sans identité ne
+  peut pas recevoir ses deltas.
+- `MetricsIntake` perd sa dépendance au `Clock` : il ne pose plus d'horodatage, il le reçoit.
+- L'en-tête CSV ne bouge pas. `visitTimestamp` reste juste — il nommait déjà l'identité de la
+  visite ; seul son contenu passe de l'heure d'enregistrement au début du document, à une seconde
+  près sur tout ce qui était déjà stocké.

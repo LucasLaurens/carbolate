@@ -8,7 +8,7 @@ export const en: Translations = {
     co2: "Estimated CO₂",
     data: "Data transferred",
     requests: "Requests",
-    tabs: "Tabs visited",
+    pageLoads: "Page loads",
     avoided: "avoided by the cache",
   },
   chart: { title: "Top domains by CO₂" },

@@ -4,6 +4,7 @@ import { PerformanceEntryType } from "../performance/enums/PerformanceEntryType"
 
 const valid = {
   type: MessageType.PAGE_METRICS,
+  timeOrigin: 1_771_800_000_000,
   payload: {
     [PerformanceEntryType.RESOURCE]: [{ transferSize: 10 }],
     [PerformanceEntryType.NAVIGATION]: [{ duration: 100 }],
@@ -21,12 +22,27 @@ describe("isPageMetricsMessage", () => {
     expect(
       isPageMetricsMessage({
         type: MessageType.PAGE_METRICS,
+        timeOrigin: 1_771_800_000_000,
         payload: {
           [PerformanceEntryType.RESOURCE]: [],
           [PerformanceEntryType.NAVIGATION]: [],
         },
       }),
     ).toBe(true);
+  });
+
+  it("rejects a message with no document start — the visit would have no identity", () => {
+    // Arrange — a content script from before the page-visit key, still running in an old tab
+    const { timeOrigin: _dropped, ...withoutOrigin } = valid;
+
+    // Act & Assert
+    expect(isPageMetricsMessage(withoutOrigin)).toBe(false);
+  });
+
+  it("rejects a document start that is not a finite number", () => {
+    // Act & Assert
+    expect(isPageMetricsMessage({ ...valid, timeOrigin: "1771800000000" })).toBe(false);
+    expect(isPageMetricsMessage({ ...valid, timeOrigin: Number.NaN })).toBe(false);
   });
 
   it("rejects another message type", () => {
@@ -43,6 +59,7 @@ describe("isPageMetricsMessage", () => {
     // Arrange — the shape that would throw one frame later, inside the measurement
     const malformed = {
       type: MessageType.PAGE_METRICS,
+      timeOrigin: 1_771_800_000_000,
       payload: { [PerformanceEntryType.RESOURCE]: null, [PerformanceEntryType.NAVIGATION]: [] },
     };
 
@@ -55,6 +72,7 @@ describe("isPageMetricsMessage", () => {
     expect(
       isPageMetricsMessage({
         type: MessageType.PAGE_METRICS,
+        timeOrigin: 1_771_800_000_000,
         payload: { [PerformanceEntryType.RESOURCE]: [] },
       }),
     ).toBe(false);
