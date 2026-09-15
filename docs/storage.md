@@ -82,20 +82,27 @@ type Metrics = {
 > caller: the figure shown and the figure costed therefore come from the same
 > stored value and cannot drift apart by a rounding step.
 
-### `MetricTab` — a tracked tab
+### `PageVisit` — one page load
 
 ```typescript
-type MetricTab = {
-  id: number; // chrome.tabs.Tab.id
-  url: string; // Full URL, as first observed for this tab
+type PageVisit = {
+  tabId: number; // chrome.tabs.Tab.id — one third of the identity
+  url: string; // Full URL, raw: query and hash included, no normalisation
   domain: string; // hostname (e.g. "github.com") — a visit with no valid host is discarded
   metrics: Metrics;
   meta: {
-    date: number; // Unix timestamp (ms) of the last collection
+    date: number; // The document's performance.timeOrigin (ms) — when the page started
   };
   carbon: CarbonEstimate;
 };
 ```
+
+> Identified by **`(tabId, meta.date, url)`**. Two reloads are two documents, so two
+> visits; the url separates SPA navigations sharing one document; the tab id separates
+> the same page open twice. `meta.date` is the document's own start, not the hour the
+> measurement was filed — the living record will send several messages per visit and
+> all of them must land on the same entry.
+> See docs/decisions/2026-08-21-identite-de-la-visite-de-page.md
 
 > `meta.status` is gone. It was hardcoded to `200`, never read and never anything
 > else — a field claiming to describe a state while describing none. The real
@@ -132,9 +139,9 @@ type CarbonEstimate = {
 ```typescript
 type DailyRecord = {
   date: string; // "YYYY-MM-DD" in local time (via getDailyDate())
-  tabs: MetricTab[]; // Tabs tracked during the day
-  totalMetrics: Metrics; // Sum of metrics across all tabs
-  totalCarbon: CarbonEstimate; // Sum of carbon across all tabs
+  visits: PageVisit[]; // Page loads recorded during the day
+  totalMetrics: Metrics; // Sum of metrics across all visits
+  totalCarbon: CarbonEstimate; // Sum of carbon across all visits
 };
 ```
 
@@ -154,9 +161,9 @@ type DailyRecordsStore = Record<string, DailyRecord>;
   "sessions": {
     "2026-03-04": {
       "date": "2026-03-04",
-      "tabs": [
+      "visits": [
         {
-          "id": 42,
+          "tabId": 42,
           "url": "https://github.com/anthropics/claude-code",
           "domain": "github.com",
           "metrics": {
@@ -215,11 +222,12 @@ extensions:
 | `deviceCo2`                          | unchanged, `screenCo2 = 0`                     |
 | `deviceCo2` + `screenCo2`            | unchanged                                      |
 | `cpuTimeToLoad`                      | `pageLoadDurationSec`                          |
+| `tabs` array / `id` field            | `visits` array / `tabId` field                 |
 | no `avoidedCo2` / `cachedPageWeight` | `0` — unrecoverable, and zero invents nothing  |
 
 `normalizeDailyRecords()` runs on every `getSessions()` read inside the metrics
 store, so **every** record above that line carries the current shape whichever
-version wrote it. Day totals are **rebuilt from the normalised tabs** rather than
+version wrote it. Day totals are **rebuilt from the normalised visits** rather than
 normalised on their own, so a stored total that disagrees with its parts — an update
 interrupted mid-write — is corrected instead of carried forward.
 
@@ -275,8 +283,8 @@ while the panel is open cost one I/O call.
 store.getDailyRecord()  → DailyRecord     (today; the neutral record if nothing was measured)
 store.getAllDays()      → DailyRecord[]   (every stored day, chronological)
 
-// TabMetricsRecorder — the intake's half
-store.recordTabMetrics(tab) → void        (upsert on tab id, inside the write queue)
+// PageVisitRecorder — the intake's half
+store.recordPageVisit(visit) → void       (append, or replace the same (tabId, timeOrigin, url), inside the write queue)
 
 // RetentionEnforcer — the reset alarm's half
 store.clearPastDays(retentionDays) → void
@@ -288,7 +296,7 @@ does **not** create it — a query never writes.
 
 ### Why one write method, not three
 
-`recordTabMetrics` replaced `hasExistingTabById()` + `addTab()` +
+`recordPageVisit` replaced `hasExistingTabById()` + `addTab()` +
 `updateTabMetrics()`. The caller used to ask whether the tab existed **outside**
 the write queue and then enqueue one of two writes, so two messages for the same
 tab could both read `false` and both append — one page visit stored twice, day

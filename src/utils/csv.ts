@@ -23,6 +23,9 @@ const CSV_HEADERS = [
   "screenCo2_g",
   "totalCo2_g",
   "avoidedCo2_g",
+  // The document's start, not the hour the measurement was filed — see the
+  // page-visit identity ADR. Same epoch milliseconds as before, to within a
+  // second on every record written before the change.
   "visitTimestamp",
 ].join(",");
 
@@ -40,25 +43,25 @@ function escapeCSV(value: string | number): string {
  * Every record handed here has been normalised by the metrics store, so no field
  * needs a fallback.
  *
- * O(n) time and space — n = total tabs across every exported day.
+ * O(n) time and space — n = total visits across every exported day.
  */
 export function toCSV(records: readonly DailyRecord[]): string {
   const rows = records.flatMap((record) =>
-    record.tabs.map((tab) =>
+    record.visits.map((visit) =>
       [
         escapeCSV(record.date),
-        escapeCSV(tab.domain),
-        escapeCSV(tab.url),
-        escapeCSV(tab.metrics.requestCount),
-        escapeCSV(tab.metrics.totalResourceSize.toFixed(DECIMALS)),
-        escapeCSV(tab.metrics.pageLoadDurationSec.toFixed(DECIMALS)),
-        escapeCSV(tab.metrics.cachedPageWeight.toFixed(DECIMALS)),
-        escapeCSV(tab.carbon.networkCo2),
-        escapeCSV(tab.carbon.deviceCo2),
-        escapeCSV(tab.carbon.screenCo2),
-        escapeCSV(tab.carbon.totalCo2),
-        escapeCSV(tab.carbon.avoidedCo2),
-        escapeCSV(tab.meta.date),
+        escapeCSV(visit.domain),
+        escapeCSV(visit.url),
+        escapeCSV(visit.metrics.requestCount),
+        escapeCSV(visit.metrics.totalResourceSize.toFixed(DECIMALS)),
+        escapeCSV(visit.metrics.pageLoadDurationSec.toFixed(DECIMALS)),
+        escapeCSV(visit.metrics.cachedPageWeight.toFixed(DECIMALS)),
+        escapeCSV(visit.carbon.networkCo2),
+        escapeCSV(visit.carbon.deviceCo2),
+        escapeCSV(visit.carbon.screenCo2),
+        escapeCSV(visit.carbon.totalCo2),
+        escapeCSV(visit.carbon.avoidedCo2),
+        escapeCSV(visit.meta.date),
       ].join(","),
     ),
   );

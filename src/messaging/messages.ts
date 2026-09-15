@@ -13,6 +13,12 @@ export enum MessageType {
 export type PageMetricsMessage = {
   type: MessageType.PAGE_METRICS;
   payload: PagePerformancePayload;
+  /**
+   * The document's `performance.timeOrigin`, read in the page. It is what makes
+   * two reloads two visits, so it travels with the measurement rather than being
+   * stamped on arrival.
+   */
+  timeOrigin: number;
 };
 
 /**
@@ -26,6 +32,9 @@ export function isPageMetricsMessage(message: unknown): message is PageMetricsMe
   const candidate = message as { type?: unknown; payload?: unknown };
   if (candidate.type !== MessageType.PAGE_METRICS) return false;
   if (typeof candidate.payload !== "object" || candidate.payload === null) return false;
+
+  const candidateWithOrigin = candidate as { timeOrigin?: unknown };
+  if (!Number.isFinite(candidateWithOrigin.timeOrigin)) return false;
 
   const payload = candidate.payload as Record<string, unknown>;
   return (

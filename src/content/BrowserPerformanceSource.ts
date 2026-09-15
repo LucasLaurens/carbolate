@@ -21,6 +21,10 @@ export class BrowserPerformanceSource implements PerformanceSource {
     }));
   }
 
+  readTimeOrigin(): number {
+    return performance.timeOrigin;
+  }
+
   readNavigations(): readonly NavigationTiming[] {
     return performance
       .getEntriesByType(PerformanceEntryType.NAVIGATION)

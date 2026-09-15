@@ -20,7 +20,7 @@ const MS_PER_MINUTE = 60_000;
 
 const clock = new SystemClock();
 const store = createMetricsStore(ChromeStorage, clock);
-const intake = new MetricsIntake(store, new CarbonCalculator(), clock);
+const intake = new MetricsIntake(store, new CarbonCalculator());
 
 const badge: BadgeSurface = {
   setText: (text) => void chrome.action.setBadgeText({ text }),
@@ -113,6 +113,8 @@ chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   const url = sender.url ?? sender.tab?.url;
   if (tabId === undefined || url === undefined) return false;
 
-  void intake.record({ tabId, url, payload: message.payload }).then(paintBadge);
+  void intake
+    .record({ tabId, url, payload: message.payload, timeOrigin: message.timeOrigin })
+    .then(paintBadge);
   return false;
 });

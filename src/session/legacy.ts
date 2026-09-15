@@ -1,6 +1,6 @@
 import type { CarbonEstimate } from "../carbon/types";
 import { sumCarbonEstimates, sumMetrics } from "./aggregator";
-import type { DailyRecord, DailyRecordsStore, MetricTab, Metrics } from "./types";
+import type { DailyRecord, DailyRecordsStore, PageVisit, Metrics } from "./types";
 
 /**
  * Reads records written by earlier versions, without rewriting storage.
@@ -27,13 +27,21 @@ type StoredMetrics = Partial<Metrics> & {
   cpuTimeToLoad?: number;
 };
 
-type StoredTab = Omit<MetricTab, "metrics" | "carbon"> & {
+/**
+ * `id` is the field name every version before the page-visit key wrote for the
+ * tab it measured, and `tabs` the array that held them. Both are read here and
+ * written under their new names, so the rename costs no migration.
+ */
+type StoredVisit = Omit<PageVisit, "tabId" | "metrics" | "carbon"> & {
+  tabId?: number;
+  id?: number;
   metrics?: StoredMetrics;
   carbon?: StoredCarbon;
 };
 
-type StoredRecord = Omit<DailyRecord, "tabs" | "totalMetrics" | "totalCarbon"> & {
-  tabs?: StoredTab[];
+type StoredRecord = Omit<DailyRecord, "visits" | "totalMetrics" | "totalCarbon"> & {
+  visits?: StoredVisit[];
+  tabs?: StoredVisit[];
   totalMetrics?: StoredMetrics;
   totalCarbon?: StoredCarbon;
 };
@@ -78,27 +86,28 @@ function normalizeMetrics(metrics: StoredMetrics = {}): Metrics {
 }
 
 /**
- * O(n) time and space — n = tabs in the record. The day's totals are rebuilt from
- * the normalised tabs rather than normalised on their own, so a stored total that
+ * O(n) time and space — n = visits in the record. The day's totals are rebuilt
+ * from the normalised visits rather than normalised on their own, so a stored total that
  * disagrees with its parts is corrected instead of carried forward.
  */
 export function normalizeDailyRecord(record: StoredRecord): DailyRecord {
-  const tabs = (record.tabs ?? []).map((tab) => ({
-    ...tab,
-    metrics: normalizeMetrics(tab.metrics),
-    carbon: normalizeCarbon(tab.carbon),
+  const visits = (record.visits ?? record.tabs ?? []).map(({ id, ...visit }) => ({
+    ...visit,
+    tabId: coalesceNumber(visit.tabId, coalesceNumber(id, 0)),
+    metrics: normalizeMetrics(visit.metrics),
+    carbon: normalizeCarbon(visit.carbon),
   }));
 
   return {
     date: record.date,
-    tabs,
-    totalMetrics: sumMetrics(tabs.map((tab) => tab.metrics)),
-    totalCarbon: sumCarbonEstimates(tabs.map((tab) => tab.carbon)),
+    visits,
+    totalMetrics: sumMetrics(visits.map((visit) => visit.metrics)),
+    totalCarbon: sumCarbonEstimates(visits.map((visit) => visit.carbon)),
   };
 }
 
 /**
- * O(n) time and space — n = tabs across every stored day. Paid once per storage
+ * O(n) time and space — n = visits across every stored day. Paid once per storage
  * read; the metrics store caches today's record, so a panel that stays open does
  * not repeat it.
  */

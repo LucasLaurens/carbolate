@@ -60,7 +60,7 @@ src/
 │       └── DeviceCarbonSource.ts   # The user's machine during page load — one value, one factor
 │
 ├── session/
-│   ├── types.ts                    # Metrics, MetricTab, DailyRecord, DailyRecordsStore + the store's role interfaces
+│   ├── types.ts                    # Metrics, PageVisit, DailyRecord, DailyRecordsStore + the store's role interfaces
 │   ├── store.ts                    # createMetricsStore(storage, clock) — one write queue, one cache
 │   ├── legacy.ts                   # The storage read boundary — normalises records from older versions
 │   └── aggregator.ts               # sumMetrics, sumCarbonEstimates, the neutral elements
@@ -144,9 +144,9 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │     pageLoadDurationSec (s), cachedPageWeight (MB) }         │
 │  4. toCarbonInput(metrics) → CarbonCalculator.calculate()    │
 │     → Network/Device CarbonSource + computeAvoidedCarbon()  │
-│  5. recorder.recordTabMetrics(tab)                           │
+│  5. recorder.recordPageVisit(visit)                          │
 │                                                             │
-│  Injected: TabMetricsRecorder, FootprintCalculator, Clock    │
+│  Injected: PageVisitRecorder, FootprintCalculator            │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
@@ -159,10 +159,10 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │    so a day written by an older version arrives in today's   │
 │    shape and no reader downstream needs a fallback.          │
 │                                                             │
-│  recordTabMetrics — upsert INSIDE the write queue:           │
+│  recordPageVisit — append or replace INSIDE the write queue: │
 │    read day → decide add-or-replace → persist, serialised    │
-│    → sumMetrics(tabs) + sumCarbonEstimates(tabs)             │
-│    → DailyRecord { date, tabs[], totalMetrics, totalCarbon } │
+│    → sumMetrics(visits) + sumCarbonEstimates(visits)         │
+│    → DailyRecord { date, visits[], totalMetrics, totalCarbon}│
 │                                                             │
 │  getDailyRecord — never null: an unmeasured day is the        │
 │    neutral record from createEmptyDailyRecord(date)         │
@@ -221,7 +221,7 @@ forces the invalid branch to be handled, and no reader carries a `?? empty` fall
 
 ### One command per decision
 
-`recordTabMetrics(tab)` replaced `hasExistingTabById()` + `addTab()` +
+`recordPageVisit(visit)` replaced `hasExistingTabById()` + `addTab()` +
 `updateTabMetrics()`. The three-call version let the caller decide add-or-update
 _outside_ the write queue that exists to serialise exactly that decision — two
 messages for one tab could both conclude "not there yet" and append twice.
@@ -231,11 +231,11 @@ The upsert now happens inside the queue, so the sequence cannot be got wrong.
 
 `MetricsStore` is the intersection of three roles, and each caller takes only its own:
 
-| Role                 | Methods                        | Taken by        |
-| -------------------- | ------------------------------ | --------------- |
-| `DailyRecordReader`  | `getDailyRecord`, `getAllDays` | the panel       |
-| `TabMetricsRecorder` | `recordTabMetrics`             | `MetricsIntake` |
-| `RetentionEnforcer`  | `clearPastDays`                | the reset alarm |
+| Role                | Methods                        | Taken by        |
+| ------------------- | ------------------------------ | --------------- |
+| `DailyRecordReader` | `getDailyRecord`, `getAllDays` | the panel       |
+| `PageVisitRecorder` | `recordPageVisit`              | `MetricsIntake` |
+| `RetentionEnforcer` | `clearPastDays`                | the reset alarm |
 
 The intake cannot drop a day; the panel cannot write a measurement.
 

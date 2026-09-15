@@ -9,11 +9,13 @@ import type {
 export interface PerformanceSource {
   readResources(): readonly ResourceTiming[];
   readNavigations(): readonly NavigationTiming[];
+  /** When this document started — the visit's identity, read in the page. */
+  readTimeOrigin(): number;
 }
 
 /** Where the observation goes. Injected, for the same reason. */
 export interface ObservationSink {
-  send(payload: PagePerformancePayload): void;
+  send(payload: PagePerformancePayload, timeOrigin: number): void;
 }
 
 /**
@@ -31,9 +33,12 @@ export class MetricsCollector {
   ) {}
 
   collect(): void {
-    this.sink.send({
-      [PerformanceEntryType.RESOURCE]: this.source.readResources(),
-      [PerformanceEntryType.NAVIGATION]: this.source.readNavigations(),
-    });
+    this.sink.send(
+      {
+        [PerformanceEntryType.RESOURCE]: this.source.readResources(),
+        [PerformanceEntryType.NAVIGATION]: this.source.readNavigations(),
+      },
+      this.source.readTimeOrigin(),
+    );
   }
 }

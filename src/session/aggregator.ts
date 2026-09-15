@@ -45,7 +45,7 @@ export const createEmptyCarbonEstimate = (): CarbonEstimate => sumCarbonEstimate
  */
 export const createEmptyDailyRecord = (date: string): DailyRecord => ({
   date,
-  tabs: [],
+  visits: [],
   totalMetrics: createEmptyMetrics(),
   totalCarbon: createEmptyCarbonEstimate(),
 });

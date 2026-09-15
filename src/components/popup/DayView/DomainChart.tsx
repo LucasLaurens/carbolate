@@ -9,7 +9,7 @@ function useChart(canvasRef: React.RefObject<HTMLCanvasElement | null>, record: 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const chartData = aggregateDomains(record.tabs)
+    const chartData = aggregateDomains(record.visits)
       .filter((d) => Number.isFinite(d.totalCo2))
       .sort((a, b) => b.totalCo2 - a.totalCo2)
       .slice(0, 5);

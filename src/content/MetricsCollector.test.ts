@@ -14,7 +14,12 @@ class ScriptedPerformanceSource implements PerformanceSource {
   constructor(
     private readonly resourceEntries: ResourceTiming[],
     private readonly navigationEntries: NavigationTiming[],
+    private readonly timeOrigin: number = 1_771_800_000_000,
   ) {}
+
+  readTimeOrigin(): number {
+    return this.timeOrigin;
+  }
 
   readResources(): readonly ResourceTiming[] {
     return this.resourceEntries;
@@ -28,13 +33,27 @@ class ScriptedPerformanceSource implements PerformanceSource {
 /** A real sink that keeps what it is handed instead of posting it. */
 class RecordingSink implements ObservationSink {
   readonly sent: PagePerformancePayload[] = [];
+  readonly origins: number[] = [];
 
-  send(payload: PagePerformancePayload): void {
+  send(payload: PagePerformancePayload, timeOrigin: number): void {
     this.sent.push(payload);
+    this.origins.push(timeOrigin);
   }
 }
 
 describe("MetricsCollector", () => {
+  it("sends the document's own start, which the background cannot read", () => {
+    // Arrange — the identity of the visit is a property of the page, not of the message
+    const source = new ScriptedPerformanceSource([{ transferSize: 1 }], [], 1_771_800_042_000);
+    const sink = new RecordingSink();
+
+    // Act
+    new MetricsCollector(source, sink).collect();
+
+    // Assert
+    expect(sink.origins).toEqual([1_771_800_042_000]);
+  });
+
   it("hands over every resource and navigation entry it was given", () => {
     // Arrange
     const source = new ScriptedPerformanceSource(

@@ -46,14 +46,14 @@ function StatCard({ value, label, color, badge, sub, sub2 }: StatCardProps) {
 }
 
 type MetricsStripProps = {
-  tabCount: number;
+  loadCount: number;
   totalMetrics: Metrics;
   t: Translations;
 };
 
-function MetricsStrip({ tabCount, totalMetrics, t }: MetricsStripProps) {
+function MetricsStrip({ loadCount, totalMetrics, t }: MetricsStripProps) {
   const items = [
-    { value: String(tabCount), label: t.stats.tabs },
+    { value: String(loadCount), label: t.stats.pageLoads },
     { value: String(totalMetrics.requestCount), label: t.stats.requests },
     { value: `${totalMetrics.totalResourceSize.toFixed(1)} MB`, label: t.stats.data },
   ];
@@ -92,11 +92,11 @@ function AvoidedRow({ avoidedCo2, t }: { avoidedCo2: number; t: Translations }) 
 type StatsGridProps = {
   totalCarbon: CarbonEstimate;
   totalMetrics: Metrics;
-  tabCount: number;
+  loadCount: number;
   t: Translations;
 };
 
-export function StatsGrid({ totalCarbon, totalMetrics, tabCount, t }: StatsGridProps) {
+export function StatsGrid({ totalCarbon, totalMetrics, loadCount, t }: StatsGridProps) {
   const level = getCarbonLevel(totalCarbon.totalCo2);
 
   return (
@@ -109,7 +109,7 @@ export function StatsGrid({ totalCarbon, totalMetrics, tabCount, t }: StatsGridP
         sub={getCarbonEquivalence(totalCarbon.totalCo2, t.equivalences)}
         sub2={getWorldComparisonLabel(totalCarbon.totalCo2, t.worldComparison)}
       />
-      <MetricsStrip tabCount={tabCount} totalMetrics={totalMetrics} t={t} />
+      <MetricsStrip loadCount={loadCount} totalMetrics={totalMetrics} t={t} />
       <AvoidedRow avoidedCo2={totalCarbon.avoidedCo2} t={t} />
     </div>
   );

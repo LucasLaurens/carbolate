@@ -2,8 +2,7 @@ import { measurePage } from "../performance/PageMetrics";
 import type { PagePerformancePayload } from "../performance/PageMetrics";
 import { toCarbonInput } from "../carbon/toCarbonInput";
 import type { CarbonEstimate, CarbonInput, FootprintCalculator } from "../carbon/types";
-import type { Metrics, TabMetricsRecorder } from "../session/types";
-import type { Clock } from "../utils/clock";
+import type { Metrics, PageVisitRecorder } from "../session/types";
 import { bytesToMegabytes, millisecondsToSeconds } from "../utils/bytes";
 import { parseDomain } from "../utils/url";
 
@@ -12,6 +11,8 @@ export type PageObservation = {
   tabId: number;
   url: string;
   payload: PagePerformancePayload;
+  /** The document's start, read in the page — with `tabId` and `url`, the visit's identity. */
+  timeOrigin: number;
 };
 
 /**
@@ -24,9 +25,8 @@ export type PageObservation = {
  */
 export class MetricsIntake {
   constructor(
-    private readonly recorder: TabMetricsRecorder,
+    private readonly recorder: PageVisitRecorder,
     private readonly calculator: FootprintCalculator<CarbonInput, CarbonEstimate>,
-    private readonly clock: Clock,
   ) {}
 
   /**
@@ -35,7 +35,7 @@ export class MetricsIntake {
    *
    * O(n) time, O(1) space beyond the record itself — n = resource entries.
    */
-  async record({ tabId, url, payload }: PageObservation): Promise<void> {
+  async record({ tabId, url, payload, timeOrigin }: PageObservation): Promise<void> {
     const parsed = parseDomain(url);
     if (!parsed.valid) return;
 
@@ -53,13 +53,15 @@ export class MetricsIntake {
       cachedPageWeight: bytesToMegabytes(measurement.cachedBytes),
     };
 
-    await this.recorder.recordTabMetrics({
-      id: tabId,
+    // The identity timestamp comes from the document, never from the clock here:
+    // every delta of one visit must carry the same one to route onto it.
+    await this.recorder.recordPageVisit({
+      tabId,
       url,
       domain: parsed.domain,
       metrics,
       carbon: this.calculator.calculate([toCarbonInput(metrics)]),
-      meta: { date: this.clock.nowMs() },
+      meta: { date: timeOrigin },
     });
   }
 }

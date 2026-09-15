@@ -32,7 +32,12 @@ class ScriptedPerformanceSource implements PerformanceSource {
   constructor(
     private readonly resourceEntries: ResourceTiming[],
     private readonly navigationEntries: NavigationTiming[],
+    private readonly timeOrigin: number = 1_771_800_000_000,
   ) {}
+
+  readTimeOrigin(): number {
+    return this.timeOrigin;
+  }
 
   readResources(): readonly ResourceTiming[] {
     return this.resourceEntries;
@@ -53,8 +58,10 @@ class IntakeSink implements ObservationSink {
     private readonly url: string,
   ) {}
 
-  send(payload: PagePerformancePayload): void {
-    this.pending.push(this.intake.record({ tabId: this.tabId, url: this.url, payload }));
+  send(payload: PagePerformancePayload, timeOrigin: number): void {
+    this.pending.push(
+      this.intake.record({ tabId: this.tabId, url: this.url, payload, timeOrigin }),
+    );
   }
 
   delivered(): Promise<void[]> {
@@ -147,21 +154,23 @@ let intake: MetricsIntake;
 beforeEach(() => {
   const clock = new FixedClock(TODAY);
   store = createMetricsStore(ChromeStorage, clock);
-  intake = new MetricsIntake(store, new CarbonCalculator(), clock);
+  intake = new MetricsIntake(store, new CarbonCalculator());
 });
 
 /** Loads a page the way the extension does, and waits for it to be persisted. */
-async function visit(page: Page): Promise<void> {
+async function visit(page: Page, timeOrigin = 1_771_800_000_000): Promise<void> {
   const sink = new IntakeSink(intake, page.tabId, page.url);
-  const source = new ScriptedPerformanceSource(page.entries, [
-    { duration: page.navigationDurationMs },
-  ]);
+  const source = new ScriptedPerformanceSource(
+    page.entries,
+    [{ duration: page.navigationDurationMs }],
+    timeOrigin,
+  );
   new MetricsCollector(source, sink).collect();
   await sink.delivered();
 }
 
 const visited = (record: DailyRecord, tabId: number) =>
-  record.tabs.find((tab) => tab.id === tabId)!;
+  record.visits.find((visit) => visit.tabId === tabId)!;
 
 // ─── tests ───────────────────────────────────────────────────────────────────
 
@@ -279,7 +288,7 @@ describe("A mostly cached page load", () => {
 
     // Assert
     const record = await store.getDailyRecord();
-    const perPage = record.tabs.reduce((sum, tab) => sum + tab.carbon.avoidedCo2, 0);
+    const perPage = record.visits.reduce((sum, tab) => sum + tab.carbon.avoidedCo2, 0);
     expect(record.totalCarbon.avoidedCo2).toBeCloseTo(perPage, 10);
     expect(record.totalCarbon.avoidedCo2).toBeGreaterThan(0);
   });
@@ -304,7 +313,7 @@ describe("A day of browsing", () => {
 
     // Assert
     const record = await store.getDailyRecord();
-    const perPage = record.tabs.reduce((sum, tab) => sum + tab.carbon.totalCo2, 0);
+    const perPage = record.visits.reduce((sum, tab) => sum + tab.carbon.totalCo2, 0);
     expect(record.totalCarbon.totalCo2).toBeCloseTo(perPage, 10);
   });
 
@@ -330,7 +339,7 @@ describe("A day of browsing", () => {
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(record.tabs).toHaveLength(1);
+    expect(record.visits).toHaveLength(1);
     expect(record.totalMetrics.requestCount).toBe(30);
   });
 
@@ -345,7 +354,7 @@ describe("A day of browsing", () => {
 
     // Assert
     const record = await store.getDailyRecord();
-    expect(record.tabs).toHaveLength(1);
+    expect(record.visits).toHaveLength(1);
     expect(record.totalMetrics.requestCount).toBe(1);
   });
 });

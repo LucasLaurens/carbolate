@@ -46,7 +46,7 @@ describe("a record written before deviceCo2 existed", () => {
     const record = normalizeDailyRecord(storedDay([splitFactorTab]));
 
     // Assert — 0.001 + 0.0004, the sum the two coefficients always described
-    expect(record.tabs[0].carbon.deviceCo2).toBeCloseTo(0.0014, 10);
+    expect(record.visits[0].carbon.deviceCo2).toBeCloseTo(0.0014, 10);
   });
 
   it("treats a missing renderingCo2 as nothing rather than as NaN", () => {
@@ -54,7 +54,7 @@ describe("a record written before deviceCo2 existed", () => {
     const record = normalizeDailyRecord(storedDay([cpuOnlyTab]));
 
     // Assert
-    expect(record.tabs[0].carbon.deviceCo2).toBeCloseTo(0.0024, 10);
+    expect(record.visits[0].carbon.deviceCo2).toBeCloseTo(0.0024, 10);
     expect(Number.isNaN(record.totalCarbon.totalCo2)).toBe(false);
   });
 
@@ -63,7 +63,7 @@ describe("a record written before deviceCo2 existed", () => {
     const record = normalizeDailyRecord(storedDay([splitFactorTab]));
 
     // Assert — merging the factors must not move what the user saw yesterday
-    expect(record.tabs[0].carbon.totalCo2).toBeCloseTo(0.0894, 10);
+    expect(record.visits[0].carbon.totalCo2).toBeCloseTo(0.0894, 10);
   });
 
   it("reports no screen CO₂ for a day stored before the channel existed", () => {
@@ -71,8 +71,8 @@ describe("a record written before deviceCo2 existed", () => {
     const record = normalizeDailyRecord(storedDay([splitFactorTab]));
 
     // Assert — the stored device figure is not retro-split; zero invents nothing
-    expect(record.tabs[0].carbon.screenCo2).toBe(0);
-    expect(record.tabs[0].carbon.totalCo2).toBeCloseTo(0.0894, 10);
+    expect(record.visits[0].carbon.screenCo2).toBe(0);
+    expect(record.visits[0].carbon.totalCo2).toBeCloseTo(0.0894, 10);
   });
 
   it("reports no avoided CO₂ for a day that never measured it", () => {
@@ -80,7 +80,7 @@ describe("a record written before deviceCo2 existed", () => {
     const record = normalizeDailyRecord(storedDay([cpuOnlyTab]));
 
     // Assert — it cannot be recovered from what was stored, and zero invents nothing
-    expect(record.tabs[0].carbon.avoidedCo2).toBe(0);
+    expect(record.visits[0].carbon.avoidedCo2).toBe(0);
     expect(record.totalCarbon.avoidedCo2).toBe(0);
   });
 });
@@ -91,7 +91,7 @@ describe("a record written before pageLoadDurationSec was named that", () => {
     const record = normalizeDailyRecord(storedDay([cpuOnlyTab]));
 
     // Assert
-    expect(record.tabs[0].metrics.pageLoadDurationSec).toBeCloseTo(2.4, 10);
+    expect(record.visits[0].metrics.pageLoadDurationSec).toBeCloseTo(2.4, 10);
   });
 
   it("reports no cached page weight for a day that never measured it", () => {
@@ -99,7 +99,7 @@ describe("a record written before pageLoadDurationSec was named that", () => {
     const record = normalizeDailyRecord(storedDay([cpuOnlyTab]));
 
     // Assert
-    expect(record.tabs[0].metrics.cachedPageWeight).toBe(0);
+    expect(record.visits[0].metrics.cachedPageWeight).toBe(0);
   });
 });
 
@@ -137,7 +137,7 @@ describe("shapes that are not merely old but broken", () => {
     const record = normalizeDailyRecord({ date: TODAY });
 
     // Assert
-    expect(record.tabs).toEqual([]);
+    expect(record.visits).toEqual([]);
     expect(record.totalMetrics).toEqual(createEmptyMetrics());
     expect(record.totalCarbon).toEqual(createEmptyCarbonEstimate());
   });
@@ -152,7 +152,7 @@ describe("shapes that are not merely old but broken", () => {
     const record = normalizeDailyRecord(damaged);
 
     // Assert
-    expect(record.tabs[0].carbon.networkCo2).toBe(0);
+    expect(record.visits[0].carbon.networkCo2).toBe(0);
     expect(Number.isNaN(record.totalCarbon.totalCo2)).toBe(false);
   });
 
@@ -181,8 +181,8 @@ describe("normalizing the whole store", () => {
 
     // Assert
     expect(Object.keys(records).sort()).toEqual(["2026-02-22", TODAY]);
-    expect(records["2026-02-22"].tabs[0].carbon.deviceCo2).toBeCloseTo(0.0024, 10);
-    expect(records[TODAY].tabs[0].carbon.deviceCo2).toBeCloseTo(0.0014, 10);
+    expect(records["2026-02-22"].visits[0].carbon.deviceCo2).toBeCloseTo(0.0024, 10);
+    expect(records[TODAY].visits[0].carbon.deviceCo2).toBeCloseTo(0.0014, 10);
   });
 
   it("reads an empty store as an empty store", () => {
