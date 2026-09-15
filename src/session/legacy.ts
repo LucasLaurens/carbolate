@@ -113,9 +113,9 @@ export function normalizeDailyRecord(record: StoredRecord): DailyRecord {
 }
 
 /**
- * O(n) time and space — n = visits across every stored day. Paid once per storage
- * read; the metrics store caches today's record, so a panel that stays open does
- * not repeat it.
+ * O(n) time and space — n = visits across every stored day, paid on **every** read:
+ * the metrics store holds no cache. The one that used to sit there served a stale
+ * day as soon as a second context wrote one — see `createMetricsStore`.
  */
 export function normalizeDailyRecords(stored: DailyRecordsStore): DailyRecordsStore {
   return Object.fromEntries(

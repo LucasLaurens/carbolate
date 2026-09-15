@@ -60,7 +60,7 @@ src/
 │
 ├── session/
 │   ├── types.ts                    # Metrics, PageVisit, DailyRecord, DailyRecordsStore + the store's role interfaces
-│   ├── store.ts                    # createMetricsStore(storage, clock) — one write queue, one cache
+│   ├── store.ts                    # createMetricsStore(storage, clock) — one write queue, no cache
 │   ├── legacy.ts                   # The storage read boundary — normalises records from older versions
 │   └── aggregator.ts               # sumMetrics, sumCarbonEstimates, the neutral elements
 │
@@ -165,7 +165,7 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │  getDailyRecord — never null: an unmeasured day is the        │
 │    neutral record from createEmptyDailyRecord(date)         │
 │                                                             │
-│  In-memory cache, warmed on write, dropped by clearPastDays  │
+│  No cache: every read goes back to storage and re-normalises │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
@@ -297,15 +297,20 @@ all three are still installed somewhere; above that one function, every reader s
 today's shape. The `?? 0` fallbacks this replaced were spread across the aggregator
 and the CSV export, and each was one field behind.
 
-### Store Pattern + in-memory cache
+### Store Pattern — one write queue, no cache
 
 `createMetricsStore(storage, clock)` returns a store that owns today's `DailyRecord`.
-Repeated reads while the panel is open hit an in-memory cache; a write **warms** it
-with the value just persisted rather than invalidating it, saving a storage
-round-trip. `clearPastDays` drops it, since it can remove days wholesale.
+Every read goes to storage and back through `normalizeDailyRecords`; **no cache sits
+in between**. One used to: a write warmed it with the value just persisted rather than
+invalidating it, saving a round-trip. It cost correctness the moment two contexts
+shared the data — the background writes a delta, the panel keeps serving the copy it
+read at mount, and a record that refreshes every five seconds makes the staleness
+visible. Every write already re-reads storage inside its queued turn, so the cache
+only ever spared a read on the badge path.
+See [the living-record ADR](decisions/2026-09-15-enregistrement-vivant.md).
 
 Each browser context builds its own store — the background and the panel are
-separate JavaScript realms and cannot share a cache.
+separate JavaScript realms.
 
 ### Security — RateLimiter
 

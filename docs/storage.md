@@ -278,9 +278,10 @@ The store is **constructed**, not imported as a singleton:
 const store = createMetricsStore(ChromeStorage, new SystemClock());
 ```
 
-It keeps an **in-memory cache** of the current `DailyRecord`. A write warms the
-cache with the value just persisted; `clearPastDays` drops it. Repeated reads
-while the panel is open cost one I/O call.
+It holds **no cache**: every read goes to `chrome.storage.local` and back through
+`normalizeDailyRecords`. The cache that used to warm on write served a stale day as
+soon as a second context wrote one — see `createMetricsStore` and
+[the living-record ADR](decisions/2026-09-15-enregistrement-vivant.md).
 
 ```typescript
 // DailyRecordReader — the panel's half
