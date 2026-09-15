@@ -4,6 +4,7 @@ import type { DailyRecord, DailyRecordsStore, PageVisit, MetricsStore } from "./
 import type { DailyRecordsStorage } from "../storage/types";
 import { KEEP_EVERYTHING, isKept } from "../config/retention";
 import type { Clock } from "../utils/clock";
+import { toDailyDate } from "../utils/clock";
 
 function rebuildTotals(record: DailyRecord): DailyRecord {
   return {
@@ -80,15 +81,22 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
    * The only path that writes. Reading the day, deciding and persisting all
    * happen inside one `enqueue()` turn — a decision taken outside it could be
    * stale by the time the write lands.
+   *
+   * A day other than today is only **updated**, never created: a living visit
+   * from yesterday keeps reporting after midnight, and if retention has dropped
+   * that day in between, recreating it would resurrect what the panel promised
+   * to delete for good. Today is created on demand, as it always was.
    */
-  function mutateToday(change: (record: DailyRecord) => DailyRecord): Promise<void> {
+  function mutateDay(date: string, change: (record: DailyRecord) => DailyRecord): Promise<void> {
     return enqueue(async () => {
-      const date = clock.readDailyDate();
       const records = await loadRecords();
-      const updated = change(records[date] ?? createEmptyDailyRecord(date));
+      const stored = records[date];
+      if (stored === undefined && date !== clock.readDailyDate()) return;
+
+      const updated = change(stored ?? createEmptyDailyRecord(date));
       await storage.setSessions({ ...records, [date]: updated });
       // Warm rather than invalidate — saves a storage round-trip on the next read
-      cached = { date, record: updated };
+      if (date === clock.readDailyDate()) cached = { date, record: updated };
     });
   }
 
@@ -100,8 +108,14 @@ export function createMetricsStore(storage: DailyRecordsStorage, clock: Clock): 
       return Object.values(records).sort((a, b) => a.date.localeCompare(b.date));
     },
 
+    /**
+     * Filed under the day the **visit** began, read from its own timestamp — not
+     * under the day the message happens to land on. A page opened at 23:58 and
+     * still visible at 00:05 reports cumulative totals: filing those under the
+     * new day would count the same bytes twice, once per day.
+     */
     recordPageVisit: (visit: PageVisit): Promise<void> =>
-      mutateToday((record) =>
+      mutateDay(toDailyDate(new Date(visit.meta.date)), (record) =>
         rebuildTotals({ ...record, visits: upsertVisit(record.visits, visit) }),
       ),
 

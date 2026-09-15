@@ -1,121 +1,93 @@
 import { describe, it, expect } from "vitest";
-import { measurePage } from "./PageMetrics";
-import type { NavigationTiming, PagePerformancePayload, ResourceTiming } from "./PageMetrics";
-import { PerformanceEntryType } from "./enums/PerformanceEntryType";
+import { addResourceTiming, createEmptyMeasurement, withLoadDuration } from "./PageMetrics";
+import type { ResourceTiming } from "./PageMetrics";
 
-const payload = (
-  resource: ResourceTiming[],
-  navigation: NavigationTiming[] = [],
-): PagePerformancePayload => ({
-  [PerformanceEntryType.RESOURCE]: resource,
-  [PerformanceEntryType.NAVIGATION]: navigation,
+const foldAll = (timings: ResourceTiming[]) =>
+  timings.reduce(addResourceTiming, createEmptyMeasurement());
+
+describe("createEmptyMeasurement", () => {
+  it("starts every channel at zero, so a page that reported nothing claims nothing", () => {
+    // Act & Assert
+    expect(createEmptyMeasurement()).toEqual({
+      requests: 0,
+      transferredBytes: 0,
+      loadDurationMs: 0,
+      cachedBytes: 0,
+      visibleDurationMs: 0,
+    });
+  });
 });
 
-describe("measurePage", () => {
-  it("rejects a payload with no resource entry", () => {
+describe("addResourceTiming", () => {
+  it("counts one request per resource", () => {
     // Act
-    const result = measurePage(payload([], [{ duration: 800 }]));
+    const result = foldAll([{ transferSize: 10 }, { transferSize: 20 }, { transferSize: 30 }]);
 
     // Assert
-    expect(result.valid).toBe(false);
-  });
-
-  it("counts one request per resource entry", () => {
-    // Arrange
-    const resources = [{ transferSize: 10 }, { transferSize: 20 }, { transferSize: 30 }];
-
-    // Act
-    const result = measurePage(payload(resources));
-
-    // Assert
-    expect(result).toMatchObject({ valid: true, requests: 3 });
+    expect(result.requests).toBe(3);
   });
 
   it("sums transferred bytes across every resource", () => {
     // Act
-    const result = measurePage(payload([{ transferSize: 1_200 }, { transferSize: 800 }]));
+    const result = foldAll([{ transferSize: 1_200 }, { transferSize: 800 }]);
 
     // Assert
-    expect(result).toMatchObject({ valid: true, transferredBytes: 2_000 });
+    expect(result.transferredBytes).toBe(2_000);
   });
 
-  it("counts a cache-served resource as a request carrying zero bytes", () => {
+  it("credits a cache hit — zero transferred, a decoded body of its own", () => {
     // Act
-    const result = measurePage(payload([{ transferSize: 0 }, { transferSize: 500 }]));
+    const result = foldAll([{ transferSize: 0, decodedBodySize: 120_000 }]);
 
     // Assert
-    expect(result).toMatchObject({ valid: true, requests: 2, transferredBytes: 500 });
+    expect(result.cachedBytes).toBe(120_000);
+    expect(result.transferredBytes).toBe(0);
   });
 
-  it("takes the load duration from the first navigation entry", () => {
-    // Act
-    const result = measurePage(payload([{ transferSize: 1 }], [{ duration: 1_750 }]));
+  it("credits nothing to a resource that crossed the network", () => {
+    // Act — a real transfer, decoded size known: it was downloaded, not spared
+    const result = foldAll([{ transferSize: 40_000, decodedBodySize: 120_000 }]);
 
     // Assert
-    expect(result).toMatchObject({ valid: true, loadDurationMs: 1_750 });
+    expect(result.cachedBytes).toBe(0);
   });
 
-  it("falls back to a zero duration when no navigation entry exists", () => {
+  it("credits nothing when a stale content script sent no decoded size", () => {
     // Act
-    const result = measurePage(payload([{ transferSize: 1 }], []));
+    const result = foldAll([{ transferSize: 0 }]);
 
-    // Assert
-    expect(result).toMatchObject({ valid: true, loadDurationMs: 0 });
-  });
-
-  it("credits the decoded size of a resource the cache served", () => {
-    // Act
-    const result = measurePage(payload([{ transferSize: 0, decodedBodySize: 120_000 }]));
-
-    // Assert — nothing crossed the network, but 120 KB reached the page
-    expect(result).toMatchObject({ valid: true, transferredBytes: 0, cachedBytes: 120_000 });
-  });
-
-  it("credits nothing for a resource that did cross the network", () => {
-    // Act
-    const result = measurePage(payload([{ transferSize: 40_000, decodedBodySize: 120_000 }]));
-
-    // Assert — its decoded size is page weight, not a saving
-    expect(result).toMatchObject({ valid: true, cachedBytes: 0 });
-  });
-
-  it("adds up the cached bytes across a mostly cached page", () => {
-    // Act
-    const result = measurePage(
-      payload([
-        { transferSize: 0, decodedBodySize: 300_000 },
-        { transferSize: 0, decodedBodySize: 200_000 },
-        { transferSize: 5_000, decodedBodySize: 5_000 },
-      ]),
-    );
-
-    // Assert
-    expect(result).toMatchObject({ valid: true, transferredBytes: 5_000, cachedBytes: 500_000 });
-  });
-
-  it("credits nothing when a stale content script omitted the decoded size", () => {
-    // Arrange — the projection that shipped before avoided CO₂ existed, still
-    // running in a tab that has not reloaded since the update
-    // Act
-    const result = measurePage(payload([{ transferSize: 0 }, { transferSize: 1_000 }]));
-
-    // Assert — the observation must survive; only the avoided figure is lost
-    expect(result).toMatchObject({
-      valid: true,
-      requests: 2,
-      transferredBytes: 1_000,
-      cachedBytes: 0,
-    });
-  });
-
-  it("narrows to the measurement only once valid has been checked", () => {
-    // Arrange
-    const result = measurePage(payload([{ transferSize: 64 }], [{ duration: 100 }]));
-
-    // Act & Assert — the discriminant is what unlocks the fields, by construction
-    if (!result.valid) throw new Error("expected a valid measurement");
+    // Assert — the absence costs the avoided figure, never the whole observation
+    expect(result.cachedBytes).toBe(0);
     expect(result.requests).toBe(1);
-    expect(result.transferredBytes).toBe(64);
-    expect(result.loadDurationMs).toBe(100);
+  });
+
+  it("leaves the measurement it was given untouched", () => {
+    // Arrange
+    const before = createEmptyMeasurement();
+
+    // Act
+    addResourceTiming(before, { transferSize: 500 });
+
+    // Assert — a living visit keeps folding; a mutated total would double-count
+    expect(before.requests).toBe(0);
+    expect(before.transferredBytes).toBe(0);
+  });
+});
+
+describe("withLoadDuration", () => {
+  it("takes the navigation entry's duration", () => {
+    // Act
+    const result = withLoadDuration(createEmptyMeasurement(), { duration: 1_750 });
+
+    // Assert
+    expect(result.loadDurationMs).toBe(1_750);
+  });
+
+  it("falls back to zero when the page reported no navigation entry", () => {
+    // Act — prerendered and some SPA loads report none
+    const result = withLoadDuration(createEmptyMeasurement(), undefined);
+
+    // Assert
+    expect(result.loadDurationMs).toBe(0);
   });
 });

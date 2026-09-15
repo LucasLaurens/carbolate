@@ -114,7 +114,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   if (tabId === undefined || url === undefined) return false;
 
   void intake
-    .record({ tabId, url, payload: message.payload, timeOrigin: message.timeOrigin })
+    .record({ tabId, url, measurement: message.measurement, timeOrigin: message.timeOrigin })
     .then(paintBadge);
   return false;
 });

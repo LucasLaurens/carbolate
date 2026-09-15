@@ -6,6 +6,7 @@ export const sumMetrics = (entries: readonly Metrics[]): Metrics => ({
   requestCount: entries.reduce((sum, each) => sum + each.requestCount, 0),
   totalResourceSize: entries.reduce((sum, each) => sum + each.totalResourceSize, 0),
   pageLoadDurationSec: entries.reduce((sum, each) => sum + each.pageLoadDurationSec, 0),
+  visibleDurationSec: entries.reduce((sum, each) => sum + each.visibleDurationSec, 0),
   cachedPageWeight: entries.reduce((sum, each) => sum + each.cachedPageWeight, 0),
 });
 

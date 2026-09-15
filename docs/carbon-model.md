@@ -117,13 +117,13 @@ deviceCo2 = totalSec × DEVICE_FACTOR       [0.00098 gCO₂e/s]
 **ScreenCarbonSource** (`src/carbon/sources/ScreenCarbonSource.ts`):
 
 ```
-totalSec  = Σ(pageLoadDurationMs) / 1000   [the only lit time observed today]
+totalSec  = Σ(visibleDurationMs) / 1000    [time the page was visible]
 screenCo2 = totalSec × SCREEN_FACTOR       [0.00042 gCO₂e/s]
 ```
 
-Its input is the load duration until the living record ([#40]) makes the whole display
-time reachable. Until then `screenCo2` is a floor: it charges the panel for the load and
-for nothing after it.
+The load duration is deliberately absent: a page visible while it loads is already inside
+its visible time. A tab loaded in the background and never looked at is charged no screen
+at all — its network and CPU are charged, the panel showed nothing of it.
 
 **computeAvoidedCarbon** (`src/carbon/avoidedCarbon.ts`):
 
@@ -140,8 +140,8 @@ totalCo2 = networkCo2 + deviceCo2 + screenCo2   [avoidedCo2 is NOT in here]
 
 ### Concrete example
 
-A tab loading **2 MB** over the network with **1.5 s** of load time, plus **3 MB**
-served from cache:
+A tab loading **2 MB** over the network with **1.5 s** of load time and **30 s** spent
+looking at it, plus **3 MB** served from cache:
 
 ```
 totalGB    = 2_000_000 / 1_000_000_000 = 0.002 GB
@@ -150,8 +150,8 @@ cachedGB   = 3_000_000 / 1_000_000_000 = 0.003 GB
 
 networkCo2 = 0.002 × 176.8 = 0.3536 g
 deviceCo2  = 1.5   × 0.00098 = 0.00147 g
-screenCo2  = 1.5   × 0.00042 = 0.00063 g
-totalCo2   ≈ 0.356 g
+screenCo2  = 30    × 0.00042 = 0.0126 g   ← 30 s spent looking at the page
+totalCo2   ≈ 0.368 g
 
 avoidedCo2 = 0.003 × 176.8 = 0.5304 g   ← reported beside the total, never inside it
 ```

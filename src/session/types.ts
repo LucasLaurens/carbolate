@@ -11,6 +11,12 @@ export type Metrics = {
    */
   pageLoadDurationSec: number;
   /**
+   * Seconds the page was **visible**, the input of `screenCo2`. A tab loaded in
+   * the background and never looked at reports zero: its network and CPU are
+   * charged, its screen is not.
+   */
+  visibleDurationSec: number;
+  /**
    * Uncompressed megabytes the cache served, so none of it crossed the network.
    * Unlike `totalResourceSize` this is a decoded size, because that is what the
    * transfer would have weighed had the cache missed — it feeds avoided CO₂ only,

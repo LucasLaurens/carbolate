@@ -18,8 +18,12 @@ import { FixedClock } from "./fakes/FixedClock";
 
 const TODAY = "2026-02-23";
 const MS_PER_DAY = 24 * 60 * 60 * 1_000;
-/** A document start — the identity timestamp, not the hour the message landed. */
-const LOADED_AT = 1_771_800_000_000;
+/**
+ * A document start on TODAY — the identity timestamp, not the hour the message
+ * landed. It also decides which day a visit is filed under, so it must agree
+ * with the clock.
+ */
+const LOADED_AT = new Date(`${TODAY}T11:00:00`).getTime();
 
 const visit = (overrides: Partial<PageVisit> = {}): PageVisit => ({
   tabId: 1,
@@ -29,6 +33,7 @@ const visit = (overrides: Partial<PageVisit> = {}): PageVisit => ({
     requestCount: 10,
     totalResourceSize: 5,
     pageLoadDurationSec: 1.2,
+    visibleDurationSec: 30,
     cachedPageWeight: 0.4,
   },
   meta: { date: LOADED_AT },
@@ -51,6 +56,7 @@ const VISIT_B = visit({
     requestCount: 4,
     totalResourceSize: 2,
     pageLoadDurationSec: 0.5,
+    visibleDurationSec: 30,
     cachedPageWeight: 0.1,
   },
   carbon: {
@@ -145,6 +151,7 @@ describe("recording a page visit", () => {
           requestCount: 20,
           totalResourceSize: 50,
           pageLoadDurationSec: 3,
+          visibleDurationSec: 30,
           cachedPageWeight: 0,
         },
       }),
@@ -170,6 +177,7 @@ describe("recording a page visit", () => {
           requestCount: 99,
           totalResourceSize: 99,
           pageLoadDurationSec: 99,
+          visibleDurationSec: 30,
           cachedPageWeight: 99,
         },
       }),
@@ -230,6 +238,7 @@ describe("recording a page visit", () => {
           requestCount: 42,
           totalResourceSize: 5,
           pageLoadDurationSec: 1.2,
+          visibleDurationSec: 30,
           cachedPageWeight: 0.4,
         },
       }),
@@ -240,6 +249,47 @@ describe("recording a page visit", () => {
     expect(record.visits).toHaveLength(2);
     expect(record.visits[0].metrics.requestCount).toBe(42);
     expect(record.visits[1].metrics.requestCount).toBe(10);
+  });
+});
+
+describe("a visit that crosses midnight", () => {
+  it("files a delta on the day the visit began, not on the day it lands", async () => {
+    // Arrange — a page loaded yesterday, still open
+    await store.recordPageVisit(VISIT_A);
+    clock.advance(MS_PER_DAY);
+
+    // Act — the same visit reports its totals again, after midnight
+    await store.recordPageVisit(
+      visit({
+        metrics: {
+          requestCount: 40,
+          totalResourceSize: 5,
+          pageLoadDurationSec: 1.2,
+          visibleDurationSec: 900,
+          cachedPageWeight: 0.4,
+        },
+      }),
+    );
+
+    // Assert — those bytes belong to yesterday; the new day must not inherit them
+    const [yesterday, today] = await store.getAllDays();
+    expect(yesterday.date).toBe(TODAY);
+    expect(yesterday.visits).toHaveLength(1);
+    expect(yesterday.totalMetrics.requestCount).toBe(40);
+    expect(today).toBeUndefined();
+  });
+
+  it("ignores a delta for a day retention has already dropped", async () => {
+    // Arrange — yesterday is stored, then purged at the day boundary
+    await store.recordPageVisit(VISIT_A);
+    clock.advance(MS_PER_DAY);
+    await store.clearPastDays(1);
+
+    // Act — the tab from yesterday is still open and reports again
+    await store.recordPageVisit(visit({ meta: { date: LOADED_AT } }));
+
+    // Assert — a purged day stays purged; the warning the panel showed stays true
+    expect(storage.dates()).toEqual([]);
   });
 });
 
@@ -271,6 +321,7 @@ describe("concurrent writes", () => {
             requestCount,
             totalResourceSize: 1,
             pageLoadDurationSec: 1,
+            visibleDurationSec: 30,
             cachedPageWeight: 0,
           },
         }),
@@ -388,9 +439,9 @@ describe("crossing midnight", () => {
     // Arrange
     await store.recordPageVisit(VISIT_A);
 
-    // Act
+    // Act — a page opened after the rollover carries a document start of its own
     clock.advance(MS_PER_DAY);
-    await store.recordPageVisit(VISIT_B);
+    await store.recordPageVisit(visit({ tabId: 2, meta: { date: clock.nowMs() } }));
 
     // Assert
     const days = await store.getAllDays();

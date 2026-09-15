@@ -12,6 +12,7 @@ const ONE_GB = 1_000_000_000;
 const input = (overrides: Partial<CarbonInput> = {}): CarbonInput => ({
   transferredBytes: 0,
   pageLoadDurationMs: 0,
+  visibleDurationMs: 0,
   cachedBytes: 0,
   ...overrides,
 });
@@ -73,13 +74,32 @@ describe("CarbonCalculator", () => {
     expect(result.networkCo2).toBeCloseTo(CARBON_PER_GB, 10);
   });
 
-  it("splits the machine into device and screen without moving the total", () => {
-    // Act — what the single 0.0014 factor used to charge on its own
-    const result = calculator.calculate([input({ pageLoadDurationMs: 10_000 })]);
-
-    // Assert — naming the panel separately must not change what a stored day totals to
-    expect(result.deviceCo2 + result.screenCo2).toBeCloseTo(10 * 0.0014, 10);
+  it("keeps the two machine factors summing to the one that shipped before them", () => {
+    // Act & Assert — the split renamed a share, it never added one
     expect(DEVICE_FACTOR + SCREEN_FACTOR).toBeCloseTo(0.0014, 10);
+  });
+
+  it("charges the screen for the time the page was visible, not for its load", () => {
+    // Act — a page that took 10 s to load and was looked at for 60 s
+    const result = calculator.calculate([
+      input({ pageLoadDurationMs: 10_000, visibleDurationMs: 60_000 }),
+    ]);
+
+    // Assert
+    expect(result.deviceCo2).toBeCloseTo(10 * DEVICE_FACTOR, 10);
+    expect(result.screenCo2).toBeCloseTo(60 * SCREEN_FACTOR, 10);
+  });
+
+  it("charges no screen to a tab loaded in the background and never looked at", () => {
+    // Act
+    const result = calculator.calculate([
+      input({ transferredBytes: ONE_GB, pageLoadDurationMs: 3_000, visibleDurationMs: 0 }),
+    ]);
+
+    // Assert — the network and the machine are charged, the panel showed nothing
+    expect(result.screenCo2).toBe(0);
+    expect(result.networkCo2).toBe(CARBON_PER_GB);
+    expect(result.deviceCo2).toBeGreaterThan(0);
   });
 
   it("never lets avoided CO₂ reach the total", () => {
@@ -169,12 +189,20 @@ describe("ScreenCarbonSource", () => {
     expect(source.calculate([])).toBe(0);
   });
 
-  it("applies SCREEN_FACTOR per second the panel stayed lit", () => {
+  it("applies SCREEN_FACTOR per second the page stayed visible", () => {
     // Act — 2 000 ms = 2 s
-    const result = source.calculate([input({ pageLoadDurationMs: 2_000 })]);
+    const result = source.calculate([input({ visibleDurationMs: 2_000 })]);
 
     // Assert
     expect(result).toBeCloseTo(2 * SCREEN_FACTOR, 10);
+  });
+
+  it("ignores the load duration, which the device factor already charges", () => {
+    // Act
+    const result = source.calculate([input({ pageLoadDurationMs: 9_000 })]);
+
+    // Assert — a page visible while it loads is inside its visible time already
+    expect(result).toBe(0);
   });
 
   it("charges less than the rest of the machine, as the sourced split says", () => {

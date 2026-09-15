@@ -24,9 +24,8 @@ src/
 │
 ├── content/
 │   ├── index.ts                    # Content script wiring — builds the collector, fires it on load
-│   ├── MetricsCollector.ts         # Collection rules + the PerformanceSource / ObservationSink ports
-│   ├── BrowserPerformanceSource.ts # Adapter: the real Performance API, projected onto plain objects
-│   └── RuntimeObservationSink.ts   # Adapter: chrome.runtime.sendMessage
+│   ├── VisitAccumulator.ts         # The living visit's running totals — pure, no DOM
+│   └── RuntimeObservationSink.ts   # ObservationSink port + chrome.runtime.sendMessage adapter
 │
 ├── messaging/
 │   └── messages.ts                 # MessageType, PageMetricsMessage, isPageMetricsMessage guard
@@ -66,7 +65,7 @@ src/
 │   └── aggregator.ts               # sumMetrics, sumCarbonEstimates, the neutral elements
 │
 ├── performance/
-│   ├── PageMetrics.ts              # measurePage(payload) → PageMeasurementResult (requests, bytes, ms, cached bytes)
+│   ├── PageMetrics.ts              # PageMeasurement + addResourceTiming / withLoadDuration (pure folds)
 │   └── enums/
 │       └── PerformanceEntryType.ts # RESOURCE, NAVIGATION — the getEntriesByType() strings
 │
@@ -103,24 +102,23 @@ real implementations of the same interfaces, never configured stubs, and they sh
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                  Web page (load event fired)                │
-│  BrowserPerformanceSource — adapter over the Performance API │
-│    getEntriesByType("resource")   → [{ transferSize,         │
-│                                        decodedBodySize }]   │
-│    getEntriesByType("navigation") → [{ duration }]          │
+│           Web page — content/index.ts wiring                │
+│  PerformanceObserver("resource", buffered) → one entry at a  │
+│  time; visibilitychange / pageshow / pagehide; load          │
 │  Host objects are projected onto plain objects: Chrome's     │
 │  structured clone refuses to serialize the entries as-is.    │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ PerformanceSource port
+                       │ addResource / markVisible / markHidden
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              MetricsCollector (content/MetricsCollector.ts)  │
-│  Holds the collection rules. Both globals sit behind ports,  │
-│  so the rules are assertable without a DOM or a browser.     │
-│  collect() → ObservationSink.send(PagePerformancePayload)    │
+│           VisitAccumulator (content/VisitAccumulator.ts)     │
+│  The visit's cumulative totals, held in the page — the       │
+│  service worker is killed after 30s idle and cannot hold     │
+│  them. Pure: no DOM, assertable without a browser.           │
+│  Flushed every 5s, plus on load / hidden / pagehide.         │
 └──────────────────────┬──────────────────────────────────────┘
                        │ RuntimeObservationSink adapter
-                       │ PageMetricsMessage { type, payload }
+                       │ PageMetricsMessage { type, timeOrigin, measurement }
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │         Background (background/index.ts) — Chrome adapter    │
@@ -128,7 +126,7 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │  isPageMetricsMessage(message)  ← guards the message shape   │
 │  tabId  = sender.tab?.id                                     │
 │  url    = sender.url ?? sender.tab?.url                      │
-│  → MetricsIntake.record({ tabId, url, payload })              │
+│  → MetricsIntake.record({ tabId, url, timeOrigin, …})        │
 │                                                             │
 │  Also owns: reset alarm → runResetCycle, badge → refreshBadge. │
 └──────────────────────┬──────────────────────────────────────┘
@@ -138,10 +136,10 @@ real implementations of the same interfaces, never configured stubs, and they sh
 │                MetricsIntake (intake/MetricsIntake.ts)       │
 │                                                             │
 │  1. parseDomain(url)      → discard if not http(s)          │
-│  2. measurePage(payload)  → discard if no resource entry    │
-│     → { requests, transferredBytes, loadDurationMs }        │
+│  2. measurement.requests === 0 → discard (observed nothing) │
 │  3. Metrics { requestCount, totalResourceSize (MB),         │
-│     pageLoadDurationSec (s), cachedPageWeight (MB) }         │
+│     pageLoadDurationSec, visibleDurationSec (s),            │
+│     cachedPageWeight (MB) }                                  │
 │  4. toCarbonInput(metrics) → CarbonCalculator.calculate()    │
 │     → Network/Device CarbonSource + computeAvoidedCarbon()  │
 │  5. recorder.recordPageVisit(visit)                          │
@@ -202,12 +200,11 @@ The extension touches four browser globals: `performance`, `chrome.runtime`,
 second implementation in `test/fakes/`, which is what makes the second one worth
 having — one adapter would only be a hypothetical seam.
 
-| Port                  | Production adapter         | Test adapter                   |
-| --------------------- | -------------------------- | ------------------------------ |
-| `PerformanceSource`   | `BrowserPerformanceSource` | scripted entries, in the tests |
-| `ObservationSink`     | `RuntimeObservationSink`   | recording sink, in the tests   |
-| `DailyRecordsStorage` | `ChromeStorage`            | `InMemoryDailyRecordsStorage`  |
-| `Clock`               | `SystemClock`              | `FixedClock`                   |
+| Port                  | Production adapter       | Test adapter                  |
+| --------------------- | ------------------------ | ----------------------------- |
+| `ObservationSink`     | `RuntimeObservationSink` | recording sink, in the tests  |
+| `DailyRecordsStorage` | `ChromeStorage`          | `InMemoryDailyRecordsStorage` |
+| `Clock`               | `SystemClock`            | `FixedClock`                  |
 
 Nothing reaches for an ambient singleton: the clock and the storage are
 constructor arguments, so a test constructs its own world and no module has to
@@ -215,7 +212,7 @@ publish a reset hook for the test run.
 
 ### Discriminated results instead of nullable returns
 
-`measurePage()` and `parseDomain()` both return `{ valid: true, … } | { valid: false }`,
+`parseDomain()` returns `{ valid: true, … } | { valid: false }`,
 and `getDailyRecord()` returns the neutral record rather than `null`. The compiler
 forces the invalid branch to be handled, and no reader carries a `?? empty` fallback.
 
@@ -332,7 +329,7 @@ a `FixedClock` instead of waiting sixty seconds.
 
 - The **Background script** (service worker on Chromium, event page on Gecko) wakes on demand → guards the incoming message, resolves the tab, hands it to `MetricsIntake`, and owns the alarms
 - The **Panel** holds a `DailyRecordReader`, so it reads measurements and writes only preferences. It remounts on every open as a toolbar popup, but **stays mounted** as a Chromium side panel or a Gecko sidebar — which is why it renders a Refresh button rather than relying on mount alone
-- The **Content script** is injected on every page → builds a `MetricsCollector` over the real browser globals and fires it once the load event has passed
+- The **Content script** is injected on every page → builds a `VisitAccumulator`, folds resource entries as the `PerformanceObserver` delivers them, tracks visible time, and flushes cumulative totals every 5 s and at every edge (`load`, `hidden`, `pagehide`)
 
 ---
 

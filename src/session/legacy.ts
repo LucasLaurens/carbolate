@@ -81,6 +81,9 @@ function normalizeMetrics(metrics: StoredMetrics = {}): Metrics {
       metrics.pageLoadDurationSec,
       coalesceNumber(metrics.cpuTimeToLoad, 0),
     ),
+    // Days written before the living record hold no visible time and cannot be
+    // given one after the fact: zero invents nothing.
+    visibleDurationSec: coalesceNumber(metrics.visibleDurationSec, 0),
     cachedPageWeight: coalesceNumber(metrics.cachedPageWeight, 0),
   };
 }

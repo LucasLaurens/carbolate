@@ -19,6 +19,7 @@ const POPULATED_METRICS: Metrics = {
   requestCount: 7,
   totalResourceSize: 1.5,
   pageLoadDurationSec: 2.25,
+  visibleDurationSec: 12,
   cachedPageWeight: 0.75,
 };
 
@@ -85,13 +86,26 @@ describe("sums add across entries", () => {
     // Act & Assert
     expect(
       sumMetrics([
-        { requestCount: 5, totalResourceSize: 1, pageLoadDurationSec: 0.5, cachedPageWeight: 2 },
-        { requestCount: 3, totalResourceSize: 2, pageLoadDurationSec: 1.5, cachedPageWeight: 3 },
+        {
+          requestCount: 5,
+          totalResourceSize: 1,
+          pageLoadDurationSec: 0.5,
+          visibleDurationSec: 20,
+          cachedPageWeight: 2,
+        },
+        {
+          requestCount: 3,
+          totalResourceSize: 2,
+          pageLoadDurationSec: 1.5,
+          visibleDurationSec: 40,
+          cachedPageWeight: 3,
+        },
       ]),
     ).toEqual({
       requestCount: 8,
       totalResourceSize: 3,
       pageLoadDurationSec: 2,
+      visibleDurationSec: 60,
       cachedPageWeight: 5,
     });
   });
