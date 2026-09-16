@@ -55,13 +55,28 @@ beforeEach(() => {
 describe("MetricsIntake — what reaches the daily record", () => {
   it("records the visited page under its own domain", async () => {
     // Act
-    await intake.record(observation({ url: "https://shop.example.com/products?q=1" }));
+    await intake.record(observation({ url: "https://shop.example.com/products" }));
 
     // Assert
     const record = await store.getDailyRecord();
     expect(record.visits).toHaveLength(1);
     expect(record.visits[0].domain).toBe("shop.example.com");
-    expect(record.visits[0].url).toBe("https://shop.example.com/products?q=1");
+    expect(record.visits[0].url).toBe("https://shop.example.com/products");
+  });
+
+  it("never stores the query string or the fragment of a visited URL", async () => {
+    // Arrange — the two places a browsing session carries a credential
+    const secret = "s3cret-token";
+
+    // Act
+    await intake.record(
+      observation({ url: `https://mail.example.com/reset?token=${secret}#access=${secret}` }),
+    );
+
+    // Assert
+    const [visit] = (await store.getDailyRecord()).visits;
+    expect(visit.url).toBe("https://mail.example.com/reset");
+    expect(JSON.stringify(await storage.getSessions())).not.toContain(secret);
   });
 
   it("stores transferred data in megabytes and load duration in seconds", async () => {
