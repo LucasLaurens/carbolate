@@ -28,6 +28,9 @@ const TODAY = "2026-02-23";
 class IntakeSink implements ObservationSink {
   private readonly pending: Promise<void>[] = [];
 
+  /** This background never goes away, so the flushes never stop. */
+  readonly alive = true;
+
   constructor(
     private readonly intake: MetricsIntake,
     private readonly tabId: number,
