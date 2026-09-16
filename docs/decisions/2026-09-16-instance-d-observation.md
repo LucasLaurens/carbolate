@@ -9,12 +9,15 @@ rejoue `buffered: true` — qui ne rend que ce que le tampon de ressources déti
 plafonné à 250 entrées. Ses totaux sont donc **plus bas**, et `upsertVisit` les a écrits
 par-dessus les vrais.
 
-Observé le 2026-09-16, sur deux exports du même jour à `visitTimestamp` identique :
+**Le danger est structurel, pas observé.** Il a d'abord été cru observé, sur deux exports
+du 2026-09-16 montrant `259 → 250` requêtes sur calendar et `507 → 500` sur discord au
+même `visitTimestamp`. La comparaison était invalide : le premier export venait de Chrome
+et le second de Firefox, deux `storage.local` distincts. Aucune régression de compteur n'a
+jamais été constatée en production. Ce qui reste vrai, et suffit à motiver la décision :
+deux accumulateurs peuvent exister sur un même document, le second part de zéro, et sur une
+clé à trois composants son total plus bas écraserait le premier sans rien signaler.
 
-    calendar.google.com   259 → 250 requêtes
-    discord.com           507 → 500 requêtes,  5 → 0 requêtes tierces
-
-Un compteur cumulatif qui descend. Le même incident a exposé un second défaut : le
+Le même incident a exposé un second défaut, celui-là bien réel et reproduit : le
 content script initialisait son horloge de visibilité à `performance.timeOrigin`. Pour un
 script ré-injecté dans un onglet visible ouvert depuis trois heures, la première lecture
 annonçait trois heures de temps d'écran que personne n'avait passées.
@@ -34,11 +37,11 @@ annonçait trois heures de temps d'écran que personne n'avait passées.
 
 **Conséquences** :
 
-- Le double comptage remplace la régression silencieuse. Deux lignes pour un document
-  ré-injecté additionnent des octets qui ont réellement traversé le réseau une fois
-  chacune pour l'instance qui les a vus — le tampon rejoué, lui, recompte ce que la
-  première instance avait déjà compté. **La sur-estimation est bornée par 250 entrées par
-  ré-injection** ; elle était non bornée dans l'autre sens.
+- Le double comptage remplace une régression possible. Deux lignes pour un document
+  ré-injecté recomptent ce que le tampon rejoué avait déjà compté. **La sur-estimation est
+  bornée par 250 entrées par ré-injection** ; l'écrasement, lui, n'avait pas de borne.
+  C'est un prix payé contre un risque, pas contre un incident : si le double comptage se
+  révèle plus coûteux en pratique, la décision se rejuge.
 - Une visite vivante au moment d'une mise à jour de l'extension apparaît une seconde fois,
   au lieu de voir son total écrasé.
 - Le CSV n'expose pas `observedFrom` : c'est une identité interne, et `visitTimestamp`
