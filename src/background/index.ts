@@ -29,6 +29,22 @@ const badge: BadgeSurface = {
 };
 
 /**
+ * Runs a listener's asynchronous work with a failure path.
+ *
+ * Every listener below is fire-and-forget: the browser ignores the promise an
+ * `async` listener returns, so a rejection became an unhandled promise and the
+ * work simply did not happen. `chrome.storage.local` is the one that really
+ * rejects — it does so once its quota is reached — and losing that quietly is
+ * what could turn a full store into what reads as an empty day.
+ *
+ * Logging is the whole remedy on purpose: there is no user-facing surface here
+ * to raise, and every caller is retried by the next page load or the next alarm.
+ */
+function runInBackground(what: string, task: () => Promise<void>): void {
+  void task().catch((error: unknown) => console.error(`Carbolate: ${what} failed`, error));
+}
+
+/**
  * The badge does not survive a browser restart, and the grade it shows expires
  * the moment the day rolls over or a page is measured — so every path that can
  * move the day's total ends here.
@@ -50,15 +66,19 @@ function scheduleReset(preferences: Preferences): void {
   });
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
-  scheduleReset(await ChromeStorage.getPreferences());
-  await paintBadge();
-});
+chrome.runtime.onInstalled.addListener(() =>
+  runInBackground("onInstalled", async () => {
+    scheduleReset(await ChromeStorage.getPreferences());
+    await paintBadge();
+  }),
+);
 
-chrome.runtime.onStartup.addListener(async () => {
-  scheduleReset(await ChromeStorage.getPreferences());
-  await paintBadge();
-});
+chrome.runtime.onStartup.addListener(() =>
+  runInBackground("onStartup", async () => {
+    scheduleReset(await ChromeStorage.getPreferences());
+    await paintBadge();
+  }),
+);
 
 async function enforceRetention(preferences: Preferences): Promise<void> {
   try {
@@ -70,10 +90,12 @@ async function enforceRetention(preferences: Preferences): Promise<void> {
   }
 }
 
-chrome.alarms.onAlarm.addListener(async (alarm: chrome.alarms.Alarm) => {
+chrome.alarms.onAlarm.addListener((alarm: chrome.alarms.Alarm) => {
   if (alarm.name !== RESET_ALARM) return;
-  await enforceRetention(await ChromeStorage.getPreferences());
-  await paintBadge();
+  runInBackground("reset alarm", async () => {
+    await enforceRetention(await ChromeStorage.getPreferences());
+    await paintBadge();
+  });
 });
 
 /**
@@ -87,21 +109,23 @@ chrome.alarms.onAlarm.addListener(async (alarm: chrome.alarms.Alarm) => {
  * later at the next tick. Widening costs nothing — the cycle drops nothing, so
  * it exports nothing.
  */
-chrome.storage.onChanged.addListener(async (changes, areaName) => {
+chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local") return;
   const change = changes[StorageKey.PREFERENCES];
   if (change === undefined) return;
 
   const previous = change.oldValue as Partial<Preferences> | undefined;
-  const preferences = await ChromeStorage.getPreferences();
-  // The tooltip is translated, so a language change makes it stale on its own.
-  await paintBadge();
-  // Every page load writes `sessions`, and a language change writes `preferences`.
-  // Neither may reach a path that deletes days.
-  if (previous?.retentionDays === preferences.retentionDays) return;
+  runInBackground("preference change", async () => {
+    const preferences = await ChromeStorage.getPreferences();
+    // The tooltip is translated, so a language change makes it stale on its own.
+    await paintBadge();
+    // Every page load writes `sessions`, and a language change writes `preferences`.
+    // Neither may reach a path that deletes days.
+    if (previous?.retentionDays === preferences.retentionDays) return;
 
-  scheduleReset(preferences);
-  await enforceRetention(preferences);
+    scheduleReset(preferences);
+    await enforceRetention(preferences);
+  });
 });
 
 chrome.runtime.onMessage.addListener((message: unknown, sender) => {
@@ -113,14 +137,15 @@ chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   const url = sender.url ?? sender.tab?.url;
   if (tabId === undefined || url === undefined) return false;
 
-  void intake
-    .record({
+  runInBackground("recording a page visit", async () => {
+    await intake.record({
       tabId,
       url,
       measurement: message.measurement,
       timeOrigin: message.timeOrigin,
       observedFrom: message.observedFrom,
-    })
-    .then(paintBadge);
+    });
+    await paintBadge();
+  });
   return false;
 });

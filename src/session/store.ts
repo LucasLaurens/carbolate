@@ -24,6 +24,10 @@ function rebuildTotals(record: DailyRecord): DailyRecord {
  * living-record delta — onto a visit already known, which is exactly when all
  * four components match.
  *
+ * ponytail: the scan is linear and every write re-serialises the whole store, so
+ * a day's cost grows with the visits in it. Fine at the 1-day default; index the
+ * visits by identity the day "keep everything" makes a write measurably slow.
+ *
  * `observedFrom` is the fourth because a document can be observed twice: a
  * re-injected content script replays a truncated buffer and reports *less*, and
  * on a three-part key that regression overwrote the real total.

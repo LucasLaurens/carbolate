@@ -67,7 +67,7 @@ const en: PrivacyPolicy = {
       heading: "The permissions it asks for, and why",
       paragraphs: [
         "Site access (<all_urls>): to read the load timings each visited page reports. Estimating a site's weight requires being on that site; the script collects nothing but those measurements.",
-        "storage: to write the readings and your settings on the device. alarms: to run the daily cleanup that applies your retention window. downloads: to write the CSV file when you click Export, never otherwise.",
+        "storage: to write the readings and your settings on the device. unlimitedStorage: to lift the 10 MB cap, so that the “keep everything” window can keep its promise — it grants room, not access. alarms: to run the daily cleanup that applies your retention window. downloads: to write the CSV file when you click Export, never otherwise.",
       ],
     },
     {
@@ -135,7 +135,7 @@ const fr: PrivacyPolicy = {
       heading: "Les autorisations demandées, et pourquoi",
       paragraphs: [
         "Accès aux sites (<all_urls>) : lire les temps de chargement que chaque page visitée rapporte. Estimer le poids d'un site suppose d'être présent sur ce site ; le script ne collecte que ces mesures.",
-        "storage : écrire les relevés et tes réglages sur l'appareil. alarms : déclencher le nettoyage quotidien qui applique ta rétention. downloads : écrire le fichier CSV quand tu cliques sur Export, jamais autrement.",
+        "storage : écrire les relevés et tes réglages sur l'appareil. unlimitedStorage : lever le plafond de 10 Mo, pour que la rétention « tout garder » tienne sa promesse — elle donne de la place, pas un accès. alarms : déclencher le nettoyage quotidien qui applique ta rétention. downloads : écrire le fichier CSV quand tu cliques sur Export, jamais autrement.",
       ],
     },
     {

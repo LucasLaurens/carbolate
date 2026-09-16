@@ -367,11 +367,11 @@ The `chrome` target also covers Edge, Opera, Brave and Vivaldi — same MV3 runt
 
 ```json
 {
-  "permissions": ["storage", "alarms", "downloads"]
+  "permissions": ["storage", "unlimitedStorage", "alarms", "downloads"]
 }
 ```
 
-`downloads` backs the CSV export (`utils/csv.ts`). `sidePanel` is added on Chromium only — the permission does not exist in Gecko and triggers an AMO review warning. `tabs`, `scripting`, `declarativeNetRequest*` and `contextMenus` were removed: nothing in `src/` calls them.
+`downloads` backs the CSV export (`utils/csv.ts`). `unlimitedStorage` lifts the 10 MB ceiling on `storage.local`: the panel offers a "keep everything" retention window, and without it that option ended at a rejected write. Neither store warns the user about it — it grants room, not access. `sidePanel` is added on Chromium only — the permission does not exist in Gecko and triggers an AMO review warning. `tabs`, `scripting`, `declarativeNetRequest*` and `contextMenus` were removed: nothing in `src/` calls them.
 
 **No `host_permissions`.** Site access comes from `content_scripts.matches: ["<all_urls>"]`, which is all a declared content script needs to be injected. `host_permissions` would grant, on top of that, cross-origin `fetch`, cookies, and the sensitive tab fields (`url`, `title`, `favIconUrl`) — none of which this extension uses, and the first of which `test/no-network-egress.test.ts` forbids outright. The background reads `sender.url` rather than `sender.tab.url` precisely so no host access is ever required (see _API compatibility_ below), which is why Firefox — where MV3 host permissions are not granted at install — already ran without it. See `docs/decisions/2026-09-16-surface-de-donnees-et-de-permissions.md`.
 
