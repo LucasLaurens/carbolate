@@ -52,7 +52,7 @@ const en: PrivacyPolicy = {
     {
       heading: "What the extension records",
       paragraphs: [
-        "On each page load, one row: the page URL and its domain, the number of network requests, the bytes transferred and the bytes served from cache, the page load duration, the resulting estimated grams of CO₂, and a timestamp to group the row by day.",
+        "On each page load, one row: the page URL — without its query string or fragment, so a token or an address carried in a link is never kept — and its domain, the number of network requests, the bytes transferred and the bytes served from cache, the page load duration, the resulting estimated grams of CO₂, and a timestamp to group the row by day.",
         "Those rows live in the browser's local storage on this device. They are never synced across your machines.",
       ],
     },
@@ -120,7 +120,7 @@ const fr: PrivacyPolicy = {
     {
       heading: "Ce que l'extension enregistre",
       paragraphs: [
-        "À chaque page chargée, une ligne : l'URL de la page et son domaine, le nombre de requêtes réseau, les octets transférés et ceux servis par le cache, la durée de chargement, les grammes de CO₂ estimés qui en découlent, et un horodatage pour regrouper par jour.",
+        "À chaque page chargée, une ligne : l'URL de la page — sans ses paramètres ni son ancre, pour qu'un jeton ou une adresse transportés par un lien ne soient jamais conservés — et son domaine, le nombre de requêtes réseau, les octets transférés et ceux servis par le cache, la durée de chargement, les grammes de CO₂ estimés qui en découlent, et un horodatage pour regrouper par jour.",
         "Ces lignes vivent dans le stockage local du navigateur, sur cet appareil. Elles ne sont jamais synchronisées entre tes machines.",
       ],
     },

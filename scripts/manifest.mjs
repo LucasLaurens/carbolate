@@ -42,8 +42,15 @@ function sharedManifest(version) {
       },
     ],
     icons: ICONS,
+    /**
+     * No `host_permissions`. Injecting the declared content script needs only
+     * `content_scripts.matches`; host permissions would additionally grant
+     * cross-origin `fetch`, cookies, and the sensitive tab fields — none of
+     * which this extension uses. The background reads `sender.url`, which is the
+     * sending frame and costs no permission, precisely so `sender.tab.url`
+     * (which Firefox withholds without host access) is never needed.
+     */
     permissions: ["storage", "alarms", "downloads"],
-    host_permissions: ["<all_urls>"],
   };
 }
 

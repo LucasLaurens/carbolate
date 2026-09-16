@@ -71,7 +71,8 @@ export class MetricsIntake {
     // every delta of one visit must carry the same one to route onto it.
     await this.recorder.recordPageVisit({
       tabId,
-      url,
+      // The query string never reaches storage — see `ParsedPageUrl`.
+      url: parsed.storableUrl,
       domain: parsed.domain,
       metrics,
       carbon: this.calculator.calculate([toCarbonInput(metrics)]),

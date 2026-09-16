@@ -6,6 +6,7 @@ describe("parseDomain", () => {
     expect(parseDomain("http://example.com/path")).toEqual({
       valid: true,
       domain: "example.com",
+      storableUrl: "http://example.com/path",
     });
   });
 
@@ -13,6 +14,7 @@ describe("parseDomain", () => {
     expect(parseDomain("https://sub.example.com")).toEqual({
       valid: true,
       domain: "sub.example.com",
+      storableUrl: "https://sub.example.com/",
     });
   });
 
@@ -30,6 +32,36 @@ describe("parseDomain", () => {
 
   it("rejects about:blank", () => {
     expect(parseDomain("about:blank")).toEqual({ valid: false });
+  });
+
+  it("drops the query string from the URL it hands on to be stored", () => {
+    // Act — a password-reset link is the shape this protects
+    const parsed = parseDomain("https://mail.example.com/reset?token=s3cret&email=ada%40dev.io");
+
+    // Assert
+    expect(parsed).toEqual({
+      valid: true,
+      domain: "mail.example.com",
+      storableUrl: "https://mail.example.com/reset",
+    });
+  });
+
+  it("drops the fragment too", () => {
+    // Act & Assert — an OAuth implicit flow returns its token after the hash
+    expect(parseDomain("https://app.example.com/cb#access_token=s3cret")).toEqual({
+      valid: true,
+      domain: "app.example.com",
+      storableUrl: "https://app.example.com/cb",
+    });
+  });
+
+  it("keeps a non-default port, which identifies the host", () => {
+    // Act & Assert
+    expect(parseDomain("http://localhost:5173/panel?x=1")).toEqual({
+      valid: true,
+      domain: "localhost",
+      storableUrl: "http://localhost:5173/panel",
+    });
   });
 });
 

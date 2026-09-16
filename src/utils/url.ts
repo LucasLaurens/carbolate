@@ -1,4 +1,13 @@
-type DomainResult = { valid: true; domain: string } | { valid: false };
+/**
+ * What a page URL is reduced to before anything stores it.
+ *
+ * `storableUrl` is the URL minus its query string and fragment. A magic link, a
+ * password-reset token, an `?email=` — a query string carries credentials and
+ * identity that estimating a page's weight never needs, and keeping it would put
+ * them in local storage and in every CSV export. Trimmed at the one place that
+ * already parses the URL, so no caller can forget.
+ */
+type ParsedPageUrl = { valid: true; domain: string; storableUrl: string } | { valid: false };
 
 /**
  * Suffixes that are two labels long, so a site under them needs three to be
@@ -9,12 +18,12 @@ type DomainResult = { valid: true; domain: string } | { valid: false };
  */
 const TWO_PART_SUFFIXES = ["co.uk", "com.br", "co.jp", "com.au", "co.nz", "co.za", "com.mx"];
 
-export function parseDomain(url: string): DomainResult {
+export function parseDomain(url: string): ParsedPageUrl {
   if (!URL.canParse(url)) return { valid: false };
-  const { hostname, protocol } = new URL(url);
+  const { hostname, protocol, origin, pathname } = new URL(url);
   if (!["http:", "https:"].includes(protocol)) return { valid: false };
   if (!hostname) return { valid: false };
-  return { valid: true, domain: hostname };
+  return { valid: true, domain: hostname, storableUrl: `${origin}${pathname}` };
 }
 
 /**
