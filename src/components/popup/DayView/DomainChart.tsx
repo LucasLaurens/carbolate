@@ -4,29 +4,42 @@ import type { DailyRecord } from "../../../session/types";
 import type { Translations } from "../../../i18n/types";
 import { CHART_COLORS, formatCo2, aggregateDomains } from "./utils";
 
+const TOP_DOMAINS = 5;
+
+/** A doughnut skips a zero slice entirely; the thinnest visible sliver stands in. */
+const MIN_SLICE_CO2 = 0.001;
+
+type DomainSlice = { domain: string; totalCo2: number };
+
+function selectTopDomains(record: DailyRecord): DomainSlice[] {
+  return aggregateDomains(record.visits)
+    .filter((domain) => Number.isFinite(domain.totalCo2))
+    .sort((a, b) => b.totalCo2 - a.totalCo2)
+    .slice(0, TOP_DOMAINS);
+}
+
+/**
+ * The chart is built **once** and fed afterwards.
+ *
+ * It used to be destroyed and reconstructed whenever `record` changed. Every
+ * store read rebuilds that object, and a living visit writes every five seconds
+ * per open tab — with seven tabs open the doughnut replayed its entry animation
+ * roughly twice a second, which reads as a panel reloading rather than a figure
+ * moving.
+ */
 function useChart(canvasRef: React.RefObject<HTMLCanvasElement | null>, record: DailyRecord) {
+  const chartRef = useRef<Chart | null>(null);
+  const slicesRef = useRef<DomainSlice[]>([]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const chartData = aggregateDomains(record.visits)
-      .filter((d) => Number.isFinite(d.totalCo2))
-      .sort((a, b) => b.totalCo2 - a.totalCo2)
-      .slice(0, 5);
-
-    if (chartData.length === 0) return;
-
     const chart = new Chart(canvas, {
       type: "doughnut",
       data: {
-        labels: chartData.map((d) => d.domain),
-        datasets: [
-          {
-            data: chartData.map((d) => Math.max(d.totalCo2, 0.001)),
-            backgroundColor: CHART_COLORS,
-            borderWidth: 0,
-          },
-        ],
+        labels: [],
+        datasets: [{ data: [], backgroundColor: CHART_COLORS, borderWidth: 0 }],
       },
       options: {
         responsive: true,
@@ -38,8 +51,10 @@ function useChart(canvasRef: React.RefObject<HTMLCanvasElement | null>, record: 
           },
           tooltip: {
             callbacks: {
+              // Read through the ref, not a captured array: the slices change
+              // under a chart that is never rebuilt.
               label: (ctx) => {
-                const raw = chartData[ctx.dataIndex]?.totalCo2 ?? 0;
+                const raw = slicesRef.current[ctx.dataIndex]?.totalCo2 ?? 0;
                 return `${ctx.label}: ${formatCo2(raw)}g CO₂`;
               },
             },
@@ -48,8 +63,25 @@ function useChart(canvasRef: React.RefObject<HTMLCanvasElement | null>, record: 
       },
     });
 
-    return () => chart.destroy();
-  }, [canvasRef, record]);
+    chartRef.current = chart;
+    return () => {
+      chart.destroy();
+      chartRef.current = null;
+    };
+  }, [canvasRef]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (chart === null) return;
+
+    const slices = selectTopDomains(record);
+    slicesRef.current = slices;
+    chart.data.labels = slices.map((slice) => slice.domain);
+    chart.data.datasets[0].data = slices.map((slice) => Math.max(slice.totalCo2, MIN_SLICE_CO2));
+    // "none" — animating a figure that refreshes every few seconds is what made
+    // it look like a reload.
+    chart.update("none");
+  }, [record]);
 }
 
 type DomainChartProps = { record: DailyRecord; t: Translations };
