@@ -8,6 +8,13 @@ import { createEmptyMeasurement } from "../performance/PageMetrics";
 import { MessageType } from "../messaging/messages";
 
 const TIME_ORIGIN = 1_789_553_896_639;
+const OBSERVED_FROM = TIME_ORIGIN + 400;
+
+const flush = () => ({
+  timeOrigin: TIME_ORIGIN,
+  observedFrom: OBSERVED_FROM,
+  measurement: createEmptyMeasurement(),
+});
 
 type Runtime = { sendMessage: (message: unknown) => Promise<unknown> };
 
@@ -43,11 +50,16 @@ describe("RuntimeObservationSink", () => {
     const sink = new RuntimeObservationSink();
 
     // Act
-    sink.send(createEmptyMeasurement(), TIME_ORIGIN);
+    sink.send(flush());
 
     // Assert
     expect(runtime.received).toEqual([
-      { type: MessageType.PAGE_METRICS, timeOrigin: TIME_ORIGIN, measurement: expect.anything() },
+      {
+        type: MessageType.PAGE_METRICS,
+        timeOrigin: TIME_ORIGIN,
+        observedFrom: OBSERVED_FROM,
+        measurement: expect.anything(),
+      },
     ]);
   });
 
@@ -57,7 +69,7 @@ describe("RuntimeObservationSink", () => {
     const sink = new RuntimeObservationSink();
 
     // Act & Assert
-    expect(() => sink.send(createEmptyMeasurement(), TIME_ORIGIN)).not.toThrow();
+    expect(() => sink.send(flush())).not.toThrow();
     expect(sink.alive).toBe(true);
   });
 
@@ -67,7 +79,7 @@ describe("RuntimeObservationSink", () => {
     const sink = new RuntimeObservationSink();
 
     // Act & Assert
-    expect(() => sink.send(createEmptyMeasurement(), TIME_ORIGIN)).not.toThrow();
+    expect(() => sink.send(flush())).not.toThrow();
   });
 
   it("reports itself dead once the context is gone, so the caller stops flushing", () => {
@@ -76,7 +88,7 @@ describe("RuntimeObservationSink", () => {
     const sink = new RuntimeObservationSink();
 
     // Act
-    sink.send(createEmptyMeasurement(), TIME_ORIGIN);
+    sink.send(flush());
 
     // Assert
     expect(sink.alive).toBe(false);

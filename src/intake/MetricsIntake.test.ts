@@ -30,6 +30,7 @@ const observation = (
   tabId: overrides.tabId ?? 7,
   url: overrides.url ?? "https://blog.example.com/article",
   timeOrigin: overrides.timeOrigin ?? new Date("2026-02-23T11:00:00").getTime(),
+  observedFrom: overrides.observedFrom ?? new Date("2026-02-23T11:00:01").getTime(),
   measurement:
     overrides.measurement ??
     measure(

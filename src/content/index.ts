@@ -11,14 +11,29 @@ import { isThirdPartyResource } from "../utils/url";
  */
 const FLUSH_INTERVAL_MS = 5_000;
 
-const accumulator = new VisitAccumulator(
-  document.visibilityState === "visible",
-  performance.timeOrigin,
-);
+/**
+ * When this script started measuring — **not** when the document did.
+ *
+ * As a visibility clock, `performance.timeOrigin` was wrong for a script that
+ * did not start with its document: re-injected into a tab open for three hours
+ * and visible, the accumulator reported three hours of screen time nobody spent.
+ *
+ * As an identity, it is what separates this instance from another observing the
+ * same document, so a replayed and truncated buffer appends rather than
+ * replacing a larger total.
+ * See docs/decisions/2026-09-16-instance-d-observation.md
+ */
+const OBSERVED_FROM = Date.now();
+
+const accumulator = new VisitAccumulator(document.visibilityState === "visible", OBSERVED_FROM);
 const sink = new RuntimeObservationSink();
 
 const flush = (): void =>
-  sink.send(accumulator.readMeasurement(Date.now()), performance.timeOrigin);
+  sink.send({
+    timeOrigin: performance.timeOrigin,
+    observedFrom: OBSERVED_FROM,
+    measurement: accumulator.readMeasurement(Date.now()),
+  });
 
 // `buffered: true` replays what the timeline already holds, so entries that
 // arrived before this script ran are not lost — and observing from here on is

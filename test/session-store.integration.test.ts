@@ -24,6 +24,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1_000;
  * with the clock.
  */
 const LOADED_AT = new Date(`${TODAY}T11:00:00`).getTime();
+/** The one content script observing that document — see the observation-instance ADR. */
+const OBSERVED_FROM = LOADED_AT + 500;
 
 const visit = (overrides: Partial<PageVisit> = {}): PageVisit => ({
   tabId: 1,
@@ -37,7 +39,7 @@ const visit = (overrides: Partial<PageVisit> = {}): PageVisit => ({
     visibleDurationSec: 30,
     cachedPageWeight: 0.4,
   },
-  meta: { date: LOADED_AT },
+  meta: { date: LOADED_AT, observedFrom: OBSERVED_FROM },
   carbon: {
     networkCo2: 0.8,
     deviceCo2: 0.0098,
@@ -197,7 +199,9 @@ describe("recording a page visit", () => {
     await store.recordPageVisit(VISIT_A);
 
     // Act — same tab, same URL, a new document: two F5 are two documents
-    await store.recordPageVisit(visit({ tabId: 1, meta: { date: LOADED_AT + 60_000 } }));
+    await store.recordPageVisit(
+      visit({ tabId: 1, meta: { date: LOADED_AT + 60_000, observedFrom: OBSERVED_FROM } }),
+    );
 
     // Assert — replacing would under-count bytes that really crossed the network
     const record = await store.getDailyRecord();
@@ -229,10 +233,34 @@ describe("recording a page visit", () => {
     expect(record.visits).toHaveLength(2);
   });
 
+  it("keeps a second script observing one document apart from the first", async () => {
+    // Arrange — the tab is open and measured; 1129 resources have crossed
+    await store.recordPageVisit(
+      visit({ tabId: 1, metrics: { ...VISIT_A.metrics, requestCount: 1129 } }),
+    );
+
+    // Act — the add-on is reloaded, a second script is injected into the same
+    // document, and `buffered: true` replays only the 250 entries still held
+    await store.recordPageVisit(
+      visit({
+        tabId: 1,
+        meta: { date: LOADED_AT, observedFrom: OBSERVED_FROM + 3_600_000 },
+        metrics: { ...VISIT_A.metrics, requestCount: 250 },
+      }),
+    );
+
+    // Assert — on a three-part key the 250 replaced the 1129: a cumulative
+    // counter running backwards. See the observation-instance ADR.
+    const record = await store.getDailyRecord();
+    expect(record.visits.map((visit) => visit.metrics.requestCount)).toEqual([1129, 250]);
+  });
+
   it("routes a delta onto the visit it belongs to, without adding one", async () => {
     // Arrange
     await store.recordPageVisit(VISIT_A);
-    await store.recordPageVisit(visit({ tabId: 1, meta: { date: LOADED_AT + 60_000 } }));
+    await store.recordPageVisit(
+      visit({ tabId: 1, meta: { date: LOADED_AT + 60_000, observedFrom: OBSERVED_FROM } }),
+    );
 
     // Act — a later measurement of the first load, same three-part key
     await store.recordPageVisit(
@@ -292,7 +320,7 @@ describe("a visit that crosses midnight", () => {
     await store.clearPastDays(1);
 
     // Act — the tab from yesterday is still open and reports again
-    await store.recordPageVisit(visit({ meta: { date: LOADED_AT } }));
+    await store.recordPageVisit(visit({ meta: { date: LOADED_AT, observedFrom: OBSERVED_FROM } }));
 
     // Assert — a purged day stays purged; the warning the panel showed stays true
     expect(storage.dates()).toEqual([]);
@@ -463,7 +491,9 @@ describe("crossing midnight", () => {
 
     // Act — a page opened after the rollover carries a document start of its own
     clock.advance(MS_PER_DAY);
-    await store.recordPageVisit(visit({ tabId: 2, meta: { date: clock.nowMs() } }));
+    await store.recordPageVisit(
+      visit({ tabId: 2, meta: { date: clock.nowMs(), observedFrom: OBSERVED_FROM } }),
+    );
 
     // Assert
     const days = await store.getAllDays();

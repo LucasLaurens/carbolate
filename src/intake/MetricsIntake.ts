@@ -13,6 +13,8 @@ export type PageObservation = {
   measurement: PageMeasurement;
   /** The document's start, read in the page — with `tabId` and `url`, the visit's identity. */
   timeOrigin: number;
+  /** When the reporting script started observing — the fourth part of that identity. */
+  observedFrom: number;
 };
 
 /**
@@ -38,7 +40,13 @@ export class MetricsIntake {
    *
    * O(1) time and space beyond the record itself.
    */
-  async record({ tabId, url, measurement, timeOrigin }: PageObservation): Promise<void> {
+  async record({
+    tabId,
+    url,
+    measurement,
+    timeOrigin,
+    observedFrom,
+  }: PageObservation): Promise<void> {
     const parsed = parseDomain(url);
     if (!parsed.valid) return;
 
@@ -67,7 +75,7 @@ export class MetricsIntake {
       domain: parsed.domain,
       metrics,
       carbon: this.calculator.calculate([toCarbonInput(metrics)]),
-      meta: { date: timeOrigin },
+      meta: { date: timeOrigin, observedFrom },
     });
   }
 }

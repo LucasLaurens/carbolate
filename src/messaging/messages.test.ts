@@ -5,6 +5,7 @@ import { createEmptyMeasurement } from "../performance/PageMetrics";
 const valid = {
   type: MessageType.PAGE_METRICS,
   timeOrigin: 1_771_800_000_000,
+  observedFrom: 1_771_800_000_400,
   measurement: { ...createEmptyMeasurement(), requests: 1, transferredBytes: 10 },
 };
 
@@ -20,6 +21,7 @@ describe("isPageMetricsMessage", () => {
       isPageMetricsMessage({
         type: MessageType.PAGE_METRICS,
         timeOrigin: 1_771_800_000_000,
+        observedFrom: 1_771_800_000_400,
         measurement: createEmptyMeasurement(),
       }),
     ).toBe(true);
@@ -37,6 +39,14 @@ describe("isPageMetricsMessage", () => {
     // Act & Assert
     expect(isPageMetricsMessage({ ...valid, timeOrigin: "1771800000000" })).toBe(false);
     expect(isPageMetricsMessage({ ...valid, timeOrigin: Number.NaN })).toBe(false);
+  });
+
+  it("rejects a message with no observation start — two instances would collide", () => {
+    // Arrange — a content script injected before the observation instance shipped
+    const { observedFrom: _dropped, ...withoutInstance } = valid;
+
+    // Act & Assert — accepting it would let a replayed buffer overwrite a larger total
+    expect(isPageMetricsMessage(withoutInstance)).toBe(false);
   });
 
   it("rejects another message type", () => {

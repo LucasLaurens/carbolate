@@ -1,10 +1,9 @@
-import type { PageMeasurement } from "../performance/PageMetrics";
-import type { PageMetricsMessage } from "../messaging/messages";
+import type { PageMetricsMessage, PageObservationPayload } from "../messaging/messages";
 import { MessageType } from "../messaging/messages";
 
 /** Where a flush goes. Injected, so the flushing rules can be exercised. */
 export interface ObservationSink {
-  send(measurement: PageMeasurement, timeOrigin: number): void;
+  send(payload: PageObservationPayload): void;
   /**
    * False once the extension that injected this script is gone. Nothing measured
    * from here on can reach storage, so the caller stops flushing.
@@ -30,14 +29,10 @@ export class RuntimeObservationSink implements ObservationSink {
    * The failure cannot be recovered — this context has no way back — so it is
    * recorded rather than retried, and the caller stops the interval.
    */
-  send(measurement: PageMeasurement, timeOrigin: number): void {
+  send(payload: PageObservationPayload): void {
     if (!this.sendable) return;
 
-    const message: PageMetricsMessage = {
-      type: MessageType.PAGE_METRICS,
-      timeOrigin,
-      measurement,
-    };
+    const message: PageMetricsMessage = { type: MessageType.PAGE_METRICS, ...payload };
 
     try {
       // MV3 with no callback returns a promise, and a background that answers

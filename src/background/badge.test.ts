@@ -104,12 +104,14 @@ describe("refreshBadge", () => {
     };
   }
 
+  const OBSERVED_FROM = new Date(`${TODAY}T12:00:01`).getTime();
+
   const measuredVisit = (totalCo2: number): PageVisit => ({
     tabId: 1,
     url: "https://example.test/page",
     domain: "example.test",
     metrics: createEmptyMetrics(),
-    meta: { date: new Date(`${TODAY}T12:00:00`).getTime() },
+    meta: { date: new Date(`${TODAY}T12:00:00`).getTime(), observedFrom: OBSERVED_FROM },
     carbon: { networkCo2: totalCo2, deviceCo2: 0, screenCo2: 0, totalCo2, avoidedCo2: 0 },
   });
 

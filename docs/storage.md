@@ -88,23 +88,32 @@ type Metrics = {
 
 ```typescript
 type PageVisit = {
-  tabId: number; // chrome.tabs.Tab.id — one third of the identity
+  tabId: number; // chrome.tabs.Tab.id — one quarter of the identity
   url: string; // Full URL, raw: query and hash included, no normalisation
   domain: string; // hostname (e.g. "github.com") — a visit with no valid host is discarded
   metrics: Metrics;
   meta: {
     date: number; // The document's performance.timeOrigin (ms) — when the page started
+    observedFrom: number; // When the reporting content script started measuring (ms)
   };
   carbon: CarbonEstimate;
 };
 ```
 
-> Identified by **`(tabId, meta.date, url)`**. Two reloads are two documents, so two
-> visits; the url separates SPA navigations sharing one document; the tab id separates
-> the same page open twice. `meta.date` is the document's own start, not the hour the
+> Identified by **`(tabId, meta.date, url, meta.observedFrom)`**. Two reloads are two
+> documents, so two visits; the url separates SPA navigations sharing one document; the
+> tab id separates the same page open twice; `meta.observedFrom` separates two scripts
+> measuring one document. `meta.date` is the document's own start, not the hour the
 > measurement was filed — the living record will send several messages per visit and
 > all of them must land on the same entry.
 > See docs/decisions/2026-08-21-identite-de-la-visite-de-page.md
+
+> `meta.observedFrom` exists because a document can be observed twice: Firefox re-injects
+> content scripts into open tabs when an add-on is loaded, and an extension update does
+> the same. The second script starts at zero and replays a resource buffer capped at 250
+> entries, so its totals are **lower** — and on the three-part key they overwrote the
+> first script's. Records written before it normalise to `0`.
+> See docs/decisions/2026-09-16-instance-d-observation.md
 
 > `meta.status` is gone. It was hardcoded to `200`, never read and never anything
 > else — a field claiming to describe a state while describing none. The real
@@ -289,7 +298,7 @@ store.getDailyRecord()  → DailyRecord     (today; the neutral record if nothin
 store.getAllDays()      → DailyRecord[]   (every stored day, chronological)
 
 // PageVisitRecorder — the intake's half
-store.recordPageVisit(visit) → void       (append, or replace the same (tabId, timeOrigin, url), inside the write queue)
+store.recordPageVisit(visit) → void       (append, or replace the same (tabId, timeOrigin, url, observedFrom), inside the write queue)
 
 // RetentionEnforcer — the reset alarm's half
 store.clearPastDays(retentionDays) → void

@@ -24,7 +24,7 @@ const visit = (domain: string): PageVisit => ({
     visibleDurationSec: 30,
     cachedPageWeight: 0.8,
   },
-  meta: { date: 1_772_000_000_000 },
+  meta: { date: 1_772_000_000_000, observedFrom: 1_772_000_000_500 },
   carbon: {
     networkCo2: 0.26,
     deviceCo2: 0.0024,
