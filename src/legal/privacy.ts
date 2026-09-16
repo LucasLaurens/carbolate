@@ -20,8 +20,8 @@ import type { Language } from "../i18n/types";
  * it from this module the day a third surface needs the same text.
  *
  * The egress APIs are named loosely here — "no XHR, no socket, no beacon" — because
- * `test/no-network-egress.test.ts` scans `src/` for those identifiers and cannot tell
- * prose from a call. The published page spells them out in full, which is where a
+ * `test/no-network-egress.test.ts` scans this file among the rest of `src/` and cannot
+ * tell prose from a call. The published page spells them out in full, which is where a
  * store reviewer looks for them.
  */
 export type PrivacySection = {
