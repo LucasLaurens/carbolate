@@ -55,5 +55,8 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.13",
     "chart.js": "^4.5.1"
+  },
+  "overrides": {
+    "brace-expansion": "^2.1.7"
   }
 }
