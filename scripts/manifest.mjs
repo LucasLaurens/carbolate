@@ -49,8 +49,13 @@ function sharedManifest(version) {
      * which this extension uses. The background reads `sender.url`, which is the
      * sending frame and costs no permission, precisely so `sender.tab.url`
      * (which Firefox withholds without host access) is never needed.
+     *
+     * `unlimitedStorage` lifts the 10 MB cap on `storage.local`. The panel offers
+     * a "keep everything" retention window, and without this that promise ended
+     * at a rejected write. Neither store shows the user a warning for it, and it
+     * grants no access to anything — only room for what is already local.
      */
-    permissions: ["storage", "alarms", "downloads"],
+    permissions: ["storage", "unlimitedStorage", "alarms", "downloads"],
   };
 }
 
