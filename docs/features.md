@@ -274,7 +274,9 @@ a moment nobody chooses.
 
 ```
 User navigates to a new URL
-  → Content script builds a VisitAccumulator(visible?, performance.timeOrigin)
+  → Content script builds a VisitAccumulator(visible?, OBSERVED_FROM = Date.now())
+      (its own start, not the document's: a script re-injected into a tab open for
+       three hours would otherwise report three hours of screen time nobody spent)
   → PerformanceObserver("resource", buffered: true)
       each entry → accumulator.addResource({ transferSize, decodedBodySize, thirdParty })
       (buffered replays what landed before the script ran; thirdParty is classified
@@ -287,11 +289,11 @@ User navigates to a new URL
   → setInterval(flush, 5_000)
 
   flush = RuntimeObservationSink.send(accumulator.readMeasurement(Date.now()), timeOrigin)
-    → chrome.runtime.sendMessage({ type: "page_metrics", timeOrigin, measurement })
+    → chrome.runtime.sendMessage({ type: "page_metrics", timeOrigin, observedFrom, measurement })
     → Background guards the message shape with isPageMetricsMessage()
     → tabId from sender.tab.id; url from sender.url, the sending frame — not
       sender.tab.url, which Firefox withholds until host access is granted
-    → MetricsIntake.record({ tabId, url, measurement, timeOrigin })
+    → MetricsIntake.record({ tabId, url, measurement, timeOrigin, observedFrom })
         → parseDomain(url)            — discard if not http(s)
         → measurement.requests === 0  — discard: visited too early, never observed
         → Metrics { requestCount, thirdPartyRequests, totalResourceSize (MB),
@@ -299,7 +301,7 @@ User navigates to a new URL
         → toCarbonInput + CarbonCalculator
           → CarbonEstimate { networkCo2, deviceCo2, screenCo2, totalCo2, avoidedCo2 }
         → store.recordPageVisit(visit) — append, or replace the same
-          (tabId, timeOrigin, url); filed under the day the visit BEGAN
+          (tabId, timeOrigin, url, observedFrom); filed under the day the visit BEGAN
     → Data persisted in ChromeStorage
     → paintBadge() — the day's total and its sobriety colour
 ```

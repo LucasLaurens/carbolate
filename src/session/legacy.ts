@@ -32,9 +32,10 @@ type StoredMetrics = Partial<Metrics> & {
  * tab it measured, and `tabs` the array that held them. Both are read here and
  * written under their new names, so the rename costs no migration.
  */
-type StoredVisit = Omit<PageVisit, "tabId" | "metrics" | "carbon"> & {
+type StoredVisit = Omit<PageVisit, "tabId" | "metrics" | "carbon" | "meta"> & {
   tabId?: number;
   id?: number;
+  meta: { date: number; observedFrom?: number };
   metrics?: StoredMetrics;
   carbon?: StoredCarbon;
 };
@@ -100,6 +101,12 @@ export function normalizeDailyRecord(record: StoredRecord): DailyRecord {
   const visits = (record.visits ?? record.tabs ?? []).map(({ id, ...visit }) => ({
     ...visit,
     tabId: coalesceNumber(visit.tabId, coalesceNumber(id, 0)),
+    // Days written before a document could be observed twice carry no
+    // observation start. Zero stands for "the one instance there was": those
+    // records are already distinct from each other, and a live visit still
+    // reporting across the upgrade lands as its own entry rather than
+    // overwriting the stored one.
+    meta: { date: visit.meta.date, observedFrom: coalesceNumber(visit.meta.observedFrom, 0) },
     metrics: normalizeMetrics(visit.metrics),
     carbon: normalizeCarbon(visit.carbon),
   }));

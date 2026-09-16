@@ -39,13 +39,25 @@ type MetaData = {
    * send several messages per visit, all of which must land on the same one.
    */
   date: number;
+  /**
+   * When the content script that reported this visit started observing it.
+   *
+   * The document's start is not enough to identify a measurement: one document
+   * can be observed twice. A re-injected script — Firefox does this on add-on
+   * load — starts a second accumulator at zero, and `buffered: true` replays
+   * only what the 250-entry resource buffer still holds, so its totals are
+   * *lower*. Keyed on the document alone, those replaced the first instance's.
+   * See docs/decisions/2026-09-16-instance-d-observation.md
+   */
+  observedFrom: number;
 };
 
 /**
- * One page load. Identified by **`(tabId, meta.date, url)`**, each component
- * separating a case the others cannot: the document start separates two
- * reloads, the url separates SPA navigations that share a document, the tab id
- * separates the same page open twice.
+ * One page load. Identified by **`(tabId, meta.date, url, meta.observedFrom)`**,
+ * each component separating a case the others cannot: the document start
+ * separates two reloads, the url separates SPA navigations that share a
+ * document, the tab id separates the same page open twice, and the observation
+ * start separates two scripts measuring one document.
  * See docs/decisions/2026-08-21-identite-de-la-visite-de-page.md
  */
 export type PageVisit = {

@@ -22,8 +22,22 @@ export type PageMetricsMessage = {
    * stamped on arrival.
    */
   timeOrigin: number;
+  /**
+   * When the content script that sent this started observing.
+   *
+   * A document can carry more than one accumulator: Firefox re-injects content
+   * scripts into open tabs when an add-on is loaded, and each new one starts at
+   * zero and replays only what the resource-timing buffer still holds. Without
+   * this, the second instance's smaller totals replaced the first's — a
+   * cumulative counter running backwards.
+   * See docs/decisions/2026-09-16-instance-d-observation.md
+   */
+  observedFrom: number;
   measurement: PageMeasurement;
 };
+
+/** A flush, before the discriminant the sink stamps on it. */
+export type PageObservationPayload = Omit<PageMetricsMessage, "type">;
 
 const MEASUREMENT_FIELDS = [
   "requests",
@@ -43,9 +57,15 @@ const MEASUREMENT_FIELDS = [
 export function isPageMetricsMessage(message: unknown): message is PageMetricsMessage {
   if (typeof message !== "object" || message === null) return false;
 
-  const candidate = message as { type?: unknown; timeOrigin?: unknown; measurement?: unknown };
+  const candidate = message as {
+    type?: unknown;
+    timeOrigin?: unknown;
+    observedFrom?: unknown;
+    measurement?: unknown;
+  };
   if (candidate.type !== MessageType.PAGE_METRICS) return false;
   if (!Number.isFinite(candidate.timeOrigin)) return false;
+  if (!Number.isFinite(candidate.observedFrom)) return false;
   if (typeof candidate.measurement !== "object" || candidate.measurement === null) return false;
 
   const measurement = candidate.measurement as Record<string, unknown>;

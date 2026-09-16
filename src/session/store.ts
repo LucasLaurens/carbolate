@@ -17,17 +17,26 @@ function rebuildTotals(record: DailyRecord): DailyRecord {
 /**
  * Appends a visit, or replaces the one carrying the same identity.
  *
- * **Appending is the default case.** The key is `(tabId, meta.date, url)`: two
- * reloads are two documents and two visits, and replacing them would under-count
- * bytes that really crossed the network. Replacement survives only to route a
- * later measurement — a living-record delta — onto a visit already known, which
- * is exactly when all three components match.
+ * **Appending is the default case.** The key is
+ * `(tabId, meta.date, url, meta.observedFrom)`: two reloads are two documents
+ * and two visits, and replacing them would under-count bytes that really crossed
+ * the network. Replacement survives only to route a later measurement — a
+ * living-record delta — onto a visit already known, which is exactly when all
+ * four components match.
+ *
+ * `observedFrom` is the fourth because a document can be observed twice: a
+ * re-injected content script replays a truncated buffer and reports *less*, and
+ * on a three-part key that regression overwrote the real total.
  * See docs/decisions/2026-08-21-identite-de-la-visite-de-page.md
+ * and docs/decisions/2026-09-16-instance-d-observation.md
  *
  * O(n) time, O(n) space — n = visits recorded today.
  */
 const isSameVisit = (a: PageVisit, b: PageVisit): boolean =>
-  a.tabId === b.tabId && a.meta.date === b.meta.date && a.url === b.url;
+  a.tabId === b.tabId &&
+  a.meta.date === b.meta.date &&
+  a.url === b.url &&
+  a.meta.observedFrom === b.meta.observedFrom;
 
 function upsertVisit(visits: PageVisit[], incoming: PageVisit): PageVisit[] {
   let replaced = false;

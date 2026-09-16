@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import CarbonCalculator from "../src/carbon/CarbonCalculator";
 import { VisitAccumulator } from "../src/content/VisitAccumulator";
 import type { ObservationSink } from "../src/content/RuntimeObservationSink";
+import type { PageObservationPayload } from "../src/messaging/messages";
 import type { PageMeasurement, ResourceTiming } from "../src/performance/PageMetrics";
 import { MetricsIntake } from "../src/intake/MetricsIntake";
 import { createMetricsStore } from "../src/session/store";
@@ -37,9 +38,15 @@ class IntakeSink implements ObservationSink {
     private readonly url: string,
   ) {}
 
-  send(measurement: PageMeasurement, timeOrigin: number): void {
+  send({ measurement, timeOrigin, observedFrom }: PageObservationPayload): void {
     this.pending.push(
-      this.intake.record({ tabId: this.tabId, url: this.url, measurement, timeOrigin }),
+      this.intake.record({
+        tabId: this.tabId,
+        url: this.url,
+        measurement,
+        timeOrigin,
+        observedFrom,
+      }),
     );
   }
 
@@ -145,12 +152,16 @@ const VISIBLE_MS = 30_000;
  * Loads a page the way the extension does — entries observed one at a time, then
  * one flush — and waits for it to be persisted.
  */
-async function visit(page: Page, timeOrigin = LOADED_AT): Promise<void> {
+async function visit(page: Page, timeOrigin = LOADED_AT, observedFrom = timeOrigin): Promise<void> {
   const sink = new IntakeSink(intake, page.tabId, page.url);
-  const accumulator = new VisitAccumulator(true, timeOrigin);
+  const accumulator = new VisitAccumulator(true, observedFrom);
   for (const entry of page.entries) accumulator.addResource(entry);
   accumulator.recordNavigation({ duration: page.navigationDurationMs });
-  sink.send(accumulator.readMeasurement(timeOrigin + VISIBLE_MS), timeOrigin);
+  sink.send({
+    timeOrigin,
+    observedFrom,
+    measurement: accumulator.readMeasurement(observedFrom + VISIBLE_MS),
+  });
   await sink.delivered();
 }
 
