@@ -62,6 +62,42 @@ describe("toCSV", () => {
     expect(second.startsWith("2026-02-23,")).toBe(true);
   });
 
+  it("disarms a domain a spreadsheet would run as a formula", () => {
+    // Arrange — the classic payload, were a host ever to reach this column
+    const records = [day("2026-02-23", [visit({ domain: "=cmd|'/c calc'!A1" })])];
+
+    // Act
+    const [, row] = toCSV(records).split("\n");
+
+    // Assert — prefixed, so the cell is read as text instead of executed
+    expect(row.split(",")[columnIndex("domain")]).toBe(`'=cmd|'/c calc'!A1`);
+  });
+
+  it.each(["=1+1", "+1+1", "-1+1", "@SUM(A1)"])("disarms a url starting with %s", (payload) => {
+    // Arrange
+    const records = [day("2026-02-23", [visit({ url: payload })])];
+
+    // Act
+    const [, row] = toCSV(records).split("\n");
+    const cell = row.split(",")[columnIndex("url")];
+
+    // Assert
+    expect(cell.startsWith("'")).toBe(true);
+  });
+
+  it("leaves a negative measurement readable as a number", () => {
+    // Arrange — `-` opens a formula, but a spreadsheet reads this one as a number
+    const records = [
+      day("2026-02-23", [visit({ carbon: { ...visit().carbon, avoidedCo2: -0.14 } })]),
+    ];
+
+    // Act
+    const [, row] = toCSV(records).split("\n");
+
+    // Assert
+    expect(row.split(",")[columnIndex("avoidedCo2_g")]).toBe("-0.14");
+  });
+
   it("quotes a url containing a comma so the column count survives", () => {
     const records = [day("2026-02-23", [visit({ url: "https://example.com/a,b" })])];
 

@@ -33,8 +33,30 @@ const CSV_HEADERS = [
 
 const DECIMALS = 4;
 
+/** What a spreadsheet reads as the opening of a formula rather than as text. */
+const FORMULA_LEAD = /^[=+\-@\t\r]/;
+
+/**
+ * Disarms a field a spreadsheet would execute instead of display.
+ *
+ * Excel, LibreOffice and Sheets evaluate a cell starting with `=`, `+`, `-` or
+ * `@`; `=cmd|'…'!A1` is the classic. No field written today can start that way —
+ * every one is a date, a host, an `http` URL or a number — so this guards the
+ * shape of the file, not a known hole: the day a column carries anything the
+ * page had a say in, the export must already be inert.
+ *
+ * A value the spreadsheet would read as a number is left alone, which is what
+ * keeps a negative measurement a number rather than the text `'-1.5000`.
+ *
+ * O(1) time and space.
+ */
+function neutralizeFormula(value: string): string {
+  if (!FORMULA_LEAD.test(value)) return value;
+  return Number.isNaN(Number(value)) ? `'${value}` : value;
+}
+
 function escapeCSV(value: string | number): string {
-  const str = String(value);
+  const str = neutralizeFormula(String(value));
   if (str.includes(",") || str.includes('"') || str.includes("\n")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
