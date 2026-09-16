@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Carbolate — Politique de confidentialité / Privacy Policy</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fafaf9;
+        --fg: #292524;
+        --muted: #57534e;
+        --rule: #e7e5e4;
+        --accent: #15803d;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1917;
+          --fg: #e7e5e4;
+          --muted: #a8a29e;
+          --rule: #3f3f46;
+          --accent: #4ade80;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0 auto;
+        padding: 3rem 1.25rem 5rem;
+        max-width: 46rem;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          16px/1.65 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.25rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin: 2.5rem 0 0.75rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--rule);
+      }
+      h3 {
+        font-size: 1rem;
+        margin: 1.75rem 0 0.5rem;
+      }
+      .lede {
+        color: var(--muted);
+        margin: 0 0 2rem;
+      }
+      .lang-nav {
+        margin: 0 0 2.5rem;
+        font-size: 0.9rem;
+      }
+      .lang-nav a {
+        color: var(--accent);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+        font-size: 0.92rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 0.5rem 0.6rem;
+        border-bottom: 1px solid var(--rule);
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      code {
+        font-size: 0.9em;
+        background: color-mix(in srgb, var(--fg) 8%, transparent);
+        padding: 0.1em 0.35em;
+        border-radius: 3px;
+      }
+      .never {
+        border-left: 3px solid var(--accent);
+        padding-left: 1rem;
+        margin: 1.5rem 0;
+      }
+      footer {
+        margin-top: 3.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--rule);
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+      .wrap {
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Carbolate — Politique de confidentialité</h1>
+    <p class="lede">
+      En vigueur le 21 août 2026. S’applique à Carbolate 1.0.0 et aux versions suivantes, sur
+      Chrome, Edge et Firefox.
+    </p>
+    <p class="lang-nav"><a href="#en">Read this in English ↓</a></p>
+
+    <h2>En une phrase</h2>
+    <p>
+      Carbolate estime l’empreinte carbone de ta navigation sur ton appareil et n’envoie rien nulle
+      part. Il n’y a pas de serveur Carbolate, pas de compte, pas d’analytics, pas de télémétrie,
+      pas de tiers.
+    </p>
+
+    <h2>Ce que l’extension enregistre</h2>
+    <p>
+      À chaque page chargée, Carbolate lit ce que la page a elle-même rapporté au navigateur (l’API
+      <code>Performance</code>) et enregistre une ligne :
+    </p>
+    <div class="wrap">
+      <table>
+        <tr>
+          <th>Donnée</th>
+          <th>Pourquoi</th>
+        </tr>
+        <tr>
+          <td>L’URL de la page et son domaine</td>
+          <td>Attribuer l’estimation à un site, pour afficher la répartition par domaine</td>
+        </tr>
+        <tr>
+          <td>Nombre de requêtes réseau</td>
+          <td>Entrée du modèle carbone</td>
+        </tr>
+        <tr>
+          <td>Octets transférés, et octets servis par le cache</td>
+          <td>Entrée du modèle carbone, et calcul du CO₂ évité</td>
+        </tr>
+        <tr>
+          <td>Durée de chargement</td>
+          <td>Approximation de l’activité de l’appareil</td>
+        </tr>
+        <tr>
+          <td>Les grammes de CO₂ estimés qui en découlent</td>
+          <td>Ce que l’extension affiche</td>
+        </tr>
+        <tr>
+          <td>Un horodatage</td>
+          <td>Regrouper par jour, et appliquer la rétention</td>
+        </tr>
+      </table>
+    </div>
+    <p>
+      Ces lignes vivent dans le stockage local du navigateur (<code>chrome.storage.local</code>),
+      sous deux clés : <code>sessions</code> pour les relevés, <code>preferences</code> pour tes
+      réglages (rétention, langue). Ce stockage est local à l’appareil et n’est pas synchronisé
+      entre tes machines.
+    </p>
+
+    <h2>Ce que l’extension ne lit pas, et n’envoie pas</h2>
+    <div class="never">
+      <p>
+        Carbolate ne lit <strong>pas</strong> le contenu des pages, ni les formulaires, ni les
+        frappes clavier, ni les mots de passe, ni les cookies. Il n’utilise pas l’historique de
+        navigation du navigateur, ni ses onglets, ni ton identité.
+      </p>
+      <p>
+        Carbolate n’émet <strong>aucune requête réseau</strong>. Le code ne contient ni
+        <code>fetch</code>, ni <code>XMLHttpRequest</code>, ni <code>WebSocket</code>, ni
+        <code>sendBeacon</code>, ni aucune adresse externe. Rien n’est vendu, partagé, loué ni
+        transmis — il n’y a personne à qui transmettre.
+      </p>
+    </div>
+
+    <h2>Les autorisations demandées, et pourquoi</h2>
+    <div class="wrap">
+      <table>
+        <tr>
+          <th>Autorisation</th>
+          <th>Ce qu’elle sert</th>
+        </tr>
+        <tr>
+          <td><code>&lt;all_urls&gt;</code> (accès aux sites)</td>
+          <td>
+            Lire les temps de chargement rapportés par chaque page visitée. C’est la seule façon
+            d’estimer le poids d’un site : il faut être présent sur ce site. Le script ne collecte
+            que ces mesures.
+          </td>
+        </tr>
+        <tr>
+          <td><code>storage</code></td>
+          <td>Écrire les relevés et tes réglages sur l’appareil.</td>
+        </tr>
+        <tr>
+          <td><code>alarms</code></td>
+          <td>Déclencher le nettoyage quotidien qui applique ta rétention.</td>
+        </tr>
+        <tr>
+          <td><code>downloads</code></td>
+          <td>
+            Écrire le fichier CSV quand <em>tu</em> cliques sur « Export CSV ». Jamais autrement.
+          </td>
+        </tr>
+        <tr>
+          <td><code>sidePanel</code> (Chrome / Edge)</td>
+          <td>Afficher le panneau de l’extension.</td>
+        </tr>
+      </table>
+    </div>
+
+    <h2>Combien de temps c’est gardé</h2>
+    <p>
+      Tu choisis. Le réglage de rétention vaut <strong>1 jour par défaut</strong> : chaque nuit, les
+      jours passés sont supprimés. Une fenêtre plus longue les conserve d’autant ; l’option « tout
+      garder » ne supprime rien.
+    </p>
+
+    <h2>Comment tout effacer</h2>
+    <p>
+      Désinstaller Carbolate supprime son stockage local avec lui — le navigateur s’en charge, il ne
+      reste rien. Effacer sans désinstaller : mets la rétention sur 1 jour, ou passe par les outils
+      du navigateur (Chrome :
+      <em>Effacer les données de navigation → Données hébergées d’applications</em>).
+    </p>
+
+    <h2>L’export CSV</h2>
+    <p>
+      Le bouton « Export CSV » écrit un fichier dans ton dossier de téléchargements, contenant les
+      mêmes lignes que ci-dessus, l’URL comprise. Ce fichier t’appartient : ce qui lui arrive
+      ensuite est entre tes mains, pas les nôtres.
+    </p>
+
+    <h2>Enfants</h2>
+    <p>
+      Carbolate ne demande pas d’âge et ne peut pas en connaître un : il n’y a ni compte ni profil.
+      Puisque rien ne quitte l’appareil, il n’y a pas de données d’enfant collectées.
+    </p>
+
+    <h2>Modifications</h2>
+    <p>
+      Une version de l’extension qui changerait ce qui est enregistré, ou qui ajouterait une sortie
+      réseau, s’accompagnerait d’une mise à jour de cette page et d’une nouvelle date d’entrée en
+      vigueur. Aucun changement rétroactif silencieux.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Une question sur cette politique&nbsp;:
+      <a href="mailto:lucas.laurens@proton.me">lucas.laurens@proton.me</a>.
+    </p>
+
+    <h2 id="en">Carbolate — Privacy Policy</h2>
+    <div lang="en">
+      <p class="lede">
+        Effective 21 August 2026. Applies to Carbolate 1.0.0 and later, on Chrome, Edge and Firefox.
+      </p>
+
+      <h3>In one sentence</h3>
+      <p>
+        Carbolate estimates the carbon footprint of your browsing on your own device and sends
+        nothing anywhere. There is no Carbolate server, no account, no analytics, no telemetry, no
+        third party.
+      </p>
+
+      <h3>What the extension records</h3>
+      <p>
+        On each page load, Carbolate reads what the page itself reported to the browser (the
+        <code>Performance</code> API) and stores one row:
+      </p>
+      <div class="wrap">
+        <table>
+          <tr>
+            <th>Data</th>
+            <th>Why</th>
+          </tr>
+          <tr>
+            <td>The page URL and its domain</td>
+            <td>To attribute the estimate to a site, for the per-domain breakdown</td>
+          </tr>
+          <tr>
+            <td>Number of network requests</td>
+            <td>Input to the carbon model</td>
+          </tr>
+          <tr>
+            <td>Bytes transferred, and bytes served from cache</td>
+            <td>Input to the carbon model, and to the avoided-CO₂ figure</td>
+          </tr>
+          <tr>
+            <td>Page load duration</td>
+            <td>A proxy for device activity</td>
+          </tr>
+          <tr>
+            <td>The resulting estimated grams of CO₂</td>
+            <td>What the extension displays</td>
+          </tr>
+          <tr>
+            <td>A timestamp</td>
+            <td>To group by day and apply retention</td>
+          </tr>
+        </table>
+      </div>
+      <p>
+        Those rows live in the browser’s local storage (<code>chrome.storage.local</code>) under two
+        keys: <code>sessions</code> for the readings, <code>preferences</code> for your settings
+        (retention, language). That storage is local to the device and is not synced across your
+        machines.
+      </p>
+
+      <h3>What the extension does not read, and does not send</h3>
+      <div class="never">
+        <p>
+          Carbolate does <strong>not</strong> read page content, form fields, keystrokes, passwords
+          or cookies. It does not use the browser’s history, its tabs, or your identity.
+        </p>
+        <p>
+          Carbolate makes <strong>no network requests</strong>. The code contains no
+          <code>fetch</code>, no <code>XMLHttpRequest</code>, no <code>WebSocket</code>, no
+          <code>sendBeacon</code>, and no external address. Nothing is sold, shared, rented or
+          transmitted — there is no one to transmit it to.
+        </p>
+      </div>
+
+      <h3>The permissions it asks for, and why</h3>
+      <div class="wrap">
+        <table>
+          <tr>
+            <th>Permission</th>
+            <th>What it is for</th>
+          </tr>
+          <tr>
+            <td><code>&lt;all_urls&gt;</code> (site access)</td>
+            <td>
+              To read the load timings each visited page reports. It is the only way to estimate a
+              site’s weight: you have to be on that site. The script collects nothing but those
+              measurements.
+            </td>
+          </tr>
+          <tr>
+            <td><code>storage</code></td>
+            <td>To write the readings and your settings on the device.</td>
+          </tr>
+          <tr>
+            <td><code>alarms</code></td>
+            <td>To run the daily cleanup that applies your retention window.</td>
+          </tr>
+          <tr>
+            <td><code>downloads</code></td>
+            <td>To write the CSV file when <em>you</em> click “Export CSV”. Never otherwise.</td>
+          </tr>
+          <tr>
+            <td><code>sidePanel</code> (Chrome / Edge)</td>
+            <td>To show the extension’s panel.</td>
+          </tr>
+        </table>
+      </div>
+
+      <h3>How long it is kept</h3>
+      <p>
+        You choose. Retention defaults to <strong>1 day</strong>: past days are deleted overnight. A
+        longer window keeps them that long; “keep everything” deletes nothing.
+      </p>
+
+      <h3>How to erase it</h3>
+      <p>
+        Uninstalling Carbolate removes its local storage with it — the browser handles that, and
+        nothing is left behind. To erase without uninstalling: set retention to 1 day, or use the
+        browser’s own tools (Chrome: <em>Clear browsing data → Hosted app data</em>).
+      </p>
+
+      <h3>The CSV export</h3>
+      <p>
+        The “Export CSV” button writes a file to your downloads folder containing the same rows
+        described above, URL included. That file is yours: what happens to it next is in your hands,
+        not ours.
+      </p>
+
+      <h3>Children</h3>
+      <p>
+        Carbolate never asks for an age and could not know one: there is no account and no profile.
+        Since nothing leaves the device, no children’s data is collected.
+      </p>
+
+      <h3>Changes</h3>
+      <p>
+        A release that changed what is recorded, or that added any network egress, would ship
+        alongside an update to this page and a new effective date. No silent retroactive changes.
+      </p>
+
+      <h3>Contact</h3>
+      <p>
+        A question about this policy:
+        <a href="mailto:lucas.laurens@proton.me">lucas.laurens@proton.me</a>.
+      </p>
+    </div>
+
+    <footer>Carbolate 1.0.0 · <span lang="en">Local-only by design.</span></footer>
+  </body>
+</html>
