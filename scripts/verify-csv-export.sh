@@ -186,8 +186,9 @@ finish() {
 TOTAL_STAGES=8
 
 # Answers land in a report rather than in .env: this wizard captures
-# observations, not configuration.
-ENV_FILE="${ENV_FILE:-verification-export-csv.txt}"
+# observations, not configuration. Assigned outright — the library above has
+# already defaulted ENV_FILE to .env, so a `:-` here would never fire.
+ENV_FILE="verification-export-csv.txt"
 DIST="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/dist"
 
 SEED_SNIPPET='(async () => {
@@ -216,6 +217,17 @@ if [[ ! -t 0 ]]; then
   printf 'verify-csv-export: needs a terminal — run it yourself, not through a pipe.\n' >&2
   exit 1
 fi
+
+# ask_required KEY "Prompt" — an answer this run exists to collect. Re-asks
+# rather than storing a blank: a report of ten empty fields reads as a finished
+# verification and is worth less than no report at all.
+ask_required() {
+  while :; do
+    ask "$1" "$2"
+    [[ -n "${!1}" ]] && return
+    warn "this one is the observation — answer it, or Ctrl-C and come back to it"
+  done
+}
 
 banner "Carbolate — automatic CSV export, both engines"
 
@@ -254,8 +266,8 @@ stage "Chrome — trigger the reset and watch for the file"
 step "Back in the panel, Paramètres → set 'Historique conservé' to '1 jour'."
 step "A native confirmation appears naming how many days will go. Accept it."
 step "Open chrome://downloads (or the downloads shelf)."
-ask CHROME_DOWNLOADED "Did a CSV land in downloads? (yes/no)"
-ask CHROME_FILENAME   "Exact file name as Chrome shows it:"
+ask_required CHROME_DOWNLOADED "Did a CSV land in downloads? (yes/no)"
+ask_required CHROME_FILENAME   "Exact file name as Chrome shows it:"
 ask CHROME_NOTES      "Anything odd — an error in the worker console, a truncated file? (Enter for nothing)"
 write_env CHROME_DOWNLOADED "$CHROME_DOWNLOADED"
 write_env CHROME_FILENAME   "$CHROME_FILENAME"
@@ -269,8 +281,8 @@ say "A blob URL that is never revoked holds its CSV in memory until the context 
 step "In the panel, press 'Export CSV' five times in a row."
 step "Open Chrome's task manager: Window menu → Task Manager (or ⇧Esc)."
 step "Find the Carbolate row and read its Memory footprint."
-ask CHROME_MEMORY "Memory of the Carbolate process after five exports (e.g. '48 MB'):"
-ask CHROME_MEMORY_GROWTH "Did it climb noticeably with each export? (yes/no/not sure)"
+ask_required CHROME_MEMORY "Memory of the Carbolate process after five exports (e.g. '48 MB'):"
+ask_required CHROME_MEMORY_GROWTH "Did it climb noticeably with each export? (yes/no/not sure)"
 write_env CHROME_MEMORY "$CHROME_MEMORY"
 write_env CHROME_MEMORY_GROWTH "$CHROME_MEMORY_GROWTH"
 
@@ -293,8 +305,8 @@ step "Paste the same snippet as before and press Enter:"
 printf '\n%s\n\n' "$SEED_SNIPPET"
 step "Back in the sidebar: set 'Historique conservé' to '1 jour' and accept the confirmation."
 step "Open the Downloads panel."
-ask FIREFOX_DOWNLOADED "Did a CSV land in downloads? (yes/no)"
-ask FIREFOX_FILENAME   "Exact file name as Firefox shows it:"
+ask_required FIREFOX_DOWNLOADED "Did a CSV land in downloads? (yes/no)"
+ask_required FIREFOX_FILENAME   "Exact file name as Firefox shows it:"
 ask FIREFOX_NOTES      "Anything odd — console error, empty file, no prompt? (Enter for nothing)"
 write_env FIREFOX_DOWNLOADED "$FIREFOX_DOWNLOADED"
 write_env FIREFOX_FILENAME   "$FIREFOX_FILENAME"
@@ -305,8 +317,8 @@ stage "Firefox — the blob path, five times over"
 say "Firefox's event page has createObjectURL, so every export here takes the blob path."
 step "In the sidebar, press 'Export CSV' five times in a row."
 step "Open  about:performance  and read the Carbolate row (Memory column)."
-ask FIREFOX_MEMORY "Memory reported for Carbolate after five exports:"
-ask FIREFOX_MEMORY_GROWTH "Did it climb noticeably with each export? (yes/no/not sure)"
+ask_required FIREFOX_MEMORY "Memory reported for Carbolate after five exports:"
+ask_required FIREFOX_MEMORY_GROWTH "Did it climb noticeably with each export? (yes/no/not sure)"
 write_env FIREFOX_MEMORY "$FIREFOX_MEMORY"
 write_env FIREFOX_MEMORY_GROWTH "$FIREFOX_MEMORY_GROWTH"
 
