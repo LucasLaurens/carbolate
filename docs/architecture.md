@@ -375,6 +375,14 @@ The `chrome` target also covers Edge, Opera, Brave and Vivaldi — same MV3 runt
 
 **No `host_permissions`.** Site access comes from `content_scripts.matches: ["<all_urls>"]`, which is all a declared content script needs to be injected. `host_permissions` would grant, on top of that, cross-origin `fetch`, cookies, and the sensitive tab fields (`url`, `title`, `favIconUrl`) — none of which this extension uses, and the first of which `test/no-network-egress.test.ts` forbids outright. The background reads `sender.url` rather than `sender.tab.url` precisely so no host access is ever required (see _API compatibility_ below), which is why Firefox — where MV3 host permissions are not granted at install — already ran without it. See `docs/decisions/2026-09-16-surface-de-donnees-et-de-permissions.md`.
 
+### One dependency override
+
+```json
+"overrides": { "brace-expansion": "^2.1.7" }
+```
+
+`eslint-plugin-react` still pulls `minimatch@3`, which pins `brace-expansion@1.x` — a line with no patched release for four DoS advisories. The 2.x API is the same, so the override lifts the whole tree onto it and `npm audit` reports nothing. It exists only until that plugin moves off `minimatch@3`; remove it and the advisories come back, which is the check. Everything here is build-time anyway — the only runtime dependency that ships is `chart.js`.
+
 ### Manifest deltas
 
 | Chromium                    | Gecko                                | Why                                                                |
