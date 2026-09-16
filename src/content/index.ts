@@ -75,4 +75,10 @@ if (document.readyState === "complete") {
   window.addEventListener("load", reportLoad, { once: true });
 }
 
-setInterval(flush, FLUSH_INTERVAL_MS);
+// An orphaned script — its extension reloaded or updated — can deliver nothing
+// more. Left running it would flush into the void every five seconds for as long
+// as the tab stays open.
+const heartbeat = setInterval(() => {
+  flush();
+  if (!sink.alive) clearInterval(heartbeat);
+}, FLUSH_INTERVAL_MS);
