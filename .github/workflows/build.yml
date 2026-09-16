@@ -50,9 +50,6 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Run tests
-        run: npm run test
-
       - name: Build every browser target
         run: |
           for target in chrome firefox; do
@@ -68,3 +65,8 @@ jobs:
               console.log('$target bundle is self-contained');
             "
           done
+
+      # After the build, so the egress scan sees the bundle a user installs and
+      # not only the sources it came from.
+      - name: Run tests
+        run: npm run test

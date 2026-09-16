@@ -456,9 +456,19 @@ ask, and shrinking the window is the one action in the product that destroys rec
 
 ### No network egress — an invariant, not a promise
 
-`docs/privacy/index.html` is the extension's privacy policy: it states in writing, at a URL store reviewers read, that the extension issues no network request. `test/no-network-egress.test.ts` holds that claim to the code — it scans every non-test `.ts`/`.tsx` file under `src/` and fails on `fetch(`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, `EventSource`, `chrome.storage.sync` or any `http(s)://` literal.
+`docs/privacy/index.html` is the extension's privacy policy: it states in writing, at a URL store reviewers read, that the extension issues no network request. `test/no-network-egress.test.ts` holds that claim to the code, in three scans that share one pattern list (`test/egress.ts`):
 
-Adding one of those is a legitimate change; shipping it while the published page still denies it is not. The test is what forces the page to move with the code.
+| Scan       | What it covers                                    | Forbidden                                                                                                                                             |
+| ---------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/`     | every non-test `.ts`/`.tsx` we write              | `fetch(`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, `EventSource`, `navigator.connection`, `chrome.storage.sync`, **and** any `http(s)://` literal |
+| `scripts/` | the build tooling, which runs in CI               | the same APIs. Addresses are allowed: `verify-csv-export.sh` seeds a fixture visit to `example.com`, which is data, not a destination                 |
+| `dist/`    | the bundle a user installs, dependencies included | the same APIs, plus any external address in the panel's `.html`/`.css`, which can load one with no JavaScript involved                                |
+
+Only the third scan says anything about React and Chart.js, and it is the one that caught something: Vite's modulepreload polyfill shipped a `fetch()` into `side_panel.js` that no amount of discipline in `src/` could have revealed. `vite.config.ts` now turns that polyfill off — the panel is a single entry with no preload links to polyfill, and every browser the manifest supports handles them natively.
+
+It runs wherever `dist/` exists: always in CI, which builds before it tests, and locally for anyone who has run a build. Two addresses are deliberately **not** forbidden in the bundle: React carries XML namespace constants like `http://www.w3.org/2000/svg`, which are identifiers rather than destinations, and with every request API absent nothing can call them.
+
+Adding one of those APIs is a legitimate change; shipping it while the published page still denies it is not. The test is what forces the page to move with the code.
 
 The guard cannot tell a call from prose, which is why `src/legal/privacy.ts` writes the egress
 APIs loosely — "no XHR, no socket, no beacon". Spelling `XMLHttpRequest` out in the panel's own
