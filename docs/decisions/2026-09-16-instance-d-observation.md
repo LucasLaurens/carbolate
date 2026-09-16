@@ -51,5 +51,10 @@ annonçait trois heures de temps d'écran que personne n'avait passées.
   rechargé au moment d'une mise à jour. C'est la contrepartie assumée du point 3 : un
   message sans instance ne peut pas être classé sans risquer l'écrasement qu'on corrige.
 
+**Maintenue après correction de la preuve.** La décision a été reprise une fois établi que
+la régression citée n'avait jamais eu lieu, et confirmée : le danger structurel suffit, et
+le garde coûte un champ. Ce point est écrit ici pour que la correction ne serve pas à
+rouvrir le débat une seconde fois.
+
 Voir [l'identité de la visite de page](2026-08-21-identite-de-la-visite-de-page.md), que
 cette décision prolonge sans la contredire.
