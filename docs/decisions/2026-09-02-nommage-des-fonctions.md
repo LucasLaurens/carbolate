@@ -12,7 +12,7 @@ pas dans le dépôt, donc rien ne la faisait tenir ici.
 dit ce qui se passe réellement (`compute…` dérive, `format…` met en forme, `grade…` classe,
 `resolve…` résout une table, `read…`/`get…` lit une source, `create…` construit,
 `is…`/`has…`/`allows…` répond oui/non). La règle est écrite dans
-[`.claude/rules/naming.md`](../../.claude/rules/naming.md) et importée par `CLAUDE.md`,
+[`CLAUDE.md`](../../CLAUDE.md), section « Nommage »,
 avec ses exceptions : composants React, propriétés et valeurs calculées, entrées de
 dictionnaire i18n, noms imposés par la plateforme (`render`, `setText`, `Clock.now()` qui
 reprend `Date.now`), conversions idiomatiques (`toCSV`, `bytesToMegabytes`), et noms de

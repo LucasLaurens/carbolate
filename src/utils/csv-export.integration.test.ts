@@ -4,11 +4,11 @@
  * engine gets, the file name, and what a refused download does.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { exportToCSV } from "../src/utils/csv";
-import { createEmptyDailyRecord } from "../src/session/aggregator";
-import type { DailyRecord, PageVisit } from "../src/session/types";
-import { FixedClock } from "./fakes/FixedClock";
-import { InMemoryDownloads, RefusingDownloads } from "./fakes/InMemoryDownloads";
+import { exportToCSV } from "./csv";
+import { createEmptyDailyRecord } from "../session/aggregator";
+import type { DailyRecord, PageVisit } from "../session/types";
+import { FixedClock } from "../../test/fakes/FixedClock";
+import { InMemoryDownloads, RefusingDownloads } from "../../test/fakes/InMemoryDownloads";
 
 const TODAY = "2026-02-23";
 

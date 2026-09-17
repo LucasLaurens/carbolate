@@ -10,16 +10,16 @@
  * so a wiring mistake could not fail it. It now goes through the wiring.
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import CarbonCalculator from "../src/carbon/CarbonCalculator";
-import { VisitAccumulator } from "../src/content/VisitAccumulator";
-import type { ObservationSink } from "../src/content/RuntimeObservationSink";
-import type { PageObservationPayload } from "../src/messaging/messages";
-import type { PageMeasurement, ResourceTiming } from "../src/performance/PageMetrics";
-import { MetricsIntake } from "../src/intake/MetricsIntake";
-import { createMetricsStore } from "../src/session/store";
-import type { DailyRecord, MetricsStore } from "../src/session/types";
-import { ChromeStorage } from "../src/storage/ChromeStorage";
-import { FixedClock } from "./fakes/FixedClock";
+import CarbonCalculator from "./CarbonCalculator";
+import { VisitAccumulator } from "../content/VisitAccumulator";
+import type { ObservationSink } from "../content/RuntimeObservationSink";
+import type { PageObservationPayload } from "../messaging/messages";
+import type { ResourceTiming } from "../performance/PageMetrics";
+import { MetricsIntake } from "../intake/MetricsIntake";
+import { createMetricsStore } from "../session/store";
+import type { DailyRecord, MetricsStore } from "../session/types";
+import { ChromeStorage } from "../storage/ChromeStorage";
+import { FixedClock } from "../../test/fakes/FixedClock";
 
 const TODAY = "2026-02-23";
 

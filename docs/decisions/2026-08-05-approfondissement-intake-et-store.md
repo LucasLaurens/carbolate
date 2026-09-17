@@ -53,7 +53,7 @@ mauvais endroit.
 
 3. **`src/performance/` passe de neuf fichiers à deux.** `measurePage(payload)`
    retourne `{ valid: true, requests, transferredBytes, loadDurationMs } | { valid: false }`,
-   la forme canonique de `.claude/rules/types.md` déjà utilisée par `parseDomain`.
+   la forme canonique de `CLAUDE.md` déjà utilisée par `parseDomain`.
    Tous les `as never` disparaissent, parce que le type décrit enfin l'appelant.
    `PerformanceEntryType` survit et devient le domicile unique des chaînes
    `getEntriesByType()`, utilisé des deux côtés du message.

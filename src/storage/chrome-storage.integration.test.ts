@@ -3,10 +3,10 @@
  * test/setup.ts. It used to be covered only transitively, through the store.
  */
 import { describe, it, expect } from "vitest";
-import { ChromeStorage } from "../src/storage/ChromeStorage";
-import { StorageKey } from "../src/storage/StorageKey";
-import { DEFAULT_PREFERENCES } from "../src/config/preferences";
-import { createEmptyDailyRecord } from "../src/session/aggregator";
+import { ChromeStorage } from "./ChromeStorage";
+import { StorageKey } from "./StorageKey";
+import { DEFAULT_PREFERENCES } from "../config/preferences";
+import { createEmptyDailyRecord } from "../session/aggregator";
 
 describe("daily records", () => {
   it("reads an empty set before anything was written", async () => {

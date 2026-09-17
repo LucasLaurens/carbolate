@@ -1,50 +1,61 @@
 # Carbolate — Règles techniques
 
-@.claude/rules/solid.md
-@.claude/rules/patterns.md
-@.claude/rules/dry.md
-@.claude/rules/algorithms.md
-@.claude/rules/types.md
-@.claude/rules/naming.md
-@.claude/rules/tdd.md
-@.claude/rules/comments.md
-@.claude/rules/commits.md
-
 ## Tests
 
-- Tests dans `src/**/*.test.ts` — même dossier que le module testé.
-- `npm test` (Vitest) doit passer avant et après chaque modification.
-- Un test cassé bloque — jamais ignoré ni commenté.
-- Tout nouveau comportement → test en même temps que le code.
-- Bug corrigé → test de régression avant la correction.
+- Tout fichier de test vit dans `src/**/*.test.ts`, à côté du module testé. `test/` ne contient que le support : `setup.ts`, `fakes/`, `egress.ts`.
+- Les doublures sont des implémentations réelles dans `test/fakes/`, jamais des mocks configurés.
+- Effet de bord (storage, messages Chrome, API) derrière une interface injectable ; pas de `new` dans un constructeur métier — les dépendances arrivent en argument.
+- Test cassé = blocage : jamais skippé ni commenté.
+- Correction de bug : le test de régression est écrit **avant** le correctif.
+
+## Types
+
+- Jamais de paramètre optionnel qui change le comportement — deux fonctions distinctes.
+- L'absence se modélise dans le type, pas par un `null` en argument. Constructeurs et factories reçoivent des données complètes et valides.
+- Forme canonique d'un résultat faillible, sans `null` ni `""` comme sentinelle :
+
+```ts
+type FooResult = { valid: true; value: T } | { valid: false };
+```
+
+- Pas de `try/catch` comme flow control : guard en amont (`URL.canParse`, regex), puis construction sans exception.
+- Nomme les structures métier (`DailyRecord`, pas `Record<string, any>`).
+- Une transformation retourne une nouvelle structure — pas de mutation silencieuse.
+
+## Nommage
+
+- Une fonction est une action : son nom commence par un verbe. `formatBadgeText(total)`, pas `badgeText(total)` ; `getDailyRecord()` annonce l'aller-retour storage que `dailyRecord()` cache.
+- Prendre le verbe vrai : `find/list/read` (lecture d'un store), `compute/build/format` (dérivation), `grade/classify` (palier), `resolve` (indirection), `to/convert/map` (transformation), `save/update/clear/apply/refresh` (mutation), `create/make` (construction), `is/has/can/should` (prédicat). `handle`/`process`/`manage` ne nomment rien : la fonction en fait trop.
+- Restent nominaux : les composants React (`StatsGrid`) et les hooks `use…`, les champs et valeurs calculées, les entrées i18n (`t.equivalence.car(km)`), les adaptateurs qui recopient une API du navigateur (`Clock.nowMs`, `setText`), les conversions idiomatiques (`toCSV`, `bytesToMegabytes`), les noms de fichiers.
+- Renommer les fonctions nominales des fichiers que le changement ouvre déjà — sites d'appel inclus, suite verte, `grep` de l'ancien nom vide. Ne pas partir à la chasse ailleurs.
+
+## Duplication
+
+2 duplications tolérées, la 3e réclame une abstraction. La duplication accidentelle — même forme, sémantique différente — ne se déduplique pas.
+
+## Commentaires
+
+- Commentaires et TSDoc en **anglais** ; `docs/`, ADR et textes destinés à l'utilisateur en français.
+- TSDoc réservé aux interfaces publiques exposées à d'autres modules.
+- Pas de bloc commenté, pas de `// TODO` sans ticket ni date.
+
+## Commits
+
+- Pas de `Co-Authored-By: Claude` ni de mention IA dans les commits, PR ou commentaires de code.
+- Le message décrit l'intention ("add carbon threshold logic", pas "add if statement").
 
 ## Documentation
 
-Le dossier `docs/` contient la doc vivante : `architecture.md` (flux, modules, décisions structurantes), `features.md` (fonctionnalités, comportements), `decisions/` (ADR — une décision = un fichier).
-
-La doc fait partie de la définition de "done" — si elle est fausse ou manquante, c'est un blocage.
-
-Quand mettre à jour : nouveau module → `architecture.md` ; nouvelle fonctionnalité visible → `features.md` ; décision non-triviale → `decisions/YYYY-MM-DD-sujet.md`.
-
-Ce qu'on documente : le **pourquoi** des choix, les **contrats** entre modules, les **comportements** fonctionnels.
-
-Format ADR (`decisions/YYYY-MM-DD-sujet.md`) :
-
-    # Titre
-    **Contexte** : pourquoi
-    **Décision** : quoi
-    **Conséquences** : implications
+- La doc fait partie de « done » : fausse ou manquante = blocage.
+- Nouveau module → `docs/architecture.md` ; fonctionnalité visible → `docs/features.md` ; décision non-triviale → `docs/decisions/YYYY-MM-DD-sujet.md`.
+- Format ADR : `# Titre`, puis `**Contexte**` (pourquoi), `**Décision**` (quoi), `**Conséquences**` (implications).
 
 ## Sécurité — Rate limiting
 
-Les messages `page_metrics` ne sont pas limités.
-
-Tout bouton ou action UI produisant un effet de bord (export, API, storage) doit passer par `RateLimiter` (`src/security/RateLimiter.ts`) :
+Toute action UI à effet de bord (export, API, storage) passe par `RateLimiter` (`src/security/RateLimiter.ts`) ; les messages `page_metrics` en sont exclus.
 
 ```ts
-if (!rateLimiter.isAllowed("nom-action")) return;
+if (!rateLimiter.isAllowed("csv-export")) return;
 ```
 
-- Clé = nom de l'action (`"csv-export"`, `"refresh"`, …)
-- Limite : 10 appels / 60 s, throttle quadratique au-delà
-- Un seul `RateLimiter` par contexte UI — pas un par bouton
+- Clé = nom de l'action. Un seul `RateLimiter` par contexte UI — pas un par bouton.

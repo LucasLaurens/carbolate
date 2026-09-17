@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import CarbonCalculator from "../src/carbon/CarbonCalculator";
-import { NetworkCarbonSource } from "../src/carbon/sources/NetworkCarbonSource";
-import { DeviceCarbonSource } from "../src/carbon/sources/DeviceCarbonSource";
-import { ScreenCarbonSource } from "../src/carbon/sources/ScreenCarbonSource";
-import { computeAvoidedCarbon } from "../src/carbon/avoidedCarbon";
-import type { CarbonInput } from "../src/carbon/types";
-import { CARBON_PER_GB, DEVICE_FACTOR, SCREEN_FACTOR } from "../src/carbon/constants";
+import CarbonCalculator from "./CarbonCalculator";
+import { NetworkCarbonSource } from "./sources/NetworkCarbonSource";
+import { DeviceCarbonSource } from "./sources/DeviceCarbonSource";
+import { ScreenCarbonSource } from "./sources/ScreenCarbonSource";
+import { computeAvoidedCarbon } from "./avoidedCarbon";
+import type { CarbonInput } from "./types";
+import { CARBON_PER_GB, DEVICE_FACTOR, SCREEN_FACTOR } from "./constants";
 
 const ONE_GB = 1_000_000_000;
 
