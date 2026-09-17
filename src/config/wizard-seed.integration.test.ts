@@ -7,12 +7,12 @@
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { isKept, KEEP_EVERYTHING } from "../src/config/retention";
-import { normalizeDailyRecord } from "../src/session/legacy";
-import type { DailyRecord, DailyRecordsStore } from "../src/session/types";
-import { toCSV } from "../src/utils/csv";
+import { isKept, KEEP_EVERYTHING } from "./retention";
+import { normalizeDailyRecord } from "../session/legacy";
+import type { DailyRecord, DailyRecordsStore } from "../session/types";
+import { toCSV } from "../utils/csv";
 
-const WIZARD = new URL("../scripts/verify-csv-export.sh", import.meta.url);
+const WIZARD = new URL("../../scripts/verify-csv-export.sh", import.meta.url);
 
 const SEEDED_REQUESTS = 12;
 

@@ -6,15 +6,15 @@
  * that a test could look inside it.
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { createMetricsStore } from "../src/session/store";
-import type { PageVisit, MetricsStore } from "../src/session/types";
+import { createMetricsStore } from "./store";
+import type { PageVisit, MetricsStore } from "./types";
 import {
   createEmptyCarbonEstimate,
   createEmptyDailyRecord,
   createEmptyMetrics,
-} from "../src/session/aggregator";
-import { InMemoryDailyRecordsStorage } from "./fakes/InMemoryDailyRecordsStorage";
-import { FixedClock } from "./fakes/FixedClock";
+} from "./aggregator";
+import { InMemoryDailyRecordsStorage } from "../../test/fakes/InMemoryDailyRecordsStorage";
+import { FixedClock } from "../../test/fakes/FixedClock";
 
 const TODAY = "2026-02-23";
 const MS_PER_DAY = 24 * 60 * 60 * 1_000;

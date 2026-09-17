@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EGRESS_APIS, EXTERNAL_ADDRESS, findEgressOffenders } from "./egress";
+import { EGRESS_APIS, EXTERNAL_ADDRESS, findEgressOffenders } from "../../test/egress";
 
 /**
  * The privacy policy (`docs/privacy/index.html`) claims in writing that the

@@ -9,7 +9,7 @@ storage ne contient qu'un jour. Restaient trois décisions de contenu.
 1. **Des `div`, pas Chart.js.** `chart.js/auto` est déjà dans le bundle pour le graphique
    des domaines : l'argument du poids ne tranche donc rien — zéro octet de plus dans les deux
    cas. Ce qui tranche est le test : sept barres sont une règle de trois, `buildWeekBars` est
-   une fonction pure testable sans DOM, ce que `.claude/rules/tdd.md` exige. Chart.js
+   une fonction pure testable sans DOM, ce que `CLAUDE.md` exige. Chart.js
    imposerait `useRef` + `useEffect` + `chart.destroy()` et un canvas pour tester quoi que ce
    soit.
 

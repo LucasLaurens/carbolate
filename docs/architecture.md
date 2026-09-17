@@ -456,7 +456,7 @@ ask, and shrinking the window is the one action in the product that destroys rec
 
 ### No network egress — an invariant, not a promise
 
-`docs/privacy/index.html` is the extension's privacy policy: it states in writing, at a URL store reviewers read, that the extension issues no network request. `test/no-network-egress.test.ts` holds that claim to the code, in three scans that share one pattern list (`test/egress.ts`):
+`docs/privacy/index.html` is the extension's privacy policy: it states in writing, at a URL store reviewers read, that the extension issues no network request. `src/security/no-network-egress.test.ts` holds that claim to the code, in three scans that share one pattern list (`test/egress.ts`):
 
 | Scan       | What it covers                                    | Forbidden                                                                                                                                             |
 | ---------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
