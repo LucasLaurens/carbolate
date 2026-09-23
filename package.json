@@ -11,6 +11,7 @@
     "package:firefox": "npm run build:firefox && cd dist && zip -qr ../carbolate-firefox.zip .",
     "package:sources": "git archive --format=zip -o carbolate-sources.zip HEAD",
     "package:all": "npm run package:chrome && npm run package:firefox && npm run package:sources",
+    "store-assets": "bash scripts/render-store-assets.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",

@@ -1,0 +1,36 @@
+<!doctype html>
+<!--
+  Throwaway page for the store screenshots, copied into dist/ by
+  scripts/render-store-assets.sh: CSSFILE and LANG are substituted there.
+  It stubs chrome.* and seeds demonstration data, so no real browsing reaches
+  a public listing.
+-->
+<html lang="LANG"><head><meta charset="utf-8">
+<link rel="stylesheet" href="/CSSFILE">
+<style>#root > div { justify-content: flex-start; } body { margin: 0; background: #fff; }</style>
+<script>
+const iso = (offset) => { const d = new Date(); d.setDate(d.getDate() - offset); return d.toISOString().slice(0, 10); };
+const visit = (domain, co2, requests, third, mb, avoided) => ({ tabId: 1, url: "https://" + domain + "/", domain,
+  metrics: { requestCount: requests, thirdPartyRequests: third, totalResourceSize: mb, pageLoadDurationSec: 1.2, visibleDurationSec: 600, cachedPageWeight: 0 },
+  meta: { date: 0, observedFrom: 0 },
+  carbon: { networkCo2: co2 * 0.5, deviceCo2: co2 * 0.2, screenCo2: co2 * 0.3, totalCo2: co2, avoidedCo2: avoided } });
+const day = (offset, visits) => { const sum = (f) => visits.reduce((a, v) => a + f(v), 0);
+  return { date: iso(offset), visits,
+    totalMetrics: { requestCount: sum(v => v.metrics.requestCount), thirdPartyRequests: sum(v => v.metrics.thirdPartyRequests),
+      totalResourceSize: sum(v => v.metrics.totalResourceSize), pageLoadDurationSec: 3.6, visibleDurationSec: 1800, cachedPageWeight: 0 },
+    totalCarbon: { networkCo2: 0, deviceCo2: 0, screenCo2: 0, totalCo2: sum(v => v.carbon.totalCo2), avoidedCo2: sum(v => v.carbon.avoidedCo2) } }; };
+// A moderate day at 143 g, a fortnight of history, one day nobody browsed (offset 5).
+const days = [
+  day(0, [visit("lemonde.fr", 62, 110, 48, 4.3, 21.4), visit("youtube.com", 50, 75, 19, 3.6, 13.1), visit("github.com", 31, 40, 12, 2.0, 8.4)]),
+  ...[[1, 96], [2, 158], [3, 74], [4, 121], [6, 187], [7, 150], [8, 160], [9, 170], [10, 140], [11, 155], [12, 152], [13, 155]]
+    .map(([offset, co2]) => day(offset, [visit("lemonde.fr", co2, 150, 50, 8, 10)])),
+];
+const data = { sessions: Object.fromEntries(days.map(d => [d.date, d])), preferences: { language: "LANG", retentionDays: -1, autoExportBeforeReset: false } };
+window.chrome = {
+  runtime: { lastError: undefined, sendMessage() {}, onMessage: { addListener() {} } },
+  storage: { local: { get(keys, cb) { const r = {}; (Array.isArray(keys) ? keys : [keys]).forEach(k => { if (data[k] !== undefined) r[k] = data[k]; }); cb(r); }, set(i, cb) { Object.assign(data, i); cb && cb(); } },
+    onChanged: { addListener() {}, removeListener() {} } },
+  downloads: { download() {} }, tabs: {}, action: {}, alarms: {},
+};
+</script>
+<script type="module" src="/side_panel.js"></script></head><body><div id="root"></div></body></html>
