@@ -6,14 +6,22 @@ what keeps real browsing domains off a public listing. Regenerate with:
 
     npm run build
     python3 -m http.server 5274 --directory dist &
-    # render dist/store-shot.html and dist/store-shot-en.html at 2x into the
-    # paths below, then:
-    python3 scripts/compose-store-assets.py
+    # render dist/store-shot.html and dist/store-shot-en.html at 2x, 500px wide,
+    # into <render dir>/panel-fr.png and panel-en.png, then:
+    python3 scripts/compose-store-assets.py <render dir>
 """
 
 from PIL import Image, ImageDraw, ImageFont
 import pathlib
-S = "/private/tmp/claude-501/-Users-lucaslaurens-Documents-projects-carbolate/69f00603-a118-4128-ba55-7611feb0caca/scratchpad"
+import sys
+
+S = sys.argv[1]
+# Top of the second screenshot, in 2x render pixels: the lower half of the domain
+# chart, so the week card reads as the panel's continuation. Re-measure it when
+# the panel above the week card changes height.
+WEEK_CROP_TOP = 980
+# Cut above the footer email, which would otherwise be sliced by the frame.
+FOOTER_CROP = 100
 OUT = pathlib.Path("store-assets")
 CREAM, INK, MUTED, GREEN = (254, 250, 240), (28, 25, 23), (120, 113, 108), (21, 128, 61)
 BOLD = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
@@ -73,9 +81,10 @@ def compose(panel, title, sub_head, sub_tail, bullets, out):
 
     for line in bullets:
         draw.ellipse((98, y + 9, 108, y + 19), fill=GREEN)
-        for i, part in enumerate(wrap(draw, line, font(REG, 22), width - 40)):
+        parts = wrap(draw, line, font(REG, 22), width - 40)
+        for i, part in enumerate(parts):
             draw.text((128, y + i * 30), part, font=font(REG, 22), fill=INK)
-        y += 50
+        y += 30 * len(parts) + 20
     canvas.save(out)
 
 COPY = {
@@ -105,7 +114,7 @@ for lang in ("en", "fr"):
     crop = full.crop((0, 0, edge + 1, bottom + 14))
     first, second = COPY[lang]
     compose(crop, *first, OUT / ("screenshot-1-today-" + lang + ".png"))
-    compose(crop.crop((0, 1090, crop.width, crop.height - 48)), *second, OUT / ("screenshot-2-week-" + lang + ".png"))
+    compose(crop.crop((0, WEEK_CROP_TOP, crop.width, crop.height - FOOTER_CROP)), *second, OUT / ("screenshot-2-week-" + lang + ".png"))
 
 # ── promo tiles ───────────────────────────────────────────────────────────
 mark = Image.open("assets/logo-master-1024.png").convert("RGB").crop((136, 114, 925, 904))

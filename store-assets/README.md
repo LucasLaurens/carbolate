@@ -27,5 +27,8 @@ a capture of genuine browsing would not.
 
 `scripts/compose-store-assets.py` composes the canvases from two renders of the panel. The renders
 themselves come from `dist/store-shot.html` / `store-shot-en.html`, throwaway pages that stub
-`chrome.*` and seed the storage. Rebuild them whenever the panel changes shape — a screenshot that
-no longer matches the product is a review risk, not a cosmetic one.
+`chrome.*` and seed the storage. Render both at 2x in a 500px-wide window (headless Chrome clamps
+narrower windows), save them as `panel-fr.png` / `panel-en.png` in one folder, and pass that folder:
+`python3 scripts/compose-store-assets.py <folder>`. Rebuild them whenever the panel changes shape — a
+screenshot that no longer matches the product is a review risk, not a cosmetic one. If the height
+above the week card changes, re-measure `WEEK_CROP_TOP` in the script.
