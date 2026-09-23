@@ -2,13 +2,9 @@
 
 Not a mock-up: `panel-*.png` are headless-Chrome screenshots of the built
 extension served from `dist/`, with seeded demonstration data — which is also
-what keeps real browsing domains off a public listing. Regenerate with:
-
-    npm run build
-    python3 -m http.server 5274 --directory dist &
-    # render dist/store-shot.html and dist/store-shot-en.html at 2x, 500px wide,
-    # into <render dir>/panel-fr.png and panel-en.png, then:
-    python3 scripts/compose-store-assets.py <render dir>
+what keeps real browsing domains off a public listing. Called by
+`npm run store-assets` (scripts/render-store-assets.sh) with the folder holding
+panel-fr.png and panel-en.png.
 """
 
 from PIL import Image, ImageDraw, ImageFont

@@ -25,10 +25,16 @@ a capture of genuine browsing would not.
 
 ## Regenerating
 
-`scripts/compose-store-assets.py` composes the canvases from two renders of the panel. The renders
-themselves come from `dist/store-shot.html` / `store-shot-en.html`, throwaway pages that stub
-`chrome.*` and seed the storage. Render both at 2x in a 500px-wide window (headless Chrome clamps
-narrower windows), save them as `panel-fr.png` / `panel-en.png` in one folder, and pass that folder:
-`python3 scripts/compose-store-assets.py <folder>`. Rebuild them whenever the panel changes shape — a
-screenshot that no longer matches the product is a review risk, not a cosmetic one. If the height
-above the week card changes, re-measure `WEEK_CROP_TOP` in the script.
+```bash
+npm run store-assets
+```
+
+`scripts/render-store-assets.sh` builds the extension, copies `scripts/store-shot.template.html`
+into `dist/` once per language (a throwaway page that stubs `chrome.*` and seeds the storage),
+renders both at 2x in a 500px-wide headless Chrome, then hands the renders to
+`scripts/compose-store-assets.py`, which composes the canvases. The seeded pages are removed from
+`dist/` on exit. Needs Google Chrome (`CHROME=...` to point elsewhere) and python3 with Pillow.
+
+Rerun it whenever the panel changes shape — a screenshot that no longer matches the product is a
+review risk, not a cosmetic one. If the height above the week card changes, re-measure
+`WEEK_CROP_TOP` in `compose-store-assets.py`.
