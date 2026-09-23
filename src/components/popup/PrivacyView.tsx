@@ -17,22 +17,25 @@ export default function PrivacyView({ language }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <h2 className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">
+        <h2 className="text-[10px] font-semibold text-stone-500 uppercase tracking-widest">
           {policy.title}
         </h2>
-        <p className="mt-1 text-[11px] text-stone-400">{policy.effective}</p>
+        <p className="mt-1 text-[11px] text-stone-500">{policy.effective}</p>
       </div>
 
       <div className="flex flex-col divide-y divide-stone-200 border-y border-stone-200">
         {policy.sections.map((section) => (
           <details key={section.heading} className="group py-2.5">
             <summary className="flex items-start gap-1.5 text-xs font-medium text-stone-600 cursor-pointer list-none marker:content-none hover:text-stone-800">
-              <span className="inline-block mt-px transition-transform group-open:rotate-90">
+              <span
+                aria-hidden="true"
+                className="inline-block mt-px transition-transform motion-reduce:transition-none group-open:rotate-90"
+              >
                 &#9656;
               </span>
               <span>{section.heading}</span>
             </summary>
-            <div className="mt-2 pl-4 flex flex-col gap-2 text-xs leading-relaxed text-stone-500">
+            <div className="mt-2 pl-4 flex flex-col gap-2 text-xs leading-relaxed text-stone-600">
               {section.paragraphs.map((paragraph) => (
                 <p key={paragraph}>{paragraph}</p>
               ))}

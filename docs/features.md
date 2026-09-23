@@ -324,18 +324,21 @@ User clicks the Carbolate icon
 While the panel stays open
   → a living visit writes `sessions` every few seconds
   → onStorageChanged (SESSIONS only — the panel is the sole writer of preferences)
-    → readRecords() → setState({ record, days })
+    → readRecords() → setState({ record, days }), in place: only the first
+      read dims the view, a refresh every few seconds must not flicker
 ```
 
 ### Manual export
 
 ```
 User clicks "Export CSV"
-  → Popup.handleExport()
-  → rate limiter check ("csv-export")
+  → Popup.exportRecords()
+  → ignored while an export is running, then rate limiter check ("csv-export")
+  → button disabled, label "Exporting…"
   → store.getAllDays() → retrieves the full history
   → toCSV(records) → escaped CSV text
   → chrome.downloads.download() → browser download
+  → on failure: an inline alert under the button asks to retry
 ```
 
 ### Language change
@@ -345,8 +348,9 @@ User clicks "Settings"
   → Clicks "English" or "Français"
     → language = "en" | "fr"
     → ChromeStorage.setPreferences(prefs) (immediate, no save button)
-    → Popup re-renders with new translations
-    → "Saved" feedback shown for 1.5s
+    → Popup re-renders with new translations, `<html lang>` follows
+    → "Saved" shown for 1.5s, only once the write succeeded: a refused
+      retention shrink or a failed write confirms nothing
 ```
 
 ### Nightly reset (automatic)

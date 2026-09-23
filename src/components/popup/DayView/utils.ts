@@ -7,6 +7,11 @@ import { compareToDailyReference } from "../../../carbon/worldComparison";
 
 export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4"];
 
+/**
+ * Labels and badge text sit on their own tint, not on white: the 600 shade on a
+ * 50 background measures about 3:1, under AA for text this small. The 700 label
+ * and the 800 badge text clear 4.5:1 on every tint.
+ */
 export const COLOR_CLASSES: Record<
   StatColor,
   { bg: string; value: string; label: string; badge: string; border: string }
@@ -14,36 +19,36 @@ export const COLOR_CLASSES: Record<
   green: {
     bg: "bg-green-50",
     value: "text-green-700",
-    label: "text-green-600",
-    badge: "bg-green-100 text-green-700",
+    label: "text-green-700",
+    badge: "bg-green-100 text-green-800",
     border: "border-green-200",
   },
   yellow: {
     bg: "bg-yellow-50",
     value: "text-yellow-700",
-    label: "text-yellow-600",
-    badge: "bg-yellow-100 text-yellow-700",
+    label: "text-yellow-700",
+    badge: "bg-yellow-100 text-yellow-800",
     border: "border-yellow-200",
   },
   orange: {
     bg: "bg-orange-50",
     value: "text-orange-700",
-    label: "text-orange-600",
-    badge: "bg-orange-100 text-orange-700",
+    label: "text-orange-700",
+    badge: "bg-orange-100 text-orange-800",
     border: "border-orange-200",
   },
   red: {
     bg: "bg-red-50",
     value: "text-red-700",
-    label: "text-red-600",
-    badge: "bg-red-100 text-red-700",
+    label: "text-red-700",
+    badge: "bg-red-100 text-red-800",
     border: "border-red-200",
   },
   blue: {
     bg: "bg-blue-50",
     value: "text-blue-700",
-    label: "text-blue-600",
-    badge: "bg-blue-100 text-blue-700",
+    label: "text-blue-700",
+    badge: "bg-blue-100 text-blue-800",
     border: "border-blue-200",
   },
 };

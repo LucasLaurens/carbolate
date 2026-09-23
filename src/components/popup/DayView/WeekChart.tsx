@@ -35,7 +35,7 @@ type Props = { days: readonly DailyRecord[]; today: Date; language: Language; t:
  */
 function labelClass(bar: { isToday: boolean; measured: boolean }): string {
   if (bar.isToday) return "font-bold text-stone-800";
-  return bar.measured ? "text-stone-400" : "text-stone-300";
+  return bar.measured ? "text-stone-500" : "text-stone-400";
 }
 
 /**
@@ -52,8 +52,10 @@ function WeeklyChangeRow({ days, today, t }: Omit<Props, "language">) {
 
   return (
     <div className="flex items-baseline justify-center gap-1.5 mt-3 pt-3 border-t border-stone-100">
-      <span className="text-xs font-semibold text-stone-500">{arrow}</span>
-      <span className="text-[11px] text-stone-500">{t.history.versusPreviousWeek(percent)}</span>
+      <span aria-hidden="true" className="text-xs font-semibold text-stone-600">
+        {arrow}
+      </span>
+      <span className="text-[11px] text-stone-600">{t.history.versusPreviousWeek(percent)}</span>
     </div>
   );
 }
@@ -63,36 +65,39 @@ export function WeekChart({ days, today, language, t }: Props) {
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-4">
-      <h3 className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-3">
+      <h2 className="text-[10px] font-semibold text-stone-500 uppercase tracking-widest mb-3">
         {t.history.title}
-      </h3>
+      </h2>
       <div className={`flex items-end justify-between gap-1 ${COLUMN_HEIGHT}`}>
-        {bars.map((bar) => (
-          <div
-            key={bar.date}
-            className="flex-1 flex flex-col items-center justify-end gap-1 h-full"
-            title={
-              bar.measured
-                ? t.history.barTooltip(bar.date, formatCo2(bar.totalCo2))
-                : t.history.noMeasure(bar.date)
-            }
-          >
-            {bar.measured && (
-              <>
-                <span className="text-[9px] font-semibold text-stone-500 leading-none">
-                  {formatCo2(bar.totalCo2)}
-                </span>
-                <div
-                  className={`w-full rounded-t ${BAR_CLASS[bar.color]} ${
-                    bar.isToday ? "outline-2 outline-offset-1 outline-stone-800" : ""
-                  }`}
-                  style={{ height: `${bar.heightPercent}%` }}
-                />
-              </>
-            )}
-            <span className={`text-[10px] leading-none ${labelClass(bar)}`}>{bar.label}</span>
-          </div>
-        ))}
+        {bars.map((bar) => {
+          const name = bar.measured
+            ? t.history.barTooltip(bar.date, formatCo2(bar.totalCo2))
+            : t.history.noMeasure(bar.date);
+          return (
+            <div
+              key={bar.date}
+              role="img"
+              aria-label={name}
+              title={name}
+              className="flex-1 flex flex-col items-center justify-end gap-1 h-full"
+            >
+              {bar.measured && (
+                <>
+                  <span className="text-[10px] font-semibold text-stone-600 leading-none tabular-nums">
+                    {formatCo2(bar.totalCo2)}
+                  </span>
+                  <div
+                    className={`w-full rounded-t ${BAR_CLASS[bar.color]} ${
+                      bar.isToday ? "outline-2 outline-offset-1 outline-stone-800" : ""
+                    }`}
+                    style={{ height: `${bar.heightPercent}%` }}
+                  />
+                </>
+              )}
+              <span className={`text-[10px] leading-none ${labelClass(bar)}`}>{bar.label}</span>
+            </div>
+          );
+        })}
       </div>
       <WeeklyChangeRow days={days} today={today} t={t} />
     </div>

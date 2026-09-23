@@ -26,7 +26,9 @@ function StatCard({ value, label, note, color, badge, sub, sub2 }: StatCardProps
     <div className={`${cls.bg} border ${cls.border} rounded-xl px-4 pt-4 pb-3.5 text-center`}>
       {badge && (
         <div className="flex items-center justify-center gap-1.5 mb-3">
-          <span className="text-sm leading-none">{badge.emoji}</span>
+          <span aria-hidden="true" className="text-sm leading-none">
+            {badge.emoji}
+          </span>
           <span
             className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${cls.badge}`}
           >
@@ -34,15 +36,17 @@ function StatCard({ value, label, note, color, badge, sub, sub2 }: StatCardProps
           </span>
         </div>
       )}
-      <div className={`text-[2.75rem] font-bold tracking-tight leading-none ${cls.value}`}>
+      <div
+        className={`text-[2.75rem] font-bold tracking-tight leading-none tabular-nums ${cls.value}`}
+      >
         {value}
       </div>
       <div className={`text-[10px] font-semibold uppercase tracking-widest mt-2 ${cls.label}`}>
         {label}
       </div>
-      {note && <div className="text-[10px] text-stone-400 mt-1.5">{note}</div>}
+      {note && <div className="text-[10px] text-stone-500 mt-1.5">{note}</div>}
       {sub && <div className={`text-xs mt-3 font-medium ${cls.label}`}>{sub}</div>}
-      {sub2 && <div className={`text-[11px] mt-1 opacity-70 ${cls.label}`}>{sub2}</div>}
+      {sub2 && <div className="text-[11px] mt-1 text-stone-600">{sub2}</div>}
     </div>
   );
 }
@@ -67,8 +71,10 @@ function MetricsStrip({ loadCount, totalMetrics, t }: MetricsStripProps) {
           key={item.label}
           className={`flex-1 py-3 text-center min-w-0 ${i > 0 ? "border-l border-stone-200" : ""}`}
         >
-          <div className="text-lg font-bold text-stone-800 leading-tight">{item.value}</div>
-          <div className="text-[10px] text-stone-400 mt-0.5 px-1 leading-tight">{item.label}</div>
+          <div className="text-lg font-bold text-stone-800 leading-tight tabular-nums">
+            {item.value}
+          </div>
+          <div className="text-[10px] text-stone-500 mt-0.5 px-1 leading-tight">{item.label}</div>
         </div>
       ))}
     </div>
@@ -85,8 +91,10 @@ function AvoidedRow({ avoidedCo2, t }: { avoidedCo2: number; t: Translations }) 
 
   return (
     <div className="flex items-baseline justify-center gap-1.5 bg-white border border-stone-200 rounded-xl py-2.5">
-      <span className="text-sm font-bold text-green-700">−{formatCo2(avoidedCo2)}g</span>
-      <span className="text-[10px] text-stone-400">{t.stats.avoided}</span>
+      <span className="text-sm font-bold text-green-700 tabular-nums">
+        −{formatCo2(avoidedCo2)}g
+      </span>
+      <span className="text-[10px] text-stone-500">{t.stats.avoided}</span>
     </div>
   );
 }
