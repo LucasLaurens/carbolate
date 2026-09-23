@@ -39,7 +39,11 @@ function useChart(canvasRef: React.RefObject<HTMLCanvasElement | null>, record: 
       type: "doughnut",
       data: {
         labels: [],
-        datasets: [{ data: [], backgroundColor: CHART_COLORS, borderWidth: 0 }],
+        // A white gap between slices: the pale end of the ramp would otherwise
+        // merge with its neighbour.
+        datasets: [
+          { data: [], backgroundColor: CHART_COLORS, borderColor: "#ffffff", borderWidth: 2 },
+        ],
       },
       options: {
         responsive: true,
