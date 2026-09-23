@@ -1,7 +1,6 @@
 import type { Translations } from "./types";
 
 export const fr: Translations = {
-  header: "📊 Aujourd'hui",
   nav: { today: "Aujourd'hui", settings: "Paramètres", privacy: "Vie privée" },
   noData: "Aucune donnée aujourd'hui",
   stats: {
@@ -9,7 +8,7 @@ export const fr: Translations = {
     data: "Données transférées",
     requests: "Requêtes",
     pageLoads: "Chargements de page",
-    running: "Compteur en cours — remis à zéro à minuit",
+    running: "Compteur en cours, remis à zéro à minuit",
     thirdParty: (third: number, total: number) =>
       `${third} des ${total} requêtes viennent de tiers`,
     avoided: "évités par le cache",
@@ -17,12 +16,16 @@ export const fr: Translations = {
   chart: { title: "Top domaines par CO₂" },
   history: {
     title: "7 derniers jours",
-    barTooltip: (date: string, grams: string) => `${date} — ${grams} g CO₂`,
-    noMeasure: (date: string) => `${date} — aucune mesure`,
+    barTooltip: (date: string, grams: string) => `${date} : ${grams} g CO₂`,
+    noMeasure: (date: string) => `${date} : aucune mesure`,
     versusPreviousWeek: (percent: number) =>
       `${percent > 0 ? "+" : percent < 0 ? "−" : ""}${Math.abs(percent)} % vs. semaine précédente`,
   },
-  actions: { export: "Export CSV" },
+  actions: {
+    export: "Export CSV",
+    exporting: "Export en cours…",
+    exportFailed: "L'export a échoué. Réessaie dans quelques secondes.",
+  },
   badge: {
     tooltip: (grams, level) => `Carbolate — ${grams} g aujourd'hui · ${level}`,
     tooltipEmpty: "Carbolate — rien mesuré aujourd'hui",
@@ -48,13 +51,12 @@ export const fr: Translations = {
     wellAbove: "bien au-dessus de la moyenne journalière",
   },
   settings: {
-    save: "Enregistrer",
-    saved: "✅ Enregistré !",
+    saved: "Enregistré",
     language: "Langue",
     method: {
       summary: "Comment ce chiffre est construit",
       measurement:
-        "L'énergie n'est pas mesurable directement : les serveurs ne sont pas les nôtres, et une page web ne peut pas lire la consommation de ta machine. Carbolate multiplie ce qu'il voit — octets, durée de chargement — par des moyennes publiées.",
+        "L'énergie n'est pas mesurable directement : les serveurs ne sont pas les nôtres, et une page web ne peut pas lire la consommation de ta machine. Carbolate multiplie ce qu'il voit (octets, durée de chargement) par des moyennes publiées.",
       perimeter:
         "Il ne compte que la navigation. La fabrication des serveurs, du réseau et de ton appareil est exclue : le chiffre réel est plus haut d'environ un quart.",
       allocation:

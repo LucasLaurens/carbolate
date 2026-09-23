@@ -39,24 +39,35 @@ type State = {
   record: DailyRecord;
   days: readonly DailyRecord[];
   preferences: Preferences;
-  isLoading: boolean;
+  /** False until the first read lands; later reads refresh in place, undimmed. */
+  hasLoaded: boolean;
+  isExporting: boolean;
+  exportFailed: boolean;
 };
 
 export default class Popup extends Component<Props, State> {
   private readonly rateLimiter = new RateLimiter(this.props.clock);
+  private isReading = false;
 
   state: State = {
     view: "day",
     record: createEmptyDailyRecord(this.props.clock.readDailyDate()),
     days: [],
     preferences: { ...DEFAULT_PREFERENCES },
-    isLoading: false,
+    hasLoaded: false,
+    isExporting: false,
+    exportFailed: false,
   };
 
   componentDidMount(): void {
     this.loadPreferences();
     this.readRecords();
     chrome.storage.onChanged.addListener(this.onStorageChanged);
+  }
+
+  /** The panel's language can change at runtime; `index.html` only carries the default. */
+  componentDidUpdate(): void {
+    document.documentElement.lang = this.state.preferences.language;
   }
 
   componentWillUnmount(): void {
@@ -113,20 +124,27 @@ export default class Popup extends Component<Props, State> {
     return window.confirm(warning);
   }
 
-  savePreferences = async (preferences: Preferences) => {
-    if (!this.rateLimiter.isAllowed("save-preferences")) return;
+  /** Resolves true only once the preferences are written, so the view never confirms a refusal. */
+  savePreferences = async (preferences: Preferences): Promise<boolean> => {
+    if (!this.rateLimiter.isAllowed("save-preferences")) return false;
     try {
-      if (!(await this.allowsRetentionLoss(preferences))) return;
+      if (!(await this.allowsRetentionLoss(preferences))) return false;
       await this.props.storage.setPreferences(preferences);
       this.setState({ preferences });
+      return true;
     } catch (e) {
       console.error("Failed to save preferences", e);
+      return false;
     }
   };
 
+  /**
+   * The guard is a field, not state: `setState` is asynchronous, so two storage
+   * events in the same tick would both have read `false` and both have fetched.
+   */
   readRecords = async () => {
-    if (this.state.isLoading) return;
-    this.setState({ isLoading: true });
+    if (this.isReading) return;
+    this.isReading = true;
     try {
       const [record, days] = await Promise.all([
         this.props.store.getDailyRecord(),
@@ -136,45 +154,51 @@ export default class Popup extends Component<Props, State> {
     } catch (e) {
       console.error("Failed to load record", e);
     } finally {
-      this.setState({ isLoading: false });
+      this.isReading = false;
+      this.setState({ hasLoaded: true });
     }
   };
 
-  handleExport = async () => {
+  exportRecords = async () => {
+    if (this.state.isExporting) return;
     if (!this.rateLimiter.isAllowed("csv-export")) return;
-    const records = await this.props.store.getAllDays();
+    this.setState({ isExporting: true, exportFailed: false });
     try {
+      const records = await this.props.store.getAllDays();
       await exportToCSV(records, this.props.clock);
     } catch (e) {
       console.error("Failed to export CSV", e);
+      this.setState({ exportFailed: true });
+    } finally {
+      this.setState({ isExporting: false });
     }
   };
 
   setView = (view: View) => this.setState({ view });
 
   render() {
-    const { view, record, days, preferences, isLoading } = this.state;
+    const { view, record, days, preferences, hasLoaded, isExporting, exportFailed } = this.state;
     const t = getTranslations(preferences.language);
 
     return (
       <div className="w-80 flex flex-col bg-stone-50 text-stone-800">
         <header className="bg-white border-b border-stone-200">
           <div className="px-4 pt-4 pb-0">
-            <div className="flex items-center gap-1.5 mb-3">
-              <span className="text-base leading-none">🌿</span>
-              <span className="text-xs font-bold text-stone-600 uppercase tracking-widest">
-                Carbolate
-              </span>
-            </div>
+            <h1 className="flex items-center gap-1.5 mb-3 text-xs font-bold text-stone-600 uppercase tracking-widest">
+              <img src="/assets/icons/icon-32.png" alt="" width={16} height={16} />
+              Carbolate
+            </h1>
             <nav className="flex -mb-px">
               {NAV_ORDER.map((v) => (
                 <button
                   key={v}
+                  type="button"
                   onClick={() => this.setView(v)}
+                  aria-current={view === v ? "page" : undefined}
                   className={`flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-widest border-b-2 transition-colors cursor-pointer ${
                     view === v
                       ? "border-green-600 text-green-700"
-                      : "border-transparent text-stone-400 hover:text-stone-600"
+                      : "border-transparent text-stone-500 hover:text-stone-700"
                   }`}
                 >
                   {t.nav[NAV_LABEL_KEY[v]]}
@@ -191,8 +215,10 @@ export default class Popup extends Component<Props, State> {
               days={days}
               today={this.props.clock.now()}
               language={preferences.language}
-              onExport={this.handleExport}
-              isLoading={isLoading}
+              onExport={this.exportRecords}
+              isLoading={!hasLoaded}
+              isExporting={isExporting}
+              exportFailed={exportFailed}
               t={t}
             />
           )}
@@ -205,7 +231,7 @@ export default class Popup extends Component<Props, State> {
         <footer className="px-4 pb-3 text-center">
           <a
             href={`mailto:${PRIVACY_CONTACT}`}
-            className="text-[9px] text-stone-400 hover:text-stone-600 transition-colors"
+            className="text-[11px] text-stone-500 underline underline-offset-2 hover:text-stone-700 transition-colors"
           >
             {PRIVACY_CONTACT}
           </a>

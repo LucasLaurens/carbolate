@@ -92,11 +92,19 @@ export function DomainChart({ record, t }: DomainChartProps) {
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-4">
-      <h3 className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-3">
+      <h2
+        id="domain-chart-title"
+        className="text-[10px] font-semibold text-stone-500 uppercase tracking-widest mb-3"
+      >
         {t.chart.title}
-      </h3>
+      </h2>
       <div className="h-36 w-full">
-        <canvas ref={canvasRef} className="h-full w-full" />
+        <canvas
+          ref={canvasRef}
+          role="img"
+          aria-labelledby="domain-chart-title"
+          className="h-full w-full"
+        />
       </div>
     </div>
   );

@@ -20,7 +20,6 @@ export type EquivalenceTranslations = {
 export type WorldComparisonTranslations = Record<WorldComparison, string>;
 
 export type Translations = {
-  header: string;
   nav: { today: string; settings: string; privacy: string };
   noData: string;
   stats: {
@@ -49,9 +48,9 @@ export type Translations = {
   };
   chart: { title: string };
   /**
-   * The seven-day section. `barTooltip` and `noMeasure` are the only channel a
-   * screen reader has for a bar — the value above it is 9px of decoration to
-   * everything else.
+   * The seven-day section. `barTooltip` and `noMeasure` name each bar for a
+   * screen reader, and double as its hover title: the value drawn above it is
+   * 10px of decoration to everything else.
    */
   history: {
     title: string;
@@ -65,7 +64,11 @@ export type Translations = {
      */
     versusPreviousWeek: (percent: number) => string;
   };
-  actions: { export: string };
+  /**
+   * `exporting` replaces the label while the download is prepared, so a second
+   * click has something to read instead of a button that seems to ignore it.
+   */
+  actions: { export: string; exporting: string; exportFailed: string };
   /**
    * The badge holds four characters, so the unit and the grade in words live
    * only here — and this tooltip is all a screen reader gets of either.
@@ -79,7 +82,6 @@ export type Translations = {
   equivalences: EquivalenceTranslations;
   worldComparison: WorldComparisonTranslations;
   settings: {
-    save: string;
     saved: string;
     language: string;
     /**

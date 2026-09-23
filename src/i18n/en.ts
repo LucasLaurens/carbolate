@@ -1,7 +1,6 @@
 import type { Translations } from "./types";
 
 export const en: Translations = {
-  header: "📊 Today",
   nav: { today: "Today", settings: "Settings", privacy: "Privacy" },
   noData: "No data for today",
   stats: {
@@ -9,7 +8,7 @@ export const en: Translations = {
     data: "Data transferred",
     requests: "Requests",
     pageLoads: "Page loads",
-    running: "Running total — resets at midnight",
+    running: "Running total, resets at midnight",
     thirdParty: (third: number, total: number) =>
       `${third} of ${total} requests come from third parties`,
     avoided: "avoided by the cache",
@@ -17,12 +16,16 @@ export const en: Translations = {
   chart: { title: "Top domains by CO₂" },
   history: {
     title: "Last 7 days",
-    barTooltip: (date: string, grams: string) => `${date} — ${grams} g CO₂`,
-    noMeasure: (date: string) => `${date} — nothing measured`,
+    barTooltip: (date: string, grams: string) => `${date}: ${grams} g CO₂`,
+    noMeasure: (date: string) => `${date}: nothing measured`,
     versusPreviousWeek: (percent: number) =>
       `${percent > 0 ? "+" : percent < 0 ? "−" : ""}${Math.abs(percent)}% vs. previous week`,
   },
-  actions: { export: "Export CSV" },
+  actions: {
+    export: "Export CSV",
+    exporting: "Exporting…",
+    exportFailed: "The export failed. Try again in a few seconds.",
+  },
   badge: {
     tooltip: (grams, level) => `Carbolate — ${grams} g today · ${level}`,
     tooltipEmpty: "Carbolate — nothing measured today",
@@ -48,13 +51,12 @@ export const en: Translations = {
     wellAbove: "well above the daily average",
   },
   settings: {
-    save: "Save",
-    saved: "✅ Saved!",
+    saved: "Saved",
     language: "Language",
     method: {
       summary: "How this number is built",
       measurement:
-        "Energy can't be measured directly: the servers aren't ours, and a web page can't read your machine's power draw. Carbolate multiplies what it sees — bytes, load time — by published averages.",
+        "Energy can't be measured directly: the servers aren't ours, and a web page can't read your machine's power draw. Carbolate multiplies what it sees (bytes, load time) by published averages.",
       perimeter:
         "It counts browsing only. Building the servers, the network and your device is excluded, so the true figure is about a quarter higher.",
       allocation:

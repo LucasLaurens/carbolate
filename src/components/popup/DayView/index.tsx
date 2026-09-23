@@ -11,7 +11,9 @@ type Props = {
   today: Date;
   language: Language;
   onExport: () => void;
-  isLoading?: boolean;
+  isLoading: boolean;
+  isExporting: boolean;
+  exportFailed: boolean;
   t: Translations;
 };
 
@@ -27,14 +29,17 @@ export default function DayView({
   today,
   language,
   onExport,
-  isLoading = false,
+  isLoading,
+  isExporting,
+  exportFailed,
   t,
 }: Props) {
   const loadCount = record.visits.length;
 
   return (
     <div
-      className={`flex flex-col gap-2.5 transition-opacity duration-150 ${isLoading ? "opacity-60" : "opacity-100"}`}
+      aria-busy={isLoading}
+      className={`flex flex-col gap-2.5 transition-opacity duration-150 motion-reduce:transition-none ${isLoading ? "opacity-60" : "opacity-100"}`}
     >
       <StatsGrid
         totalCarbon={record.totalCarbon}
@@ -46,22 +51,27 @@ export default function DayView({
       {loadCount > 0 ? (
         <DomainChart record={record} t={t} />
       ) : (
-        <p className="text-center text-stone-400 text-sm py-4">{t.noData}</p>
+        <p className="text-center text-stone-500 text-sm py-4">{t.noData}</p>
       )}
 
       {/* On the data, not on the preference: a user who just narrowed the window
           still has days until the next purge. */}
       {days.length > 1 && <WeekChart days={days} today={today} language={language} t={t} />}
 
-      <div className="flex">
-        <button
-          type="button"
-          onClick={onExport}
-          className="flex-1 py-2.5 rounded-xl text-[11px] font-semibold uppercase tracking-widest bg-white border border-stone-200 text-stone-600 cursor-pointer transition-colors hover:border-stone-300"
-        >
-          {t.actions.export}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onExport}
+        disabled={isExporting}
+        aria-busy={isExporting}
+        className="py-2.5 rounded-xl text-[11px] font-semibold uppercase tracking-widest bg-white border border-stone-200 text-stone-600 cursor-pointer transition-colors hover:border-stone-400 disabled:cursor-wait disabled:text-stone-500 disabled:hover:border-stone-200"
+      >
+        {isExporting ? t.actions.exporting : t.actions.export}
+      </button>
+      {exportFailed && (
+        <p role="alert" className="text-xs text-red-700">
+          {t.actions.exportFailed}
+        </p>
+      )}
     </div>
   );
 }
