@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { getCarbonLevel, getCarbonEquivalence, getWorldComparisonLabel } from "./utils";
+import {
+  CHART_COLORS,
+  getCarbonLevel,
+  getCarbonEquivalence,
+  getWorldComparisonLabel,
+} from "./utils";
 import { en } from "../../../i18n/en";
 import { fr } from "../../../i18n/fr";
 import { DAILY_BROWSING_REFERENCE_G_CO2, SOBRIETY_MULTIPLIERS } from "../../../carbon/constants";
@@ -142,5 +147,41 @@ describe("getWorldComparisonLabel", () => {
     // Assert
     expect(label).toBe(fr.worldComparison.wellAbove);
     expect(label).not.toMatch(/\d/);
+  });
+});
+
+/** HSL hue in degrees and saturation in [0, 1] of a `#rrggbb` colour. */
+function readHueAndSaturation(hex: string): { hue: number; saturation: number } {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  if (delta === 0) return { hue: 0, saturation: 0 };
+  const lightness = (max + min) / 2;
+  const saturation = delta / (1 - Math.abs(2 * lightness - 1));
+  const sector =
+    max === r ? ((g - b) / delta) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
+  return { hue: (sector * 60 + 360) % 360, saturation };
+}
+
+const GREEN_HUES = { from: 90, to: 160 };
+const NEUTRAL_MAX_SATURATION = 0.15;
+
+describe("CHART_COLORS", () => {
+  it("spends no sobriety hue: every slice is the green accent or a neutral", () => {
+    // Act
+    const offenders = CHART_COLORS.filter((hex) => {
+      const { hue, saturation } = readHueAndSaturation(hex);
+      const isGreen = hue >= GREEN_HUES.from && hue <= GREEN_HUES.to;
+      return !isGreen && saturation > NEUTRAL_MAX_SATURATION;
+    });
+
+    // Assert
+    expect(offenders).toEqual([]);
+  });
+
+  it("gives every slice its own colour", () => {
+    // Act & Assert
+    expect(new Set(CHART_COLORS).size).toBe(CHART_COLORS.length);
   });
 });

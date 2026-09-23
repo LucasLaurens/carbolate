@@ -5,7 +5,13 @@ import type { SobrietyLevel } from "../../../carbon/sobriety";
 import { SOBRIETY_COLOR, gradeSobrietyLevel } from "../../../carbon/sobriety";
 import { compareToDailyReference } from "../../../carbon/worldComparison";
 
-export const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4"];
+/**
+ * Domains are ranked by CO₂, so the palette is a ramp: the green accent on the
+ * heaviest, fading to stone. Amber and red are sobriety grades in this panel; a
+ * red slice would read as a verdict on a domain that is merely third.
+ * Tailwind green-700, green-500, green-300, stone-400, stone-300.
+ */
+export const CHART_COLORS = ["#15803d", "#22c55e", "#86efac", "#a8a29e", "#d6d3d1"];
 
 /**
  * Labels and badge text sit on their own tint, not on white: the 600 shade on a
