@@ -2,7 +2,7 @@
 
 Carbolate is a browser extension that measures and estimates the carbon footprint of your web browsing, from the bytes that crossed the network and the time each page took to load. Its perimeter is usage only: the figure is a floor, not a total.
 
-Supported: **Chrome, Edge, Opera, Brave, Vivaldi** (Chromium MV3 build) and **Firefox** (Gecko MV3 build).
+Supported: **Chrome, Edge, Opera, Brave, Vivaldi** (Chromium MV3 build) and **Firefox 140+** (Gecko MV3 build).
 
 ## Documentation index
 

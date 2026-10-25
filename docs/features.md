@@ -375,4 +375,5 @@ Midnight (or end of window for a longer retention)
 - Changing the retention window only takes effect on next browser restart — the alarm is rescheduled on install and on startup, not on preference change
 - Tabs open across an extension update keep running the previous content script until reloaded; their reports carry no `decodedBodySize`, so those visits report no avoided CO₂ (the rest of the measurement is unaffected)
 - On Firefox the panel is a sidebar (`sidebar_action`), on Chromium a side panel — same UI, different browser chrome
+- Firefox 140 or later only: the first release that reads the manifest's statement that no data is collected, which AMO requires of a new add-on. Firefox ESR 115 cannot install it
 - Safari is not published: it needs an extra `xcrun safari-web-extension-converter` pass and an Apple developer account

@@ -385,12 +385,14 @@ The `chrome` target also covers Edge, Opera, Brave and Vivaldi — same MV3 runt
 
 ### Manifest deltas
 
-| Chromium                    | Gecko                                | Why                                                                |
-| --------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
-| `background.service_worker` | `background.scripts`                 | Firefox MV3 uses a non-persistent event page, not a service worker |
-| `side_panel.default_path`   | `sidebar_action.default_panel`       | `side_panel` does not exist in Gecko                               |
-| permission `sidePanel`      | _(dropped)_                          | Invalid permission in Gecko                                        |
-| —                           | `browser_specific_settings.gecko.id` | Mandatory to sign on AMO                                           |
+| Chromium                    | Gecko                                                       | Why                                                                                                        |
+| --------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `background.service_worker` | `background.scripts`                                        | Firefox MV3 uses a non-persistent event page, not a service worker                                         |
+| `side_panel.default_path`   | `sidebar_action.default_panel`                              | `side_panel` does not exist in Gecko                                                                       |
+| permission `sidePanel`      | _(dropped)_                                                 | Invalid permission in Gecko                                                                                |
+| —                           | `browser_specific_settings.gecko.id`                        | Mandatory to sign on AMO                                                                                   |
+| —                           | `gecko.data_collection_permissions: { required: ["none"] }` | AMO rejects a new add-on that does not state what it collects; Carbolate collects nothing                  |
+| —                           | `gecko.strict_min_version: "140.0"`                         | First Firefox that reads that statement — see [ADR](decisions/2026-10-25-consentement-collecte-firefox.md) |
 
 ### Why background and content are iife bundles
 

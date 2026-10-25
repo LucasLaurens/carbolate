@@ -18,7 +18,11 @@ const ICONS = {
 };
 
 const GECKO_ID = "carbolate@lucaslaurens.dev";
-const GECKO_MIN_VERSION = "115.0";
+// The first release that reads `data_collection_permissions`; older ones warn on
+// the key and fall back to a consent screen the extension does not ship.
+const GECKO_MIN_VERSION = "140.0";
+// What leaves the device: nothing. AMO rejects a new add-on that does not say so.
+const GECKO_DATA_COLLECTION = { required: ["none"] };
 
 const PANEL_PATH = "index.html";
 const PANEL_TITLE = "Carbolate";
@@ -77,7 +81,11 @@ function geckoManifest(version) {
   return {
     ...sharedManifest(version),
     browser_specific_settings: {
-      gecko: { id: GECKO_ID, strict_min_version: GECKO_MIN_VERSION },
+      gecko: {
+        id: GECKO_ID,
+        strict_min_version: GECKO_MIN_VERSION,
+        data_collection_permissions: GECKO_DATA_COLLECTION,
+      },
     },
     background: { scripts: ["background.js"] },
     sidebar_action: {
