@@ -41,7 +41,7 @@ export const PRIVACY_CONTACT = "lucas.laurens@proton.me";
 
 const en: PrivacyPolicy = {
   title: "Privacy Policy",
-  effective: "Effective 21 August 2026",
+  effective: "Effective 25 October 2026",
   sections: [
     {
       heading: "In one sentence",
@@ -52,7 +52,7 @@ const en: PrivacyPolicy = {
     {
       heading: "What the extension records",
       paragraphs: [
-        "On each page load, one row: the page URL — without its query string or fragment, so a token or an address carried in a link is never kept — and its domain, the number of network requests, the bytes transferred and the bytes served from cache, the page load duration, the resulting estimated grams of CO₂, and a timestamp to group the row by day.",
+        "On each page load, one row, updated while the page stays open: the page URL — without its query string or fragment, so a token or an address carried in a link is never kept — and its domain, the number the browser gives its tab so two visits are told apart, the number of network requests and how many of them came from third-party sites (a count only, never which sites), the bytes transferred and the bytes served from cache, the page load duration, the time the page was on screen, the resulting estimated grams of CO₂, and a timestamp to group the row by day.",
         "Those rows live in the browser's local storage on this device. They are never synced across your machines.",
       ],
     },
@@ -109,7 +109,7 @@ const en: PrivacyPolicy = {
 
 const fr: PrivacyPolicy = {
   title: "Politique de confidentialité",
-  effective: "En vigueur le 21 août 2026",
+  effective: "En vigueur le 25 octobre 2026",
   sections: [
     {
       heading: "En une phrase",
@@ -120,7 +120,7 @@ const fr: PrivacyPolicy = {
     {
       heading: "Ce que l'extension enregistre",
       paragraphs: [
-        "À chaque page chargée, une ligne : l'URL de la page — sans ses paramètres ni son ancre, pour qu'un jeton ou une adresse transportés par un lien ne soient jamais conservés — et son domaine, le nombre de requêtes réseau, les octets transférés et ceux servis par le cache, la durée de chargement, les grammes de CO₂ estimés qui en découlent, et un horodatage pour regrouper par jour.",
+        "À chaque page chargée, une ligne, mise à jour tant que la page reste ouverte : l'URL de la page — sans ses paramètres ni son ancre, pour qu'un jeton ou une adresse transportés par un lien ne soient jamais conservés — et son domaine, le numéro que le navigateur donne à son onglet pour distinguer deux visites, le nombre de requêtes réseau et combien venaient de sites tiers (un nombre seulement, jamais lesquels), les octets transférés et ceux servis par le cache, la durée de chargement, le temps passé à l'écran, les grammes de CO₂ estimés qui en découlent, et un horodatage pour regrouper par jour.",
         "Ces lignes vivent dans le stockage local du navigateur, sur cet appareil. Elles ne sont jamais synchronisées entre tes machines.",
       ],
     },

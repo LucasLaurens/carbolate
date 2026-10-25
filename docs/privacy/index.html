@@ -105,7 +105,7 @@
   <body>
     <h1>Carbolate — Politique de confidentialité</h1>
     <p class="lede">
-      En vigueur le 21 août 2026. S’applique à Carbolate 1.0.0 et aux versions suivantes, sur
+      En vigueur le 25 octobre 2026. S’applique à Carbolate 1.0.0 et aux versions suivantes, sur
       Chrome, Edge et Firefox.
     </p>
     <p class="lang-nav"><a href="#en">Read this in English ↓</a></p>
@@ -120,7 +120,8 @@
     <h2>Ce que l’extension enregistre</h2>
     <p>
       À chaque page chargée, Carbolate lit ce que la page a elle-même rapporté au navigateur (l’API
-      <code>Performance</code>) et enregistre une ligne :
+      <code>Performance</code>) et enregistre une ligne, mise à jour tant que la page reste ouverte
+      :
     </p>
     <div class="wrap">
       <table>
@@ -129,14 +130,22 @@
           <th>Pourquoi</th>
         </tr>
         <tr>
-          <td>
-            L’URL de la page — sans ses paramètres ni son ancre — et son domaine
-          </td>
+          <td>L’URL de la page — sans ses paramètres ni son ancre — et son domaine</td>
           <td>Attribuer l’estimation à un site, pour afficher la répartition par domaine</td>
+        </tr>
+        <tr>
+          <td>Le numéro que le navigateur donne à l’onglet</td>
+          <td>Distinguer deux visites ouvertes en même temps</td>
         </tr>
         <tr>
           <td>Nombre de requêtes réseau</td>
           <td>Entrée du modèle carbone</td>
+        </tr>
+        <tr>
+          <td>
+            Combien de ces requêtes venaient de sites tiers — un nombre seulement, jamais lesquels
+          </td>
+          <td>Afficher la part des requêtes venues d’autres sites</td>
         </tr>
         <tr>
           <td>Octets transférés, et octets servis par le cache</td>
@@ -145,6 +154,10 @@
         <tr>
           <td>Durée de chargement</td>
           <td>Approximation de l’activité de l’appareil</td>
+        </tr>
+        <tr>
+          <td>Le temps passé à l’écran</td>
+          <td>Part de l’écran dans le modèle carbone</td>
         </tr>
         <tr>
           <td>Les grammes de CO₂ estimés qui en découlent</td>
@@ -200,8 +213,8 @@
         <tr>
           <td><code>unlimitedStorage</code></td>
           <td>
-            Lever le plafond de 10 Mo, pour que la rétention « tout garder » tienne sa
-            promesse. Cette autorisation ne donne accès à rien : elle donne de la place.
+            Lever le plafond de 10 Mo, pour que la rétention « tout garder » tienne sa promesse.
+            Cette autorisation ne donne accès à rien : elle donne de la place.
           </td>
         </tr>
         <tr>
@@ -265,7 +278,8 @@
     <h2 id="en">Carbolate — Privacy Policy</h2>
     <div lang="en">
       <p class="lede">
-        Effective 21 August 2026. Applies to Carbolate 1.0.0 and later, on Chrome, Edge and Firefox.
+        Effective 25 October 2026. Applies to Carbolate 1.0.0 and later, on Chrome, Edge and
+        Firefox.
       </p>
 
       <h3>In one sentence</h3>
@@ -278,7 +292,7 @@
       <h3>What the extension records</h3>
       <p>
         On each page load, Carbolate reads what the page itself reported to the browser (the
-        <code>Performance</code> API) and stores one row:
+        <code>Performance</code> API) and stores one row, updated while the page stays open:
       </p>
       <div class="wrap">
         <table>
@@ -291,8 +305,19 @@
             <td>To attribute the estimate to a site, for the per-domain breakdown</td>
           </tr>
           <tr>
+            <td>The number the browser gives the tab</td>
+            <td>To tell apart two visits open at the same time</td>
+          </tr>
+          <tr>
             <td>Number of network requests</td>
             <td>Input to the carbon model</td>
+          </tr>
+          <tr>
+            <td>
+              How many of those requests came from third-party sites — a count only, never which
+              sites
+            </td>
+            <td>To show the share of requests that came from elsewhere</td>
           </tr>
           <tr>
             <td>Bytes transferred, and bytes served from cache</td>
@@ -301,6 +326,10 @@
           <tr>
             <td>Page load duration</td>
             <td>A proxy for device activity</td>
+          </tr>
+          <tr>
+            <td>The time the page was on screen</td>
+            <td>The screen's share of the carbon model</td>
           </tr>
           <tr>
             <td>The resulting estimated grams of CO₂</td>
@@ -355,8 +384,8 @@
           <tr>
             <td><code>unlimitedStorage</code></td>
             <td>
-              To lift the 10 MB cap, so the “keep everything” retention window can keep its
-              promise. It grants access to nothing: it grants room.
+              To lift the 10 MB cap, so the “keep everything” retention window can keep its promise.
+              It grants access to nothing: it grants room.
             </td>
           </tr>
           <tr>

@@ -2,8 +2,22 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PRIVACY_CONTACT, PRIVACY_POLICY } from "./privacy";
 import type { Language } from "../i18n/types";
+import type { Metrics } from "../session/types";
 
 const LANGUAGES: Language[] = ["en", "fr"];
+
+/**
+ * How the policy names each measurement a visit stores. Keyed by `Metrics`, so a
+ * field added there fails to compile here until the policy discloses it too.
+ */
+const DISCLOSED_METRICS = {
+  requestCount: { en: "number of network requests", fr: "nombre de requêtes réseau" },
+  thirdPartyRequests: { en: "came from third-party sites", fr: "venaient de sites tiers" },
+  totalResourceSize: { en: "bytes transferred", fr: "octets transférés" },
+  cachedPageWeight: { en: "served from cache", fr: "servis par le cache" },
+  pageLoadDurationSec: { en: "load duration", fr: "durée de chargement" },
+  visibleDurationSec: { en: "time the page was on screen", fr: "temps passé à l'écran" },
+} satisfies Record<keyof Metrics, Record<Language, string>>;
 
 /**
  * The published page and this module are two representations of one policy, so a
@@ -57,6 +71,25 @@ describe("privacy policy", () => {
     // Assert
     for (const heading of headings) expect(publishedText).toContain(heading);
   });
+
+  it.each(LANGUAGES)(
+    "discloses every stored measurement in %s, in the panel and on the page",
+    (lang) => {
+      // Arrange
+      const panelText = normalize(
+        PRIVACY_POLICY[lang].sections.flatMap((s) => s.paragraphs).join(" "),
+      ).toLowerCase();
+      const phrases = Object.values(DISCLOSED_METRICS).map((names) => names[lang]);
+
+      // Act
+      const missing = phrases.filter(
+        (phrase) => !panelText.includes(phrase) || !publishedText.toLowerCase().includes(phrase),
+      );
+
+      // Assert
+      expect(missing).toEqual([]);
+    },
+  );
 
   it("gives the same contact address in the extension and on the page", () => {
     // Act
