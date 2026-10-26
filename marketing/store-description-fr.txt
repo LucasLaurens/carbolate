@@ -1,0 +1,61 @@
+Carbolate estime l'empreinte carbone de votre navigation, en direct, sans compte et sans rien envoyer hors de votre navigateur.
+
+Chaque page web a un coût : des données qui traversent le réseau, une machine qui calcule, un écran allumé. Ce coût est réel, mais invisible. Carbolate le rend visible, gramme par gramme, pendant que vous naviguez.
+
+
+COMMENT ÇA MARCHE
+
+Carbolate suit chaque page tant qu'elle reste ouverte, pas seulement à son chargement : les vidéos, les images chargées au défilement et les requêtes en arrière-plan sont comptées. Trois sources sont mesurées :
+
+• Réseau : les octets réellement transférés
+• Machine : la durée de chargement de la page
+• Écran : le temps pendant lequel la page est réellement affichée
+
+Le tout est converti en grammes de CO₂ équivalent (gCO₂e) à partir de facteurs publiés (ADEME, AIE).
+
+
+VOTRE JOURNÉE EN UN COUP D'ŒIL
+
+• Un compteur du jour qui monte pendant que vous naviguez et repart à zéro à minuit
+• Une note claire : Sobre, Modéré, Intensif ou Excessif
+• Un équivalent concret : e-mails, heures de streaming, kilomètres en voiture ou en avion
+• Votre position par rapport à une journée de navigation moyenne (120 gCO₂e, ADEME 2023 / The Shift Project 2022)
+• Votre note du jour directement sur l'icône, dans la barre d'outils
+
+
+CE QUE LES PAGES CHARGENT VRAIMENT
+
+• Pages chargées, requêtes et données transférées
+• La part des requêtes venues de sites tiers
+• Le CO₂ évité grâce au cache du navigateur
+• Vos 5 sites les plus lourds de la journée
+
+
+NOUVEAU : VOTRE TENDANCE
+
+• Vos 7 derniers jours, une barre par jour à la couleur de sa note
+• L'écart avec la semaine précédente
+• L'historique conservé au choix : 1 jour, 7 jours ou tout
+• L'export CSV de tout votre historique, et si vous le souhaitez, un export automatique avant chaque suppression
+
+
+VIE PRIVÉE
+
+• 100 % local : tout reste dans votre navigateur
+• Aucun compte, aucun serveur, aucun traceur, aucune requête réseau
+• Même le tri entre requêtes tierces et non tierces se fait dans la page : seuls des nombres sont enregistrés, jamais les sites rencontrés
+• Interface en français et en anglais
+
+
+UN CHIFFRE HONNÊTE
+
+Carbolate mesure ce qu'un navigateur peut réellement observer. La consommation des serveurs et de votre machine ne peut pas être lue depuis une page : elle est estimée avec des moyennes publiées. La fabrication des serveurs, du réseau et de votre appareil est exclue : le chiffre est un plancher, environ 20 à 25 % en dessous d'un bilan complet. L'extension le dit, plutôt que d'afficher une fausse précision.
+
+
+LIMITES
+
+• Les pages internes du navigateur (chrome://, about:, file://) ne sont pas mesurées
+• Les onglets ouverts avant l'installation doivent être rechargés pour être mesurés
+
+
+Une question, une suggestion : lucas.laurens@proton.me

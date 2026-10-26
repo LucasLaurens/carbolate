@@ -1,0 +1,35 @@
+Privacy Policy
+Effective 25 October 2026
+
+IN ONE SENTENCE
+Carbolate estimates the carbon footprint of your browsing on your own device and sends nothing anywhere. There is no Carbolate server, no account, no analytics, no telemetry, no third party.
+
+WHAT THE EXTENSION RECORDS
+On each page load, one row, updated while the page stays open: the page URL — without its query string or fragment, so a token or an address carried in a link is never kept — and its domain, the number the browser gives its tab so two visits are told apart, the number of network requests and how many of them came from third-party sites (a count only, never which sites), the bytes transferred and the bytes served from cache, the page load duration, the time the page was on screen, the resulting estimated grams of CO₂, and a timestamp to group the row by day.
+Those rows live in the browser's local storage on this device. They are never synced across your machines.
+
+WHAT THE EXTENSION DOES NOT READ, AND DOES NOT SEND
+Not page content, form fields, keystrokes, passwords or cookies. Not the browser's history, its tabs, or your identity.
+Carbolate makes no network requests: the code holds no request API — no fetch call, no XHR, no socket, no beacon — and no external address. Nothing is sold, shared or rented — there is no one to transmit it to.
+
+THE PERMISSIONS IT ASKS FOR, AND WHY
+Site access (<all_urls>): to read the load timings each visited page reports. Estimating a site's weight requires being on that site; the script collects nothing but those measurements.
+storage: to write the readings and your settings on the device. unlimitedStorage: to lift the 10 MB cap, so that the “keep everything” window can keep its promise — it grants room, not access. alarms: to run the daily cleanup that applies your retention window. downloads: to write the CSV file when you click Export, never otherwise.
+
+HOW LONG IT IS KEPT
+You choose. Retention defaults to 1 day: each night, past days are deleted. A longer window keeps them that much longer; “keep everything” deletes nothing.
+
+HOW TO ERASE IT
+Uninstalling Carbolate removes its local storage with it — the browser handles that, nothing is left behind. To erase without uninstalling, set retention to 1 day or use the browser's own clearing tools.
+
+THE CSV EXPORT
+The Export CSV button writes a file to your downloads folder, holding the same rows as above, URLs included. That file is yours: what happens to it next is in your hands, not ours.
+
+CHILDREN
+Carbolate never asks for an age and cannot know one: there is no account and no profile. Since nothing leaves the device, no child's data is collected.
+
+CHANGES
+A version that changed what is recorded, or that added any network egress, would ship with an updated policy and a new effective date. No silent retroactive change.
+
+CONTACT
+A question about this policy: lucas.laurens@proton.me.

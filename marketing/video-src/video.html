@@ -1,0 +1,692 @@
+<!doctype html>
+<!-- 540x540 CSS at 2x = 1080x1080; ?wide gives 960x540 = 1920x1080. Every pixel is a pure function of t:
+     window.render(t) poses the scene, render.mjs screenshots it. -->
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        --cream: #fefaf0;
+        --ink: #1c1917;
+        --muted: #78716c;
+        --green: #15803d;
+        --line: #e7e5e4;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--cream);
+        font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      .abs {
+        position: absolute;
+      }
+      .layer {
+        position: absolute;
+        inset: 0;
+      }
+      .x {
+        will-change: opacity, transform;
+      }
+      h1 {
+        font-size: 34px;
+        line-height: 1.12;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+      }
+      h2 {
+        font-size: 27px;
+        line-height: 1.15;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .sub {
+        font-size: 15.5px;
+        line-height: 1.4;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .green {
+        color: var(--green);
+      }
+      .center {
+        left: 0;
+        right: 0;
+        text-align: center;
+      }
+
+      /* S1 hook */
+      #hook,
+      #ctx,
+      #priv,
+      #v2,
+      #ff {
+        position: absolute;
+        inset: 0;
+        padding: 0 44px 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      #hook div {
+        font-size: 31px;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        line-height: 1.22;
+      }
+      #hook .q {
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      /* S2 context */
+      #ctx .big {
+        font-size: 40px;
+        font-weight: 850;
+        letter-spacing: -0.03em;
+        line-height: 1.08;
+      }
+      #ctx .stat {
+        margin-top: 34px;
+        display: flex;
+        gap: 16px;
+        align-items: baseline;
+      }
+      #ctx .num {
+        font-size: 62px;
+        font-weight: 850;
+        letter-spacing: -0.04em;
+        color: var(--ink);
+      }
+      #ctx .src {
+        margin-top: 10px;
+        font-size: 11.5px;
+        color: #a8a29e;
+      }
+
+      /* brand */
+      #brand {
+        left: 0;
+        right: 0;
+        top: 226px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      #brand img {
+        width: 46px;
+        height: 46px;
+      }
+      #brand span {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+      }
+      #tagline {
+        top: 296px;
+      }
+
+      /* captions above the stage */
+      .cap {
+        left: 30px;
+        right: 30px;
+        top: 46px;
+      }
+      .cap h2 {
+        margin-bottom: 7px;
+      }
+
+      /* stage: the camera window */
+      #stage {
+        left: 30px;
+        top: 168px;
+        width: 480px;
+        height: 344px;
+        border-radius: 18px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.05),
+          0 12px 40px rgba(28, 25, 23, 0.1);
+      }
+      #world {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 900px;
+        height: 620px;
+        transform-origin: 0 0;
+        background: #fff;
+      }
+      #toolbar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 900px;
+        height: 44px;
+        background: #f5f5f4;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        gap: 7px;
+      }
+      .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: #d6d3d1;
+      }
+      #url {
+        margin-left: 200px;
+        height: 26px;
+        width: 340px;
+        border-radius: 13px;
+        background: #fff;
+        border: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        font-size: 13px;
+        color: #57534e;
+        gap: 8px;
+      }
+      #url .lock {
+        width: 9px;
+        height: 10px;
+        border: 1.6px solid #a8a29e;
+        border-radius: 2px;
+        position: relative;
+        top: 1px;
+      }
+      #progress {
+        position: absolute;
+        left: 0;
+        bottom: -1px;
+        height: 2px;
+        background: #3b82f6;
+      }
+      #ext {
+        position: absolute;
+        right: 18px;
+        top: 9px;
+        width: 26px;
+        height: 26px;
+      }
+      #ext img {
+        width: 26px;
+        height: 26px;
+      }
+      #badge {
+        position: absolute;
+        right: -10px;
+        bottom: -6px;
+        min-width: 24px;
+        height: 15px;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 3px;
+      }
+      #page {
+        position: absolute;
+        left: 0;
+        top: 44px;
+        width: 580px;
+        height: 576px;
+        padding: 28px 34px;
+        overflow: hidden;
+      }
+      .blk {
+        background: #e7e5e4;
+        border-radius: 6px;
+        margin-bottom: 12px;
+      }
+      #side {
+        position: absolute;
+        left: 580px;
+        top: 44px;
+        width: 320px;
+        height: 576px;
+        overflow: hidden;
+        border-left: 1px solid var(--line);
+        background: #fafaf9;
+      }
+      #panel {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 320px;
+        height: 1000px;
+        border: 0;
+      }
+
+      /* privacy */
+      #priv .row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 19px;
+        font-weight: 650;
+        margin-top: 18px;
+      }
+      .tick {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #dcfce7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+      }
+
+      /* v2 */
+      .pill {
+        display: inline-block;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: var(--green);
+        background: #dcfce7;
+        border-radius: 999px;
+        padding: 6px 13px;
+      }
+      #v2 .item {
+        display: flex;
+        gap: 12px;
+        align-items: baseline;
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 15px;
+      }
+      #v2 .item b {
+        color: var(--green);
+        font-size: 18px;
+      }
+
+      #ff {
+        text-align: center;
+        align-items: center;
+      }
+      #ff .chips {
+        max-width: 330px;
+        margin-top: 36px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+      }
+      .chip {
+        font-size: 16px;
+        font-weight: 700;
+        padding: 10px 17px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1.5px solid var(--line);
+      }
+      .chip.hot {
+        background: #fff1e6;
+        border-color: #fb923c;
+        color: #c2410c;
+      }
+
+      /* 16:9: captions in a left column, the stage on the right */
+      body.wide #hook,
+      body.wide #ctx,
+      body.wide #priv,
+      body.wide #v2 {
+        padding: 0 150px 12px;
+      }
+      body.wide .cap {
+        left: 56px;
+        width: 330px;
+        right: auto;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      body.wide .cap h2 {
+        font-size: 29px;
+        text-wrap: balance;
+        margin-bottom: 10px;
+      }
+      body.wide .cap .sub {
+        font-size: 16.5px;
+      }
+      body.wide #stage {
+        left: 410px;
+        top: 42px;
+        width: 500px;
+        height: 456px;
+      }
+
+      #end {
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #end img {
+        width: 108px;
+        height: 108px;
+      }
+      #end .name {
+        font-size: 40px;
+        font-weight: 850;
+        letter-spacing: 0.05em;
+        margin-top: 14px;
+      }
+      #end .line {
+        font-size: 19px;
+        color: var(--muted);
+        font-weight: 600;
+        margin-top: 10px;
+      }
+      #end .where {
+        font-size: 13px;
+        color: #a8a29e;
+        margin-top: 28px;
+        letter-spacing: 0.02em;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- S1 -->
+    <div id="hook">
+      <div class="x" id="h1">Chaque page que tu ouvres</div>
+      <div class="x" id="h2">fait transiter des mégaoctets,</div>
+      <div class="x" id="h3">tourner des serveurs,</div>
+      <div class="x" id="h4">et briller ton écran.</div>
+      <div class="x q" id="h5" style="margin-top: 22px">Combien ça pèse&nbsp;?</div>
+    </div>
+
+    <!-- S2 -->
+    <div id="ctx">
+      <div class="big x" id="c1">Ce coût est réel.</div>
+      <div class="big x" id="c2" style="color: var(--muted)">Mais il est invisible.</div>
+      <div class="x" id="c3">
+        <div class="stat">
+          <span class="num">≈ 120 g</span
+          ><span class="sub" style="font-size: 17px; color: var(--ink); font-weight: 650"
+            >de CO₂e</span
+          >
+        </div>
+        <div class="sub">l'empreinte d'une journée de navigation moyenne.</div>
+        <div class="src">Référence ADEME 2023 / The Shift Project 2022</div>
+      </div>
+    </div>
+
+    <!-- brand + tagline -->
+    <div id="brand" class="abs x"><img src="/logo.png" alt="" /><span>CARBOLATE</span></div>
+    <div id="tagline" class="abs center x">
+      <h2>la rend visible. <span class="green">En direct.</span></h2>
+    </div>
+
+    <!-- captions over the stage -->
+    <div class="abs cap x" id="k1">
+      <h2>Tu navigues. Il compte.</h2>
+      <div class="sub">Réseau, machine et écran, convertis en grammes de CO₂e.</div>
+    </div>
+    <div class="abs cap x" id="k2">
+      <h2>Une note pour ta journée</h2>
+      <div class="sub">Sobre, modéré, intensif ou excessif, avec un équivalent concret.</div>
+    </div>
+    <div class="abs cap x" id="k3">
+      <h2>Ce que les pages chargent</h2>
+      <div class="sub">Requêtes, données, part des tiers et CO₂ évité par le cache.</div>
+    </div>
+    <div class="abs cap x" id="k4">
+      <h2>Tes sites les plus lourds</h2>
+      <div class="sub">Les domaines qui pèsent le plus dans ta journée.</div>
+    </div>
+    <div class="abs cap x" id="k5">
+      <h2>Sept jours d'un coup d'œil</h2>
+      <div class="sub">Et l'écart avec la semaine précédente.</div>
+    </div>
+
+    <div id="stage" class="abs x">
+      <div id="world">
+        <div id="toolbar">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div id="url">
+            <div class="lock"></div>
+            <span id="urltext">lemonde.fr</span>
+          </div>
+          <div id="ext">
+            <img src="/logo.png" alt="" />
+            <div id="badge">–</div>
+          </div>
+          <div id="progress"></div>
+        </div>
+        <div id="page">
+          <div class="blk" id="pg-head" style="width: 58%; height: 22px"></div>
+          <div class="blk" id="pg-hero" style="width: 100%; height: 210px"></div>
+          <div class="blk" style="width: 92%; height: 12px"></div>
+          <div class="blk" style="width: 86%; height: 12px"></div>
+          <div class="blk" style="width: 95%; height: 12px"></div>
+          <div class="blk" style="width: 70%; height: 12px"></div>
+          <div style="display: flex; gap: 12px; margin-top: 20px">
+            <div class="blk" style="flex: 1; height: 110px"></div>
+            <div class="blk" style="flex: 1; height: 110px"></div>
+            <div class="blk" style="flex: 1; height: 110px"></div>
+          </div>
+        </div>
+        <div id="side"><iframe id="panel" src="/panel.html"></iframe></div>
+      </div>
+    </div>
+
+    <!-- S6 privacy -->
+    <div id="priv">
+      <div class="x" id="p0">
+        <h1>100 % local.</h1>
+        <div class="sub" style="margin-top: 8px; font-size: 17px">
+          Carbolate mesure dans ton navigateur, et s'arrête là.
+        </div>
+      </div>
+      <div class="row x" id="p1"><span class="tick">✓</span>Aucun compte à créer</div>
+      <div class="row x" id="p2"><span class="tick">✓</span>Aucun serveur, aucun traceur</div>
+      <div class="row x" id="p3">
+        <span class="tick">✓</span>Les adresses visitées ne sortent jamais
+      </div>
+      <div class="row x" id="p4"><span class="tick">✓</span>Tes données, exportables en CSV</div>
+    </div>
+
+    <!-- S7 v2 -->
+    <div id="v2">
+      <div class="x" id="v0">
+        <span class="pill">VERSION 2</span>
+        <h1 style="margin-top: 14px">Prête.</h1>
+      </div>
+      <div class="item x" id="v1"><b>→</b>Mesure en continu, même après le chargement</div>
+      <div class="item x" id="v2a"><b>→</b>Historique des 7 derniers jours</div>
+      <div class="item x" id="v3"><b>→</b>Comparaison avec la semaine précédente</div>
+      <div class="item x" id="v4"><b>→</b>Part des requêtes venues de tiers</div>
+      <div class="item x" id="v5"><b>→</b>Ta note du jour, dans la barre d'outils</div>
+    </div>
+
+    <div id="ff">
+      <div class="x" id="f0">
+        <h1>Et maintenant<br />sur <span style="color: #ea580c">Firefox</span>.</h1>
+      </div>
+      <div class="chips">
+        <span class="chip hot x" id="ch0">Firefox</span>
+        <span class="chip x" id="ch1">Chrome</span>
+        <span class="chip x" id="ch2">Edge</span>
+        <span class="chip x" id="ch3">Brave</span>
+        <span class="chip x" id="ch4">Opera</span>
+        <span class="chip x" id="ch5">Vivaldi</span>
+      </div>
+    </div>
+
+    <div id="end" class="abs x">
+      <img src="/logo.png" alt="" />
+      <div class="name">CARBOLATE</div>
+      <div class="line">Mesure ce que coûte ta navigation.</div>
+      <div class="where">Firefox · Chrome · Edge · Brave · Opera · Vivaldi</div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const clamp = (x) => Math.min(1, Math.max(0, x));
+      const out3 = (x) => 1 - Math.pow(1 - x, 3);
+      const io3 = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+      const p = (t, a, d, e = out3) => e(clamp((t - a) / d));
+      const lerp = (a, b, x) => a + (b - a) * x;
+
+      // Visible between inAt and outAt, rising in and fading out.
+      function show(id, t, inAt, outAt, rise = 14) {
+        const i = p(t, inAt, 0.55),
+          o = p(t, outAt, 0.4, io3);
+        const el = $(id);
+        el.style.opacity = i * (1 - o);
+        el.style.transform = `translateY(${(1 - i) * rise - o * 8}px)`;
+      }
+
+      const SITES = [
+        { at: 11.6, url: "lemonde.fr", hero: "#d6d3d1" },
+        { at: 13.4, url: "youtube.com", hero: "#1c1917" },
+        { at: 15.0, url: "github.com", hero: "#e7e5e4" },
+      ];
+      // Today's total as a fraction of 143 g: a step up on each page, as visits report.
+      function todayScale(t) {
+        const steps = [
+          [11.9, 0.03, 0.43],
+          [13.7, 0.43, 0.78],
+          [15.3, 0.78, 1],
+        ];
+        let k = 0.03;
+        for (const [a, from, to] of steps) if (t >= a) k = lerp(from, to, p(t, a, 1.3));
+        return k;
+      }
+      const level = (g) => (g < 60 ? "#15803d" : g < 180 ? "#a16207" : "#c2410c");
+
+      if (location.search.includes("wide")) document.body.classList.add("wide");
+      // Camera: wide shot of the browser, then the side panel filling the stage width.
+      const SW = $("stage").clientWidth,
+        SH = $("stage").clientHeight;
+      // Cover the stage, cropping the page on the left: the side panel must stay in shot.
+      const ws = Math.max(SW / 900, SH / 620),
+        zs = SW / 320;
+      const WIDE = { s: ws, x: SW - 900 * ws, y: (SH - 620 * ws) / 2 };
+      const ZOOM = { s: zs, x: -580 * zs, y: -44 * zs };
+      // Panel scroll (panel CSS px) for each framing: card, stats, domains, week.
+      const PANS = [
+        [0, 0],
+        [17.0, 88],
+        [21.4, 292],
+        [25.6, 486],
+        [28.4, 700],
+      ];
+
+      let lastK = -1;
+      window.render = async (t) => {
+        show("h1", t, 0.2, 4.2);
+        show("h2", t, 0.9, 4.2);
+        show("h3", t, 1.6, 4.2);
+        show("h4", t, 2.3, 4.2);
+        show("h5", t, 3.1, 4.2);
+
+        show("c1", t, 4.7, 8.9);
+        show("c2", t, 5.5, 8.9);
+        show("c3", t, 6.4, 8.9);
+
+        show("brand", t, 9.1, 10.5);
+        show("tagline", t, 9.6, 10.5);
+
+        show("k1", t, 11.0, 16.8);
+        show("k2", t, 17.2, 21.2);
+        show("k3", t, 21.6, 25.4);
+        show("k4", t, 25.8, 28.2);
+        show("k5", t, 28.6, 30.6);
+
+        const si = p(t, 10.7, 0.8),
+          so = p(t, 30.6, 0.5, io3);
+        $("stage").style.opacity = si * (1 - so);
+        $("stage").style.transform = `translateY(${(1 - si) * 40 + so * 10}px)`;
+
+        const z = p(t, 16.9, 1.3, io3);
+        const cam = {
+          s: lerp(WIDE.s, ZOOM.s, z),
+          x: lerp(WIDE.x, ZOOM.x, z),
+          y: lerp(WIDE.y, ZOOM.y, z),
+        };
+        $("world").style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.s})`;
+
+        let pan = 0;
+        for (let i = 1; i < PANS.length; i++) {
+          const [a, to] = PANS[i];
+          pan = lerp(pan, to, p(t, a, 0.9, io3));
+        }
+        $("panel").style.transform = `translateY(${-pan}px)`;
+
+        let site = SITES[0];
+        for (const s of SITES) if (t >= s.at) site = s;
+        $("urltext").textContent = site.url;
+        $("pg-hero").style.background = site.hero;
+        const load = clamp((t - site.at) / 0.9);
+        $("progress").style.width = `${load * 100}%`;
+        $("progress").style.opacity = load < 1 ? 1 : 0;
+
+        const k = Math.round(todayScale(t) * 1000) / 1000;
+        const grams = 143 * k;
+        $("badge").textContent = grams < 1 ? "<1" : String(Math.round(grams));
+        $("badge").style.background = level(grams);
+
+        show("p0", t, 31.1, 35.4);
+        show("p1", t, 31.9, 35.4);
+        show("p2", t, 32.4, 35.4);
+        show("p3", t, 32.9, 35.4);
+        show("p4", t, 33.4, 35.4);
+
+        show("v0", t, 35.8, 40.6);
+        show("v1", t, 36.6, 40.6);
+        show("v2a", t, 37.1, 40.6);
+        show("v3", t, 37.6, 40.6);
+        show("v4", t, 38.1, 40.6);
+        show("v5", t, 38.6, 40.6);
+
+        show("f0", t, 41.0, 45.4);
+        ["ch0", "ch1", "ch2", "ch3", "ch4", "ch5"].forEach((id, i) =>
+          show(id, t, 41.9 + i * 0.22, 45.4, 10),
+        );
+
+        show("end", t, 45.8, 99);
+
+        if (k !== lastK) {
+          lastK = k;
+          const w = $("panel").contentWindow;
+          w.setScale(k);
+          await new Promise((r) =>
+            w.requestAnimationFrame(() => w.requestAnimationFrame(() => setTimeout(r, 30))),
+          );
+        }
+      };
+      window.DURATION = 49.5;
+      window.ready = new Promise((r) =>
+        $("panel").addEventListener("load", () => setTimeout(r, 2500)),
+      );
+    </script>
+  </body>
+</html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<!-- Real built panel, seeded with the store-asset demo data. window.setScale(k)
+     rewrites today's visits at k x their value and fires storage.onChanged, so
+     the panel counts up exactly as it does while a user browses. -->
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="/CSSFILE" />
+    <style>
+      #root > div {
+        justify-content: flex-start;
+      }
+      body {
+        margin: 0;
+        background: #fafaf9;
+      }
+      html,
+      body {
+        overflow: hidden;
+      }
+    </style>
+    <script>
+      const iso = (offset) => {
+        const d = new Date();
+        d.setDate(d.getDate() - offset);
+        return d.toISOString().slice(0, 10);
+      };
+      const visit = (domain, co2, requests, third, mb, avoided) => ({
+        tabId: 1,
+        url: "https://" + domain + "/",
+        domain,
+        metrics: {
+          requestCount: requests,
+          thirdPartyRequests: third,
+          totalResourceSize: mb,
+          pageLoadDurationSec: 1.2,
+          visibleDurationSec: 600,
+          cachedPageWeight: 0,
+        },
+        meta: { date: 0, observedFrom: 0 },
+        carbon: {
+          networkCo2: co2 * 0.5,
+          deviceCo2: co2 * 0.2,
+          screenCo2: co2 * 0.3,
+          totalCo2: co2,
+          avoidedCo2: avoided,
+        },
+      });
+      const day = (offset, visits) => {
+        const sum = (f) => visits.reduce((a, v) => a + f(v), 0);
+        return {
+          date: iso(offset),
+          visits,
+          totalMetrics: {
+            requestCount: sum((v) => v.metrics.requestCount),
+            thirdPartyRequests: sum((v) => v.metrics.thirdPartyRequests),
+            totalResourceSize: sum((v) => v.metrics.totalResourceSize),
+            pageLoadDurationSec: 3.6,
+            visibleDurationSec: 1800,
+            cachedPageWeight: 0,
+          },
+          totalCarbon: {
+            networkCo2: 0,
+            deviceCo2: 0,
+            screenCo2: 0,
+            totalCo2: sum((v) => v.carbon.totalCo2),
+            avoidedCo2: sum((v) => v.carbon.avoidedCo2),
+          },
+        };
+      };
+      const today = (k) => {
+        const r = (n) => Math.max(1, Math.round(n * k));
+        return day(0, [
+          visit("lemonde.fr", 62 * k, r(110), Math.round(48 * k), 4.3 * k, 21.4 * k),
+          visit("youtube.com", 50 * k, r(75), Math.round(19 * k), 3.6 * k, 13.1 * k),
+          visit("github.com", 31 * k, r(40), Math.round(12 * k), 2.0 * k, 8.4 * k),
+        ]);
+      };
+      const history = [
+        [1, 96],
+        [2, 158],
+        [3, 74],
+        [4, 121],
+        [6, 187],
+        [7, 150],
+        [8, 160],
+        [9, 170],
+        [10, 140],
+        [11, 155],
+        [12, 152],
+        [13, 155],
+      ].map(([offset, co2]) => day(offset, [visit("lemonde.fr", co2, 150, 50, 8, 10)]));
+      const sessionsAt = (k) => Object.fromEntries([today(k), ...history].map((d) => [d.date, d]));
+      const data = {
+        sessions: sessionsAt(1),
+        preferences: { language: "fr", retentionDays: -1, autoExportBeforeReset: false },
+      };
+      const listeners = new Set();
+      window.setScale = (k) => {
+        data.sessions = sessionsAt(k);
+        listeners.forEach((l) => l({ sessions: { newValue: data.sessions } }, "local"));
+      };
+      window.chrome = {
+        runtime: { lastError: undefined, sendMessage() {}, onMessage: { addListener() {} } },
+        storage: {
+          local: {
+            get(keys, cb) {
+              const r = {};
+              (Array.isArray(keys) ? keys : [keys]).forEach((k) => {
+                if (data[k] !== undefined) r[k] = data[k];
+              });
+              cb ? cb(r) : null;
+              return Promise.resolve(r);
+            },
+            set(i, cb) {
+              Object.assign(data, i);
+              cb && cb();
+              return Promise.resolve();
+            },
+          },
+          onChanged: {
+            addListener: (l) => listeners.add(l),
+            removeListener: (l) => listeners.delete(l),
+          },
+        },
+        downloads: { download() {} },
+        tabs: {},
+        action: {},
+        alarms: {},
+      };
+    </script>
+    <script type="module" src="/side_panel.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+Politique de confidentialité
+En vigueur le 25 octobre 2026
+
+EN UNE PHRASE
+Carbolate estime l'empreinte carbone de ta navigation sur ton appareil et n'envoie rien nulle part. Pas de serveur Carbolate, pas de compte, pas d'analytics, pas de télémétrie, pas de tiers.
+
+CE QUE L'EXTENSION ENREGISTRE
+À chaque page chargée, une ligne, mise à jour tant que la page reste ouverte : l'URL de la page — sans ses paramètres ni son ancre, pour qu'un jeton ou une adresse transportés par un lien ne soient jamais conservés — et son domaine, le numéro que le navigateur donne à son onglet pour distinguer deux visites, le nombre de requêtes réseau et combien venaient de sites tiers (un nombre seulement, jamais lesquels), les octets transférés et ceux servis par le cache, la durée de chargement, le temps passé à l'écran, les grammes de CO₂ estimés qui en découlent, et un horodatage pour regrouper par jour.
+Ces lignes vivent dans le stockage local du navigateur, sur cet appareil. Elles ne sont jamais synchronisées entre tes machines.
+
+CE QUE L'EXTENSION NE LIT PAS, ET N'ENVOIE PAS
+Ni le contenu des pages, ni les formulaires, ni les frappes clavier, ni les mots de passe, ni les cookies. Ni l'historique du navigateur, ni tes onglets, ni ton identité.
+Carbolate n'émet aucune requête réseau : le code ne contient aucune API de requête — ni appel fetch, ni XHR, ni socket, ni beacon — ni aucune adresse externe. Rien n'est vendu, partagé ni loué — il n'y a personne à qui transmettre.
+
+LES AUTORISATIONS DEMANDÉES, ET POURQUOI
+Accès aux sites (<all_urls>) : lire les temps de chargement que chaque page visitée rapporte. Estimer le poids d'un site suppose d'être présent sur ce site ; le script ne collecte que ces mesures.
+storage : écrire les relevés et tes réglages sur l'appareil. unlimitedStorage : lever le plafond de 10 Mo, pour que la rétention « tout garder » tienne sa promesse — elle donne de la place, pas un accès. alarms : déclencher le nettoyage quotidien qui applique ta rétention. downloads : écrire le fichier CSV quand tu cliques sur Export, jamais autrement.
+
+COMBIEN DE TEMPS C'EST GARDÉ
+Tu choisis. La rétention vaut 1 jour par défaut : chaque nuit, les jours passés sont supprimés. Une fenêtre plus longue les conserve d'autant ; « tout garder » ne supprime rien.
+
+COMMENT TOUT EFFACER
+Désinstaller Carbolate supprime son stockage local avec lui — le navigateur s'en charge, il ne reste rien. Effacer sans désinstaller : mets la rétention sur 1 jour, ou passe par les outils du navigateur.
+
+L'EXPORT CSV
+Le bouton Export CSV écrit un fichier dans ton dossier de téléchargements, contenant les mêmes lignes que ci-dessus, l'URL comprise. Ce fichier t'appartient : ce qui lui arrive ensuite est entre tes mains, pas les nôtres.
+
+ENFANTS
+Carbolate ne demande pas d'âge et ne peut pas en connaître un : ni compte, ni profil. Puisque rien ne quitte l'appareil, aucune donnée d'enfant n'est collectée.
+
+MODIFICATIONS
+Une version qui changerait ce qui est enregistré, ou qui ajouterait une sortie réseau, s'accompagnerait d'une mise à jour de cette politique et d'une nouvelle date d'entrée en vigueur. Aucun changement rétroactif silencieux.
+
+CONTACT
+Une question sur cette politique : lucas.laurens@proton.me.

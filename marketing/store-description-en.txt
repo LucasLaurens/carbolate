@@ -1,0 +1,61 @@
+Carbolate estimates the carbon footprint of your browsing, live, with no account and nothing ever sent outside your browser.
+
+Every web page has a cost: data crossing the network, a machine doing the work, a screen kept on. That cost is real, but invisible. Carbolate makes it visible, gram by gram, while you browse.
+
+
+HOW IT WORKS
+
+Carbolate follows each page for as long as it stays open, not just at load time: videos, images loaded as you scroll and background requests all count. Three sources are measured:
+
+• Network: the bytes actually transferred
+• Device: how long the page took to load
+• Screen: how long the page was actually on screen
+
+All of it is converted into grams of CO₂ equivalent (gCO₂e) using published factors (ADEME, IEA).
+
+
+YOUR DAY AT A GLANCE
+
+• A daily counter that climbs as you browse and resets at midnight
+• A clear grade: Sober, Moderate, Intensive or Excessive
+• A concrete equivalent: emails, hours of streaming, kilometres by car or by plane
+• Where you stand against an average day of browsing (120 gCO₂e, ADEME 2023 / The Shift Project 2022)
+• Your grade for the day right on the toolbar icon
+
+
+WHAT PAGES REALLY LOAD
+
+• Page loads, requests and data transferred
+• The share of requests that came from third parties
+• The CO₂ saved by the browser cache
+• Your 5 heaviest sites of the day
+
+
+NEW: YOUR TREND
+
+• Your last 7 days, one bar per day in the colour of its grade
+• The change against the previous week
+• History kept for your choice of 1 day, 7 days or everything
+• CSV export of your whole history, and if you want, an automatic export before anything is deleted
+
+
+PRIVACY
+
+• 100% local: everything stays in your browser
+• No account, no server, no tracker, no network request
+• Even sorting requests into third-party or not happens inside the page: only counts are stored, never the sites met
+• Interface in English and French
+
+
+AN HONEST NUMBER
+
+Carbolate measures what a browser can actually observe. The power drawn by servers and by your machine cannot be read from a web page, so it is estimated from published averages. Manufacturing of servers, network gear and your device is excluded: the figure is a floor, about 20 to 25% below a full assessment. The extension says so, rather than showing false precision.
+
+
+LIMITATIONS
+
+• Internal browser pages (chrome://, about:, file://) are not measured
+• Tabs opened before installing must be reloaded to be measured
+
+
+Questions or suggestions: lucas.laurens@proton.me
