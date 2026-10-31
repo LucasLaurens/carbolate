@@ -1,1 +1,9 @@
+# Every commit is authored and committed by Lucas Laurens, never a work or AI identity.
+for ident in "$(git var GIT_AUTHOR_IDENT)" "$(git var GIT_COMMITTER_IDENT)"; do
+  case "$ident" in
+    "Lucas Laurens <"*) ;;
+    *) echo "Refused: commit identity must be Lucas Laurens, got: ${ident% * *}" >&2; exit 1 ;;
+  esac
+done
+
 npx lint-staged
