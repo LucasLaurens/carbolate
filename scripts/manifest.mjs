@@ -77,9 +77,13 @@ function chromiumManifest(version) {
 
 // Gecko (Firefox): MV3 background is a non-persistent event page, the panel is
 // a `sidebar_action`, and AMO refuses to sign without an explicit gecko id.
+// MV3 Firefox files `action` under the Extensions menu, hiding the day's badge;
+// `default_area` pins it to the toolbar, but only on a fresh install.
 function geckoManifest(version) {
+  const shared = sharedManifest(version);
   return {
-    ...sharedManifest(version),
+    ...shared,
+    action: { ...shared.action, default_area: "navbar" },
     browser_specific_settings: {
       gecko: {
         id: GECKO_ID,

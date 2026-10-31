@@ -102,6 +102,10 @@ history the panel displays — the thresholds derive from a daily anchor.
 The badge is rewritten after every measure, at startup, after the daily reset, and on
 a language change. See [ADR](decisions/2026-08-21-badge-icone.md).
 
+On Firefox, MV3 files the extension button under the Extensions menu (the puzzle piece),
+where no badge is seen, and the sidebar icon never carries one. The Firefox manifest
+pins the button to the toolbar (`default_area: "navbar"`) — but only on a fresh install.
+
 Those bands are **not literals**: they are the daily reference of **120 gCO₂e**
 (ADEME 2023 / Shift Project 2022) multiplied by `0.5 / 1.5 / 4`. The multipliers are
 a design choice, not a source — no study says when browsing becomes excessive.
@@ -375,5 +379,6 @@ Midnight (or end of window for a longer retention)
 - Changing the retention window only takes effect on next browser restart — the alarm is rescheduled on install and on startup, not on preference change
 - Tabs open across an extension update keep running the previous content script until reloaded; their reports carry no `decodedBodySize`, so those visits report no avoided CO₂ (the rest of the measurement is unaffected)
 - On Firefox the panel is a sidebar (`sidebar_action`), on Chromium a side panel — same UI, different browser chrome
+- On Firefox, a user who installed before the button was pinned keeps it in the Extensions menu and never sees the badge: puzzle piece → gear next to Carbolate → "Pin to Toolbar"
 - Firefox 140 or later only: the first release that reads the manifest's statement that no data is collected, which AMO requires of a new add-on. Firefox ESR 115 cannot install it
 - Safari is not published: it needs an extra `xcrun safari-web-extension-converter` pass and an Apple developer account
